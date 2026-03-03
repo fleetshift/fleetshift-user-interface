@@ -7,7 +7,9 @@ router.get("/clusters/:id/services", (req, res) => {
   const services = db
     .prepare("SELECT * FROM services WHERE cluster_id = ?")
     .all(req.params.id) as Array<Record<string, unknown>>;
-  res.json(services.map((s) => ({ ...s, ports: JSON.parse(s.ports as string) })));
+  res.json(
+    services.map((s) => ({ ...s, ports: JSON.parse(s.ports as string) })),
+  );
 });
 
 router.get("/clusters/:id/ingresses", (req, res) => {

@@ -59,7 +59,9 @@ const ClusterOverview = ({ clusterIds }: ClusterOverviewProps) => {
       fetchJson<PodAggregate[]>(`${apiBase}/pods/aggregate`),
     ]).then(([clusterData, aggregateData]) => {
       setClusters(clusterData);
-      setPodStats(aggregateData.filter((d) => clusterIds.includes(d.cluster_id)));
+      setPodStats(
+        aggregateData.filter((d) => clusterIds.includes(d.cluster_id)),
+      );
       setLoading(false);
     });
   }, [apiBase, clusterIds]);

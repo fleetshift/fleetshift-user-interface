@@ -76,8 +76,8 @@ const StoragePage = ({ clusterIds }: StoragePageProps) => {
     return (
       <EmptyState titleText="No storage resources" headingLevel="h2">
         <EmptyStateBody>
-          No persistent volumes or claims found for the selected clusters.
-          Try reinstalling the cluster to generate storage data.
+          No persistent volumes or claims found for the selected clusters. Try
+          reinstalling the cluster to generate storage data.
         </EmptyStateBody>
       </EmptyState>
     );
@@ -142,9 +142,7 @@ const StoragePage = ({ clusterIds }: StoragePageProps) => {
               <Tr key={pvc.id}>
                 <Td>{pvc.name}</Td>
                 {multiCluster && <Td>{pvc.cluster_id}</Td>}
-                <Td>
-                  {stripClusterPrefix(pvc.namespace_id, pvc.cluster_id)}
-                </Td>
+                <Td>{stripClusterPrefix(pvc.namespace_id, pvc.cluster_id)}</Td>
                 <Td>
                   <Label color={statusColor(pvc.status)}>{pvc.status}</Label>
                 </Td>

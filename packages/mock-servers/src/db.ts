@@ -189,6 +189,62 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'Admitted',
     FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS user_nav_prefs (
+    user_id TEXT NOT NULL,
+    extension_path TEXT NOT NULL,
+    PRIMARY KEY (user_id, extension_path),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
+
+// Seed default users if they don't exist
+const userCount = (
+  db.prepare("SELECT COUNT(*) as c FROM users").get() as { c: number }
+).c;
+if (userCount === 0) {
+  const insertUser = db.prepare(
+    "INSERT INTO users (id, username, display_name, role) VALUES (?, ?, ?, ?)",
+  );
+  const insertPref = db.prepare(
+    "INSERT INTO user_nav_prefs (user_id, extension_path) VALUES (?, ?)",
+  );
+
+  insertUser.run("ops-user", "ops", "Ops Admin", "ops");
+  insertUser.run("dev-user", "dev", "Dev User", "dev");
+
+  const opsDefaults = [
+    "pods",
+    "ns",
+    "metrics",
+    "nodes",
+    "networking",
+    "storage",
+    "upgrades",
+    "alerts",
+    "cost",
+  ];
+  const devDefaults = [
+    "pods",
+    "ns",
+    "deployments",
+    "logs",
+    "pipelines",
+    "config",
+    "gitops",
+    "events",
+    "routes",
+  ];
+
+  for (const p of opsDefaults) insertPref.run("ops-user", p);
+  for (const p of devDefaults) insertPref.run("dev-user", p);
+}
 
 export default db;

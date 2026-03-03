@@ -33,6 +33,10 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
         test: /\.s[ac]ss$/,
         use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
       },
+      {
+        test: /\.(png|jpe?g|gif|svg)$/,
+        type: "asset/resource",
+      },
     ],
   },
   plugins: [

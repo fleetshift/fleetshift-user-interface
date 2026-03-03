@@ -17,7 +17,7 @@ export const ClusterSwitcher = () => {
   const selectedLabel =
     scope === "all"
       ? "All Clusters"
-      : installed.find((c) => c.id === scope)?.name ?? "All Clusters";
+      : (installed.find((c) => c.id === scope)?.name ?? "All Clusters");
 
   const toggle = (toggleRef: React.Ref<MenuToggleElement>) => (
     <MenuToggle

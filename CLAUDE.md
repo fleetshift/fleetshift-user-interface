@@ -12,7 +12,7 @@ npm workspaces monorepo with five packages under `packages/`:
 
 - **`@fleetshift/gui`** — React 18 SPA bundled with webpack. Uses React Router DOM v6, supports TS/CSS/SCSS.
 - **`@fleetshift/cli`** — CLI tool (scaffolding only, no source yet).
-- **`@fleetshift/mock-servers`** — Mock servers (scaffolding only, no source yet).
+- **`@fleetshift/mock-servers`** — Express + better-sqlite3 mock API server (port 4000). Provides REST endpoints for clusters, pods, namespaces, metrics, nodes, services, ingresses, storage, alerts, deployments, pipelines, config, gitops, events, routes, cost, upgrades, and user auth/preferences. DB auto-seeds users and schema on startup. Run with `npm run dev --workspace=packages/mock-servers`.
 - **`@fleetshift/mock-ui-plugins`** — Mock Scalprum plugins built with webpack and `@openshift/dynamic-plugin-sdk-webpack`. Uses `ts-loader` (not swc) for TypeScript. Plugins live under `src/plugins/<plugin-name>/` and are registered as `DynamicRemotePlugin` instances in `webpack.config.ts`.
 - **`@fleetshift/build-utils`** — Shared build utilities consumed by webpack configs. `main` points to `src/index.ts` (no build step needed via tsconfig paths). Exports:
   - `getDynamicModules(root, nodeModulesRoot)` — scans PF packages for dynamic module paths to use as MF shared entries
@@ -86,6 +86,62 @@ PatternFly components are shared individually via Module Federation (each Button
 - ESLint flat config (`eslint.config.mjs`) with `@typescript-eslint` and Prettier integration
 - Prettier: double quotes, trailing commas
 - TypeScript strict mode enabled globally
+
+## Scope Model & Cluster Switcher
+
+The shell uses a **scope model** where the user switches between "All Clusters" and a specific cluster via a masthead dropdown (`ClusterSwitcher`). Navigation is deduplicated (one "Pods" item, not one per cluster). Extension components receive `clusterIds: string[]` — global mode passes all relevant IDs, per-cluster mode passes one.
+
+- **`ScopeContext`** (`contexts/ScopeContext.tsx`) — tracks `scope: "all" | clusterId`. Provides `scopedClusterIds` and `clusterIdsForPlugin(pluginKey)` which intersects scope with clusters that have the given plugin enabled. Resets to "all" when the selected cluster is uninstalled.
+- **`pluginKeyFromName(pluginName)`** (`utils/extensions.ts`) — derives plugin key from plugin name (e.g. `"core-plugin"` → `"core"`) to match against `cluster.plugins[]`.
+- Nav items are filtered by both scope (cluster has plugin) and user preferences.
+- Routes use `/:extensionPath` (not `/clusters/:clusterId/:extensionPath`). React Router v6 ranks static segments (`/clusters`) higher than dynamic (`/:extensionPath`).
+
+## User Personas & Preferences
+
+Two personas: **Ops** (manages clusters/infrastructure) and **Dev** (manages applications). Switching is via an Ops/Dev toggle in the masthead — no login flow.
+
+- **`AuthContext`** (`contexts/AuthContext.tsx`) — auto-logs in from localStorage (defaults to "ops"). Exposes `switchUser(username)` to toggle between ops/dev accounts. Two hardcoded users seeded in the mock server DB.
+- **`UserPreferencesContext`** (`contexts/UserPreferencesContext.tsx`) — per-user list of enabled extension paths, synced with the server (`PUT /api/v1/users/:id/preferences`). Nav only shows extensions the user has enabled.
+- **Marketplace page** (`/marketplace`) — shows all available extensions (only from plugins at least one cluster has enabled) with toggles to show/hide each one in the nav. Grouped by Ops/Dev.
+- Default preferences:
+  - Ops: pods, ns, metrics, nodes, networking, storage, upgrades, alerts, cost
+  - Dev: pods, ns, deployments, logs, pipelines, config, gitops, events, routes
+
+## Plugin Architecture
+
+Plugins are registered in `packages/mock-ui-plugins/webpack.config.ts` as `DynamicRemotePlugin` instances. Each plugin exposes extensions of type `fleetshift.nav-item` and/or `fleetshift.dashboard-widget`. The GUI loads plugins dynamically via Scalprum based on which clusters have them enabled (`buildScalprumConfig` in `utils/buildScalprumConfig.ts`).
+
+**Extension contracts**:
+- `fleetshift.nav-item` — `{ label, path, component: CodeRef<ComponentType<{ clusterIds: string[] }>> }`
+- `fleetshift.dashboard-widget` — `{ component: CodeRef<ComponentType<{ clusterIds: string[] }>> }`
+
+**Current plugins** (15 total):
+
+| Plugin | Key | Nav Label | Persona |
+|--------|-----|-----------|---------|
+| core-plugin | core | Pods, Namespaces + dashboard widget | Ops |
+| observability-plugin | observability | Observability | Ops |
+| nodes-plugin | nodes | Nodes | Ops |
+| networking-plugin | networking | Networking | Ops |
+| storage-plugin | storage | Storage | Ops |
+| upgrades-plugin | upgrades | Upgrades | Ops |
+| alerts-plugin | alerts | Alerts | Ops |
+| cost-plugin | cost | Cost | Ops |
+| deployments-plugin | deployments | Deployments | Dev |
+| logs-plugin | logs | Logs | Dev |
+| pipelines-plugin | pipelines | Pipelines | Dev |
+| config-plugin | config | Config | Dev |
+| gitops-plugin | gitops | GitOps | Dev |
+| events-plugin | events | Events | Dev |
+| routes-plugin | routes | Routes | Dev |
+
+Each plugin directory under `packages/mock-ui-plugins/src/plugins/<name>-plugin/` contains an `api.ts` (shared `useApiBase`/`fetchJson` helpers via Scalprum's API object) and component file(s).
+
+## Component Tree
+
+```
+ScopeInitializer > BrowserRouter > AuthProvider > AuthGate > ClusterProvider > ScalprumShell > PluginLoader > ScopeProvider > UserPreferencesProvider > Routes > AppLayout > Outlet
+```
 
 ## Verification & Debugging
 

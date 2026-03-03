@@ -14,7 +14,9 @@ const MEMORY_COST_PER_GB = 0.006;
 
 router.get("/clusters/:id/cost", (req, res) => {
   const pods = db
-    .prepare("SELECT cpu_usage, memory_usage, namespace_id FROM pods WHERE cluster_id = ?")
+    .prepare(
+      "SELECT cpu_usage, memory_usage, namespace_id FROM pods WHERE cluster_id = ?",
+    )
     .all(req.params.id) as PodRow[];
 
   const byNamespace = new Map<string, { cpu: number; memory: number }>();
@@ -36,7 +38,8 @@ router.get("/clusters/:id/cost", (req, res) => {
       memoryMB: Math.round(usage.memory * 100) / 100,
       estimatedMonthlyCost:
         Math.round(
-          (usage.cpu * CPU_COST_PER_CORE + (usage.memory / 1024) * MEMORY_COST_PER_GB) *
+          (usage.cpu * CPU_COST_PER_CORE +
+            (usage.memory / 1024) * MEMORY_COST_PER_GB) *
             730 *
             100,
         ) / 100,
@@ -49,7 +52,8 @@ router.get("/clusters/:id/cost", (req, res) => {
     totalMemoryMB: Math.round(totalMemory * 100) / 100,
     estimatedMonthlyCost:
       Math.round(
-        (totalCpu * CPU_COST_PER_CORE + (totalMemory / 1024) * MEMORY_COST_PER_GB) *
+        (totalCpu * CPU_COST_PER_CORE +
+          (totalMemory / 1024) * MEMORY_COST_PER_GB) *
           730 *
           100,
       ) / 100,

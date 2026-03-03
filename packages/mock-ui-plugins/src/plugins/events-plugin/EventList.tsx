@@ -61,9 +61,7 @@ const EventList = ({ clusterIds }: EventListProps) => {
             {multiCluster && <Td>{evt.cluster_id}</Td>}
             <Td>{evt.reason}</Td>
             <Td>{evt.message}</Td>
-            <Td>
-              {evt.namespace_id.replace(`${evt.cluster_id}-`, "")}
-            </Td>
+            <Td>{evt.namespace_id.replace(`${evt.cluster_id}-`, "")}</Td>
             <Td>{evt.source}</Td>
             <Td>{evt.created_at}</Td>
           </Tr>

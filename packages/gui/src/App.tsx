@@ -6,11 +6,14 @@ import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "./layouts/AppLayout";
 import { ClusterProvider, useClusters } from "./contexts/ClusterContext";
 import { ScopeProvider } from "./contexts/ScopeContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
 import { buildScalprumConfig } from "./utils/buildScalprumConfig";
 import { Dashboard } from "./pages/Dashboard";
 import { ClusterListPage } from "./pages/ClusterListPage";
 import { ClusterDetailPage } from "./pages/ClusterDetailPage";
 import { ExtensionPage } from "./pages/ExtensionPage";
+import { MarketplacePage } from "./pages/MarketplacePage";
 
 const API_BASE = "http://localhost:4000/api/v1";
 
@@ -86,26 +89,45 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
   );
 };
 
+const AuthGate = ({ children }: PropsWithChildren) => {
+  const { loading } = useAuth();
+  if (loading) return null;
+  return <>{children}</>;
+};
+
 export const App = () => (
   <ScopeInitializer>
     <BrowserRouter>
-      <ClusterProvider>
-        <ScalprumShell>
-          <ScopeProvider>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/clusters" element={<ClusterListPage />} />
-                <Route
-                  path="/clusters/:clusterId"
-                  element={<ClusterDetailPage />}
-                />
-                <Route path="/:extensionPath" element={<ExtensionPage />} />
-              </Route>
-            </Routes>
-          </ScopeProvider>
-        </ScalprumShell>
-      </ClusterProvider>
+      <AuthProvider>
+        <AuthGate>
+          <ClusterProvider>
+            <ScalprumShell>
+              <ScopeProvider>
+                <UserPreferencesProvider>
+                  <Routes>
+                    <Route element={<AppLayout />}>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/clusters" element={<ClusterListPage />} />
+                      <Route
+                        path="/clusters/:clusterId"
+                        element={<ClusterDetailPage />}
+                      />
+                      <Route
+                        path="/marketplace"
+                        element={<MarketplacePage />}
+                      />
+                      <Route
+                        path="/:extensionPath"
+                        element={<ExtensionPage />}
+                      />
+                    </Route>
+                  </Routes>
+                </UserPreferencesProvider>
+              </ScopeProvider>
+            </ScalprumShell>
+          </ClusterProvider>
+        </AuthGate>
+      </AuthProvider>
     </BrowserRouter>
   </ScopeInitializer>
 );

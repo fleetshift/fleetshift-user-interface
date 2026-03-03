@@ -64,9 +64,7 @@ const PodList = ({ clusterIds }: PodListProps) => {
           <Tr key={pod.id}>
             <Td>{pod.name}</Td>
             {multiCluster && <Td>{pod.cluster_id}</Td>}
-            <Td>
-              {pod.namespace_id.replace(`${pod.cluster_id}-`, "")}
-            </Td>
+            <Td>{pod.namespace_id.replace(`${pod.cluster_id}-`, "")}</Td>
             <Td>
               <Label color={statusColor(pod.status)}>{pod.status}</Label>
             </Td>

@@ -53,3 +53,40 @@ export async function updateClusterPlugins(
   });
   return res.json();
 }
+
+export interface User {
+  id: string;
+  username: string;
+  display_name: string;
+  role: string;
+  enabledPaths: string[];
+}
+
+export async function login(username: string): Promise<User> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) throw new Error("Login failed");
+  return res.json();
+}
+
+export async function fetchUserPreferences(userId: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/users/${userId}/preferences`);
+  const data = await res.json();
+  return data.enabledPaths;
+}
+
+export async function updateUserPreferences(
+  userId: string,
+  paths: string[],
+): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/users/${userId}/preferences`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+  const data = await res.json();
+  return data.enabledPaths;
+}

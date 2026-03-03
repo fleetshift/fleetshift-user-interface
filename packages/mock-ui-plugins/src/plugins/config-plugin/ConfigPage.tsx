@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Label, Spinner, Title } from "@patternfly/react-core";
+import { Spinner, Title } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
 import { useApiBase, fetchJson } from "./api";
 
@@ -71,9 +71,7 @@ const ConfigPage = ({ clusterIds }: ConfigPageProps) => {
             <Tr key={cm.id}>
               <Td>{cm.name}</Td>
               {multiCluster && <Td>{cm.cluster_id}</Td>}
-              <Td>
-                {cm.namespace_id.replace(`${cm.cluster_id}-`, "")}
-              </Td>
+              <Td>{cm.namespace_id.replace(`${cm.cluster_id}-`, "")}</Td>
               <Td>{cm.data_keys.join(", ")}</Td>
             </Tr>
           ))}
@@ -101,9 +99,7 @@ const ConfigPage = ({ clusterIds }: ConfigPageProps) => {
             <Tr key={s.id}>
               <Td>{s.name}</Td>
               {multiCluster && <Td>{s.cluster_id}</Td>}
-              <Td>
-                {s.namespace_id.replace(`${s.cluster_id}-`, "")}
-              </Td>
+              <Td>{s.namespace_id.replace(`${s.cluster_id}-`, "")}</Td>
               <Td>{s.type}</Td>
               <Td>{s.data_keys.join(", ")}</Td>
             </Tr>

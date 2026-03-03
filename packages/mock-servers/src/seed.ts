@@ -52,28 +52,71 @@ const POD_STATUSES = [
 ];
 const NS_STATUSES = ["Active", "Active", "Active", "Terminating"];
 
-const NODE_ROLES = ["master", "master", "master", "worker", "worker", "worker", "worker", "infra"];
+const NODE_ROLES = [
+  "master",
+  "master",
+  "master",
+  "worker",
+  "worker",
+  "worker",
+  "worker",
+  "infra",
+];
 const NODE_STATUSES = ["Ready", "Ready", "Ready", "Ready", "NotReady"];
 
-const SERVICE_TYPES = ["ClusterIP", "ClusterIP", "ClusterIP", "NodePort", "LoadBalancer"];
+const SERVICE_TYPES = [
+  "ClusterIP",
+  "ClusterIP",
+  "ClusterIP",
+  "NodePort",
+  "LoadBalancer",
+];
 const SERVICE_NAMES = [
-  "api-server", "etcd-client", "kubernetes", "dns", "metrics-server",
-  "ingress-nginx", "prometheus-svc", "grafana-svc", "alertmanager-svc",
-  "oauth-proxy-svc", "console-svc", "registry-svc", "router-svc",
+  "api-server",
+  "etcd-client",
+  "kubernetes",
+  "dns",
+  "metrics-server",
+  "ingress-nginx",
+  "prometheus-svc",
+  "grafana-svc",
+  "alertmanager-svc",
+  "oauth-proxy-svc",
+  "console-svc",
+  "registry-svc",
+  "router-svc",
 ];
 
 const ALERT_NAMES = [
-  "HighCPUUsage", "HighMemoryPressure", "PodCrashLooping", "NodeNotReady",
-  "DiskSpaceLow", "CertificateExpiring", "EtcdHighLatency", "APIServerErrors",
-  "KubeletDown", "TargetDown", "PrometheusRuleFailures", "ClockSkewDetected",
+  "HighCPUUsage",
+  "HighMemoryPressure",
+  "PodCrashLooping",
+  "NodeNotReady",
+  "DiskSpaceLow",
+  "CertificateExpiring",
+  "EtcdHighLatency",
+  "APIServerErrors",
+  "KubeletDown",
+  "TargetDown",
+  "PrometheusRuleFailures",
+  "ClockSkewDetected",
 ];
 const ALERT_SEVERITIES = ["critical", "warning", "warning", "info"];
 const ALERT_STATES = ["firing", "firing", "pending", "resolved", "resolved"];
 
 const DEPLOYMENT_NAMES = [
-  "frontend", "backend-api", "worker", "cron-jobs", "auth-service",
-  "notification-svc", "cache-proxy", "data-processor", "search-indexer",
-  "payment-gateway", "user-service", "order-service",
+  "frontend",
+  "backend-api",
+  "worker",
+  "cron-jobs",
+  "auth-service",
+  "notification-svc",
+  "cache-proxy",
+  "data-processor",
+  "search-indexer",
+  "payment-gateway",
+  "user-service",
+  "order-service",
 ];
 const DEPLOYMENT_IMAGES = [
   "registry.example.com/frontend:v2.3.1",
@@ -89,13 +132,31 @@ const DEPLOYMENT_IMAGES = [
   "registry.example.com/users:v3.0.2",
   "registry.example.com/orders:v2.1.0",
 ];
-const STRATEGIES = ["RollingUpdate", "RollingUpdate", "RollingUpdate", "Recreate"];
+const STRATEGIES = [
+  "RollingUpdate",
+  "RollingUpdate",
+  "RollingUpdate",
+  "Recreate",
+];
 
 const PIPELINE_NAMES = [
-  "build-frontend", "build-backend", "deploy-staging", "deploy-production",
-  "run-integration-tests", "security-scan", "image-build", "promote-to-prod",
+  "build-frontend",
+  "build-backend",
+  "deploy-staging",
+  "deploy-production",
+  "run-integration-tests",
+  "security-scan",
+  "image-build",
+  "promote-to-prod",
 ];
-const PIPELINE_STATUSES = ["Succeeded", "Succeeded", "Succeeded", "Failed", "Running", "Cancelled"];
+const PIPELINE_STATUSES = [
+  "Succeeded",
+  "Succeeded",
+  "Succeeded",
+  "Failed",
+  "Running",
+  "Cancelled",
+];
 const PIPELINE_STAGES = [
   ["clone", "build", "test", "push"],
   ["clone", "lint", "build", "test", "scan", "push"],
@@ -104,14 +165,28 @@ const PIPELINE_STAGES = [
 ];
 
 const CONFIGMAP_NAMES = [
-  "app-config", "nginx-config", "feature-flags", "logging-config",
-  "cors-settings", "rate-limits", "cache-config",
+  "app-config",
+  "nginx-config",
+  "feature-flags",
+  "logging-config",
+  "cors-settings",
+  "rate-limits",
+  "cache-config",
 ];
 const SECRET_NAMES = [
-  "db-credentials", "tls-cert", "api-keys", "oauth-secret",
-  "registry-pull-secret", "encryption-keys",
+  "db-credentials",
+  "tls-cert",
+  "api-keys",
+  "oauth-secret",
+  "registry-pull-secret",
+  "encryption-keys",
 ];
-const SECRET_TYPES = ["Opaque", "kubernetes.io/tls", "kubernetes.io/dockerconfigjson", "Opaque"];
+const SECRET_TYPES = [
+  "Opaque",
+  "kubernetes.io/tls",
+  "kubernetes.io/dockerconfigjson",
+  "Opaque",
+];
 
 const GITOPS_REPOS = [
   "https://github.com/org/frontend-deploy",
@@ -121,22 +196,55 @@ const GITOPS_REPOS = [
   "https://github.com/org/platform-services",
 ];
 const SYNC_STATUSES = ["Synced", "Synced", "Synced", "OutOfSync", "Unknown"];
-const HEALTH_STATUSES = ["Healthy", "Healthy", "Healthy", "Degraded", "Progressing"];
+const HEALTH_STATUSES = [
+  "Healthy",
+  "Healthy",
+  "Healthy",
+  "Degraded",
+  "Progressing",
+];
 
 const EVENT_REASONS = [
-  "Pulled", "Created", "Started", "Killing", "BackOff", "FailedScheduling",
-  "Scheduled", "SuccessfulCreate", "ScalingReplicaSet", "FailedMount",
-  "Unhealthy", "NodeReady", "NodeNotReady", "Evicted",
+  "Pulled",
+  "Created",
+  "Started",
+  "Killing",
+  "BackOff",
+  "FailedScheduling",
+  "Scheduled",
+  "SuccessfulCreate",
+  "ScalingReplicaSet",
+  "FailedMount",
+  "Unhealthy",
+  "NodeReady",
+  "NodeNotReady",
+  "Evicted",
 ];
 const EVENT_TYPES = ["Normal", "Normal", "Normal", "Warning"];
-const EVENT_SOURCES = ["kubelet", "scheduler", "controller-manager", "deployment-controller"];
+const EVENT_SOURCES = [
+  "kubelet",
+  "scheduler",
+  "controller-manager",
+  "deployment-controller",
+];
 
 const ROUTE_NAMES = [
-  "frontend-route", "api-route", "grafana-route", "console-route",
-  "oauth-route", "registry-route", "alertmanager-route",
+  "frontend-route",
+  "api-route",
+  "grafana-route",
+  "console-route",
+  "oauth-route",
+  "registry-route",
+  "alertmanager-route",
 ];
 const ROUTE_HOSTS_PREFIX = [
-  "app", "api", "grafana", "console", "oauth", "registry", "alerts",
+  "app",
+  "api",
+  "grafana",
+  "console",
+  "oauth",
+  "registry",
+  "alerts",
 ];
 
 function pick<T>(arr: T[]): T {
@@ -245,7 +353,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO services (id, cluster_id, namespace_id, name, type, cluster_ip, ports) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const svcCount = randomInt(3, 6);
-  const svcNames = SERVICE_NAMES.sort(() => Math.random() - 0.5).slice(0, svcCount);
+  const svcNames = SERVICE_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    svcCount,
+  );
   for (const svcName of svcNames) {
     const nsId = pick(nsIds);
     const port = randomInt(80, 9090);
@@ -322,7 +433,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO alerts (id, cluster_id, name, severity, state, message, fired_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const alertCount = randomInt(2, 6);
-  const alertNames = ALERT_NAMES.sort(() => Math.random() - 0.5).slice(0, alertCount);
+  const alertNames = ALERT_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    alertCount,
+  );
   for (const alertName of alertNames) {
     insertAlert.run(
       `${cluster.id}-alert-${alertName}`,
@@ -340,7 +454,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO deployments (id, cluster_id, namespace_id, name, replicas, available, ready, strategy, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
   const deployCount = randomInt(3, 6);
-  const deployNames = DEPLOYMENT_NAMES.sort(() => Math.random() - 0.5).slice(0, deployCount);
+  const deployNames = DEPLOYMENT_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    deployCount,
+  );
   for (let i = 0; i < deployCount; i++) {
     const nsId = pick(nsIds);
     const replicas = randomInt(1, 5);
@@ -363,7 +480,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO pipelines (id, cluster_id, name, status, started_at, duration_seconds, stages) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
   const pipelineCount = randomInt(3, 6);
-  const pipelineNames = PIPELINE_NAMES.sort(() => Math.random() - 0.5).slice(0, pipelineCount);
+  const pipelineNames = PIPELINE_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    pipelineCount,
+  );
   for (const pName of pipelineNames) {
     insertPipeline.run(
       `${cluster.id}-pipeline-${pName}`,
@@ -381,7 +501,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO configmaps (id, cluster_id, namespace_id, name, data_keys) VALUES (?, ?, ?, ?, ?)",
   );
   const cmCount = randomInt(3, 5);
-  const cmNames = CONFIGMAP_NAMES.sort(() => Math.random() - 0.5).slice(0, cmCount);
+  const cmNames = CONFIGMAP_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    cmCount,
+  );
   for (const cmName of cmNames) {
     const nsId = pick(nsIds);
     const keys = ["key1", "key2", "key3"].slice(0, randomInt(1, 3));
@@ -399,10 +522,16 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO secrets (id, cluster_id, namespace_id, name, type, data_keys) VALUES (?, ?, ?, ?, ?, ?)",
   );
   const secretCount = randomInt(2, 4);
-  const secretNames = SECRET_NAMES.sort(() => Math.random() - 0.5).slice(0, secretCount);
+  const secretNames = SECRET_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    secretCount,
+  );
   for (const sName of secretNames) {
     const nsId = pick(nsIds);
-    const keys = ["username", "password", "token", "cert"].slice(0, randomInt(1, 3));
+    const keys = ["username", "password", "token", "cert"].slice(
+      0,
+      randomInt(1, 3),
+    );
     insertSecret.run(
       `${cluster.id}-secret-${sName}`,
       cluster.id,
@@ -458,7 +587,10 @@ export function seedCluster(cluster: AvailableCluster): void {
     "INSERT INTO routes (id, cluster_id, namespace_id, name, host, path, service_name, tls, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
   const routeCount = randomInt(2, 5);
-  const routeNames = ROUTE_NAMES.sort(() => Math.random() - 0.5).slice(0, routeCount);
+  const routeNames = ROUTE_NAMES.sort(() => Math.random() - 0.5).slice(
+    0,
+    routeCount,
+  );
   for (let i = 0; i < routeCount; i++) {
     const nsId = pick(nsIds);
     const hostPrefix = ROUTE_HOSTS_PREFIX[i % ROUTE_HOSTS_PREFIX.length];

@@ -5,7 +5,9 @@ const router = Router();
 
 router.get("/clusters/:id/events", (req, res) => {
   const events = db
-    .prepare("SELECT * FROM events WHERE cluster_id = ? ORDER BY created_at DESC")
+    .prepare(
+      "SELECT * FROM events WHERE cluster_id = ? ORDER BY created_at DESC",
+    )
     .all(req.params.id);
   res.json(events);
 });

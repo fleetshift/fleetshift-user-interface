@@ -5,7 +5,9 @@ const router = Router();
 
 router.get("/clusters/:id/pipelines", (req, res) => {
   const pipelines = db
-    .prepare("SELECT * FROM pipelines WHERE cluster_id = ? ORDER BY started_at DESC")
+    .prepare(
+      "SELECT * FROM pipelines WHERE cluster_id = ? ORDER BY started_at DESC",
+    )
     .all(req.params.id) as Array<Record<string, unknown>>;
   res.json(
     pipelines.map((p) => ({

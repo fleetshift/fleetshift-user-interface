@@ -56,9 +56,7 @@ const DeploymentList = ({ clusterIds }: DeploymentListProps) => {
           <Tr key={dep.id}>
             <Td>{dep.name}</Td>
             {multiCluster && <Td>{dep.cluster_id}</Td>}
-            <Td>
-              {dep.namespace_id.replace(`${dep.cluster_id}-`, "")}
-            </Td>
+            <Td>{dep.namespace_id.replace(`${dep.cluster_id}-`, "")}</Td>
             <Td>
               <Label
                 color={dep.available === dep.replicas ? "green" : "orange"}

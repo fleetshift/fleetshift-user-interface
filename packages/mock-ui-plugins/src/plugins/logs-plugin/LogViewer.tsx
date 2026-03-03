@@ -54,7 +54,10 @@ const LogViewer = ({ clusterIds }: LogViewerProps) => {
     >
       <code>
         {logs.map((entry, i) => (
-          <div key={i} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div
+            key={i}
+            style={{ display: "flex", gap: "8px", alignItems: "center" }}
+          >
             <span style={{ color: "#888" }}>[{entry.timestamp}]</span>
             <Label color={levelColor(entry.level)} isCompact>
               {entry.level}

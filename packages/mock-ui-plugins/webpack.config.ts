@@ -130,7 +130,10 @@ const NodesPlugin = new DynamicRemotePlugin({
     name: "nodes-plugin",
     version: "1.0.0",
     exposedModules: {
-      NodeList: path.resolve(__dirname, "./src/plugins/nodes-plugin/NodeList.tsx"),
+      NodeList: path.resolve(
+        __dirname,
+        "./src/plugins/nodes-plugin/NodeList.tsx",
+      ),
     },
   },
 });
@@ -267,7 +270,10 @@ const CostPlugin = new DynamicRemotePlugin({
     name: "cost-plugin",
     version: "1.0.0",
     exposedModules: {
-      CostPage: path.resolve(__dirname, "./src/plugins/cost-plugin/CostPage.tsx"),
+      CostPage: path.resolve(
+        __dirname,
+        "./src/plugins/cost-plugin/CostPage.tsx",
+      ),
     },
   },
 });
@@ -320,7 +326,10 @@ const LogsPlugin = new DynamicRemotePlugin({
     name: "logs-plugin",
     version: "1.0.0",
     exposedModules: {
-      LogViewer: path.resolve(__dirname, "./src/plugins/logs-plugin/LogViewer.tsx"),
+      LogViewer: path.resolve(
+        __dirname,
+        "./src/plugins/logs-plugin/LogViewer.tsx",
+      ),
     },
   },
 });

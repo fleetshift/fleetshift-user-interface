@@ -37,7 +37,13 @@ router.get("/clusters/:id/logs", (req, res) => {
     .prepare("SELECT name, namespace_id, status FROM pods WHERE cluster_id = ?")
     .all(req.params.id) as PodRow[];
 
-  const lines: { timestamp: string; pod: string; namespace: string; level: string; message: string }[] = [];
+  const lines: {
+    timestamp: string;
+    pod: string;
+    namespace: string;
+    level: string;
+    message: string;
+  }[] = [];
   const now = Date.now();
 
   for (const pod of pods) {

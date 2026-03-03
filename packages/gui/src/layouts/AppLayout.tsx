@@ -5,6 +5,7 @@ import {
   MastheadContent,
   MastheadLogo,
   MastheadMain,
+  MastheadToggle,
   Nav,
   NavItem,
   NavList,
@@ -12,22 +13,53 @@ import {
   PageSection,
   PageSidebar,
   PageSidebarBody,
+  PageToggleButton,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
   Divider,
+  ToggleGroup,
+  ToggleGroupItem,
 } from "@patternfly/react-core";
+import { BarsIcon } from "@patternfly/react-icons";
 import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
 import { useScope } from "../contexts/ScopeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import { isNavItem, pluginKeyFromName } from "../utils/extensions";
 import { ClusterSwitcher } from "./ClusterSwitcher";
+import logo from "../assets/masthead.png";
+
+const UserSwitcher = () => {
+  const { user, switchUser } = useAuth();
+
+  return (
+    <ToggleGroup>
+      <ToggleGroupItem
+        text="Ops"
+        isSelected={user?.role === "ops"}
+        onChange={() => switchUser("ops")}
+      />
+      <ToggleGroupItem
+        text="Dev"
+        isSelected={user?.role === "dev"}
+        onChange={() => switchUser("dev")}
+      />
+    </ToggleGroup>
+  );
+};
 
 const AppMasthead = () => (
   <Masthead>
     <MastheadMain>
+      <MastheadToggle>
+        <PageToggleButton aria-label="Navigation toggle">
+          <BarsIcon />
+        </PageToggleButton>
+      </MastheadToggle>
       <MastheadBrand>
         <MastheadLogo component="a" href="/">
-          FleetShift
+          <img src={logo} alt="FleetShift" style={{ height: 36 }} />
         </MastheadLogo>
       </MastheadBrand>
     </MastheadMain>
@@ -36,6 +68,9 @@ const AppMasthead = () => (
         <ToolbarContent>
           <ToolbarItem>
             <ClusterSwitcher />
+          </ToolbarItem>
+          <ToolbarItem>
+            <UserSwitcher />
           </ToolbarItem>
         </ToolbarContent>
       </Toolbar>
@@ -46,9 +81,10 @@ const AppMasthead = () => (
 const AppNav = () => {
   const location = useLocation();
   const { clusterIdsForPlugin } = useScope();
+  const { isPathEnabled } = useUserPreferences();
   const [navExtensions, navResolved] = useResolvedExtensions(isNavItem);
 
-  // Deduplicate by path, filter by scope, sort alphabetically
+  // Deduplicate, filter by scope + user prefs, sort alphabetically
   const seen = new Set<string>();
   const visibleExtensions = navResolved
     ? navExtensions
@@ -56,7 +92,10 @@ const AppNav = () => {
           if (seen.has(ext.properties.path)) return false;
           seen.add(ext.properties.path);
           const pluginKey = pluginKeyFromName(ext.pluginName);
-          return clusterIdsForPlugin(pluginKey).length > 0;
+          return (
+            clusterIdsForPlugin(pluginKey).length > 0 &&
+            isPathEnabled(ext.properties.path)
+          );
         })
         .sort((a, b) => a.properties.label.localeCompare(b.properties.label))
     : [];
@@ -79,6 +118,10 @@ const AppNav = () => {
             </NavItem>
           );
         })}
+        <Divider component="li" />
+        <NavItem isActive={location.pathname === "/marketplace"}>
+          <Link to="/marketplace">Marketplace</Link>
+        </NavItem>
       </NavList>
     </Nav>
   );
@@ -93,7 +136,7 @@ const Sidebar = () => (
 );
 
 export const AppLayout = () => (
-  <Page masthead={<AppMasthead />} sidebar={<Sidebar />}>
+  <Page masthead={<AppMasthead />} sidebar={<Sidebar />} isManagedSidebar>
     <PageSection isFilled>
       <Outlet />
     </PageSection>

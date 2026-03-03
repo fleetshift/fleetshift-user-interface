@@ -11,9 +11,7 @@ export const ExtensionPage = () => {
 
   if (!resolved) return <Spinner size="xl" />;
 
-  const match = navExtensions.find(
-    (e) => e.properties.path === extensionPath,
-  );
+  const match = navExtensions.find((e) => e.properties.path === extensionPath);
 
   if (!match) return <div>Page not found.</div>;
 

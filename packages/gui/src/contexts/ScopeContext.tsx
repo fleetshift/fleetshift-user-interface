@@ -37,7 +37,8 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     (pluginKey: string) => {
       return installed
         .filter(
-          (c) => c.plugins.includes(pluginKey) && scopedClusterIds.includes(c.id),
+          (c) =>
+            c.plugins.includes(pluginKey) && scopedClusterIds.includes(c.id),
         )
         .map((c) => c.id);
     },

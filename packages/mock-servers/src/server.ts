@@ -17,6 +17,7 @@ import configRoutes from "./routes/config";
 import gitopsRoutes from "./routes/gitops";
 import eventRoutes from "./routes/events";
 import appRoutes from "./routes/appRoutes";
+import userRoutes from "./routes/users";
 
 const app = express();
 app.use(cors());
@@ -39,6 +40,7 @@ app.use("/api/v1", configRoutes);
 app.use("/api/v1", gitopsRoutes);
 app.use("/api/v1", eventRoutes);
 app.use("/api/v1", appRoutes);
+app.use("/api/v1", userRoutes);
 
 const PORT = 4000;
 app.listen(PORT, () => {
