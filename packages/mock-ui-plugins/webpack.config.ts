@@ -22,25 +22,89 @@ const sharedModules = {
   ...pfSharedModules,
 };
 
-const ExamplePlugin = new DynamicRemotePlugin({
-  extensions: [],
-  sharedModules,
-  entryScriptFilename: "example-plugin.[contenthash].js",
-  moduleFederationSettings: {
-    libraryType: "global",
-    pluginOverride: {
-      // @ts-ignore
-      ModuleFederationPlugin,
-      ContainerPlugin,
-    },
+// @ts-ignore — @module-federation/enhanced types differ from SDK expectations
+const mfOverride = {
+  libraryType: "global",
+  pluginOverride: {
+    ModuleFederationPlugin,
+    ContainerPlugin,
   },
+};
+
+const CorePlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.dashboard-widget",
+      properties: {
+        component: { $codeRef: "ClusterOverview.default" },
+      },
+    },
+    {
+      type: "fleetshift.nav-item",
+      properties: {
+        label: "Pods",
+        path: "pods",
+        component: { $codeRef: "PodList.default" },
+      },
+    },
+    {
+      type: "fleetshift.nav-item",
+      properties: {
+        label: "Namespaces",
+        path: "ns",
+        component: { $codeRef: "NamespaceList.default" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "core-plugin.[contenthash].js",
+  pluginManifestFilename: "core-plugin-manifest.json",
+  // @ts-ignore — enhanced MF types differ from SDK expectations
+  moduleFederationSettings: mfOverride,
   pluginMetadata: {
-    name: "example-plugin",
+    name: "core-plugin",
     version: "1.0.0",
     exposedModules: {
-      "./ExamplePage": path.resolve(
+      ClusterOverview: path.resolve(
         __dirname,
-        "./src/plugins/example-plugin/ExamplePage.tsx",
+        "./src/plugins/core-plugin/ClusterOverview.tsx",
+      ),
+      PodList: path.resolve(__dirname, "./src/plugins/core-plugin/PodList.tsx"),
+      NamespaceList: path.resolve(
+        __dirname,
+        "./src/plugins/core-plugin/NamespaceList.tsx",
+      ),
+    },
+  },
+});
+
+const ObservabilityPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.nav-item",
+      properties: {
+        label: "Observability",
+        path: "metrics",
+        component: { $codeRef: "MetricsDashboard.default" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "observability-plugin.[contenthash].js",
+  pluginManifestFilename: "observability-plugin-manifest.json",
+  // @ts-ignore — enhanced MF types differ from SDK expectations
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "observability-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      MetricsDashboard: path.resolve(
+        __dirname,
+        "./src/plugins/observability-plugin/MetricsDashboard.tsx",
+      ),
+      PodMetrics: path.resolve(
+        __dirname,
+        "./src/plugins/observability-plugin/PodMetrics.tsx",
       ),
     },
   },
@@ -54,7 +118,7 @@ const config: Configuration = {
     publicPath: "auto",
   },
   mode: "development",
-  plugins: [ExamplePlugin],
+  plugins: [CorePlugin, ObservabilityPlugin],
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"],
   },

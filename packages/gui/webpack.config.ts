@@ -56,6 +56,12 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
   devServer: {
     historyApiFallback: true,
     port: 3000,
+    proxy: [
+      {
+        context: ["/api"],
+        target: "http://localhost:4000",
+      },
+    ],
   },
 };
 

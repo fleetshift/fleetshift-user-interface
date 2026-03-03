@@ -5,6 +5,10 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -n server,plugins,gui -c blue,magenta,green \"npm run dev:server\" \"npm run dev:plugins\" \"npm run dev:gui\"",
+    "dev:server": "npm run dev -w packages/mock-servers",
+    "dev:plugins": "npm run serve -w packages/mock-ui-plugins",
+    "dev:gui": "npm run dev -w packages/gui",
     "lint": "eslint packages/",
     "lint:fix": "eslint packages/ --fix"
   },
