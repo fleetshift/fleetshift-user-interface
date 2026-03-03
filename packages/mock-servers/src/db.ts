@@ -194,15 +194,11 @@ db.exec(`
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
-    role TEXT NOT NULL
+    role TEXT NOT NULL,
+    nav_layout TEXT NOT NULL DEFAULT '[]'
   );
 
-  CREATE TABLE IF NOT EXISTS user_nav_prefs (
-    user_id TEXT NOT NULL,
-    extension_path TEXT NOT NULL,
-    PRIMARY KEY (user_id, extension_path),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
+  DROP TABLE IF EXISTS user_nav_prefs;
 `);
 
 // Seed default users if they don't exist
@@ -211,40 +207,35 @@ const userCount = (
 ).c;
 if (userCount === 0) {
   const insertUser = db.prepare(
-    "INSERT INTO users (id, username, display_name, role) VALUES (?, ?, ?, ?)",
-  );
-  const insertPref = db.prepare(
-    "INSERT INTO user_nav_prefs (user_id, extension_path) VALUES (?, ?)",
+    "INSERT INTO users (id, username, display_name, role, nav_layout) VALUES (?, ?, ?, ?, ?)",
   );
 
-  insertUser.run("ops-user", "ops", "Ops Admin", "ops");
-  insertUser.run("dev-user", "dev", "Dev User", "dev");
+  const opsLayout = JSON.stringify([
+    { type: "item", path: "pods" },
+    { type: "item", path: "ns" },
+    { type: "item", path: "metrics" },
+    { type: "item", path: "nodes" },
+    { type: "item", path: "networking" },
+    { type: "item", path: "storage" },
+    { type: "item", path: "upgrades" },
+    { type: "item", path: "alerts" },
+    { type: "item", path: "cost" },
+  ]);
 
-  const opsDefaults = [
-    "pods",
-    "ns",
-    "metrics",
-    "nodes",
-    "networking",
-    "storage",
-    "upgrades",
-    "alerts",
-    "cost",
-  ];
-  const devDefaults = [
-    "pods",
-    "ns",
-    "deployments",
-    "logs",
-    "pipelines",
-    "config",
-    "gitops",
-    "events",
-    "routes",
-  ];
+  const devLayout = JSON.stringify([
+    { type: "item", path: "pods" },
+    { type: "item", path: "ns" },
+    { type: "item", path: "deployments" },
+    { type: "item", path: "logs" },
+    { type: "item", path: "pipelines" },
+    { type: "item", path: "config" },
+    { type: "item", path: "gitops" },
+    { type: "item", path: "events" },
+    { type: "item", path: "routes" },
+  ]);
 
-  for (const p of opsDefaults) insertPref.run("ops-user", p);
-  for (const p of devDefaults) insertPref.run("dev-user", p);
+  insertUser.run("ops-user", "ops", "Ops Admin", "ops", opsLayout);
+  insertUser.run("dev-user", "dev", "Dev User", "dev", devLayout);
 }
 
 export default db;

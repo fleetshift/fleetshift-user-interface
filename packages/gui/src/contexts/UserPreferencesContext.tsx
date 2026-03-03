@@ -8,10 +8,12 @@ import {
 } from "react";
 import { useAuth } from "./AuthContext";
 import { fetchUserPreferences, updateUserPreferences } from "../utils/api";
+import type { NavLayoutEntry } from "../utils/extensions";
+import { isPathInLayout } from "../utils/extensions";
 
 interface UserPreferencesContextValue {
-  enabledPaths: string[];
-  togglePath: (path: string) => void;
+  navLayout: NavLayoutEntry[];
+  updateNavLayout: (layout: NavLayoutEntry[]) => void;
   isPathEnabled: (path: string) => boolean;
 }
 
@@ -20,35 +22,30 @@ const UserPreferencesContext =
 
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [enabledPaths, setEnabledPaths] = useState<string[]>([]);
+  const [navLayout, setNavLayout] = useState<NavLayoutEntry[]>([]);
 
   useEffect(() => {
     if (!user) return;
-    fetchUserPreferences(user.id).then(setEnabledPaths);
+    fetchUserPreferences(user.id).then(setNavLayout);
   }, [user]);
 
-  const togglePath = useCallback(
-    (path: string) => {
+  const updateNavLayout = useCallback(
+    (layout: NavLayoutEntry[]) => {
       if (!user) return;
-      setEnabledPaths((prev) => {
-        const next = prev.includes(path)
-          ? prev.filter((p) => p !== path)
-          : [...prev, path];
-        updateUserPreferences(user.id, next);
-        return next;
-      });
+      setNavLayout(layout);
+      updateUserPreferences(user.id, layout);
     },
     [user],
   );
 
   const isPathEnabled = useCallback(
-    (path: string) => enabledPaths.includes(path),
-    [enabledPaths],
+    (path: string) => isPathInLayout(navLayout, path),
+    [navLayout],
   );
 
   return (
     <UserPreferencesContext.Provider
-      value={{ enabledPaths, togglePath, isPathEnabled }}
+      value={{ navLayout, updateNavLayout, isPathEnabled }}
     >
       {children}
     </UserPreferencesContext.Provider>

@@ -8,6 +8,7 @@ interface UserRow {
   username: string;
   display_name: string;
   role: string;
+  nav_layout: string;
 }
 
 // POST /auth/login — login by username
@@ -22,46 +23,43 @@ router.post("/auth/login", (req, res) => {
     return;
   }
 
-  const prefs = db
-    .prepare("SELECT extension_path FROM user_nav_prefs WHERE user_id = ?")
-    .all(user.id) as { extension_path: string }[];
-
   res.json({
-    ...user,
-    enabledPaths: prefs.map((p) => p.extension_path),
+    id: user.id,
+    username: user.username,
+    display_name: user.display_name,
+    role: user.role,
+    navLayout: JSON.parse(user.nav_layout),
   });
 });
 
-// GET /users/:id/preferences — get enabled paths
+// GET /users/:id/preferences — get nav layout
 router.get("/users/:id/preferences", (req, res) => {
-  const prefs = db
-    .prepare("SELECT extension_path FROM user_nav_prefs WHERE user_id = ?")
-    .all(req.params.id) as { extension_path: string }[];
+  const user = db
+    .prepare("SELECT nav_layout FROM users WHERE id = ?")
+    .get(req.params.id) as { nav_layout: string } | undefined;
 
-  res.json({ enabledPaths: prefs.map((p) => p.extension_path) });
-});
-
-// PUT /users/:id/preferences — replace enabled paths
-router.put("/users/:id/preferences", (req, res) => {
-  const { paths } = req.body as { paths: string[] };
-  if (!Array.isArray(paths)) {
-    res.status(400).json({ error: "paths must be an array" });
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
     return;
   }
 
-  const deleteAll = db.prepare("DELETE FROM user_nav_prefs WHERE user_id = ?");
-  const insertPref = db.prepare(
-    "INSERT INTO user_nav_prefs (user_id, extension_path) VALUES (?, ?)",
+  res.json({ navLayout: JSON.parse(user.nav_layout) });
+});
+
+// PUT /users/:id/preferences — replace nav layout
+router.put("/users/:id/preferences", (req, res) => {
+  const { navLayout } = req.body as { navLayout: unknown };
+  if (!Array.isArray(navLayout)) {
+    res.status(400).json({ error: "navLayout must be an array" });
+    return;
+  }
+
+  db.prepare("UPDATE users SET nav_layout = ? WHERE id = ?").run(
+    JSON.stringify(navLayout),
+    req.params.id,
   );
 
-  db.transaction(() => {
-    deleteAll.run(req.params.id);
-    for (const p of paths) {
-      insertPref.run(req.params.id, p);
-    }
-  })();
-
-  res.json({ enabledPaths: paths });
+  res.json({ navLayout });
 });
 
 export default router;

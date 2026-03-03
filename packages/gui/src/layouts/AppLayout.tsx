@@ -7,6 +7,7 @@ import {
   MastheadMain,
   MastheadToggle,
   Nav,
+  NavExpandable,
   NavItem,
   NavList,
   Page,
@@ -81,24 +82,59 @@ const AppMasthead = () => (
 const AppNav = () => {
   const location = useLocation();
   const { clusterIdsForPlugin } = useScope();
-  const { isPathEnabled } = useUserPreferences();
+  const { navLayout } = useUserPreferences();
   const [navExtensions, navResolved] = useResolvedExtensions(isNavItem);
 
-  // Deduplicate, filter by scope + user prefs, sort alphabetically
-  const seen = new Set<string>();
-  const visibleExtensions = navResolved
-    ? navExtensions
-        .filter((ext) => {
-          if (seen.has(ext.properties.path)) return false;
-          seen.add(ext.properties.path);
-          const pluginKey = pluginKeyFromName(ext.pluginName);
-          return (
-            clusterIdsForPlugin(pluginKey).length > 0 &&
-            isPathEnabled(ext.properties.path)
-          );
-        })
-        .sort((a, b) => a.properties.label.localeCompare(b.properties.label))
-    : [];
+  // Build a lookup: path → extension (deduplicated)
+  const extByPath = new Map<string, (typeof navExtensions)[number]>();
+  if (navResolved) {
+    for (const ext of navExtensions) {
+      if (extByPath.has(ext.properties.path)) continue;
+      const pluginKey = pluginKeyFromName(ext.pluginName);
+      if (clusterIdsForPlugin(pluginKey).length > 0) {
+        extByPath.set(ext.properties.path, ext);
+      }
+    }
+  }
+
+  const renderNavItem = (path: string) => {
+    const ext = extByPath.get(path);
+    if (!ext) return null;
+    const fullPath = `/${path}`;
+    return (
+      <NavItem key={path} isActive={location.pathname === fullPath}>
+        <Link to={fullPath}>{ext.properties.label}</Link>
+      </NavItem>
+    );
+  };
+
+  // Collect rendered layout entries, filtering out items whose plugin isn't available
+  const layoutEntries: React.ReactNode[] = [];
+  for (const entry of navLayout) {
+    if (entry.type === "item") {
+      const node = renderNavItem(entry.path);
+      if (node) layoutEntries.push(node);
+    } else {
+      const children = entry.children
+        .map((child) => renderNavItem(child.path))
+        .filter(Boolean);
+      if (children.length > 0) {
+        const isActive = entry.children.some(
+          (child) => location.pathname === `/${child.path}`,
+        );
+        layoutEntries.push(
+          <NavExpandable
+            key={entry.id}
+            title={entry.label}
+            isActive={isActive}
+            isExpanded={isActive}
+          >
+            {children}
+          </NavExpandable>,
+        );
+      }
+    }
+  }
 
   return (
     <Nav>
@@ -109,15 +145,8 @@ const AppNav = () => {
         <NavItem isActive={location.pathname === "/clusters"}>
           <Link to="/clusters">Clusters</Link>
         </NavItem>
-        {visibleExtensions.length > 0 && <Divider component="li" />}
-        {visibleExtensions.map((ext) => {
-          const path = `/${ext.properties.path}`;
-          return (
-            <NavItem key={ext.uid} isActive={location.pathname === path}>
-              <Link to={path}>{ext.properties.label}</Link>
-            </NavItem>
-          );
-        })}
+        {layoutEntries.length > 0 && <Divider component="li" />}
+        {layoutEntries}
         <Divider component="li" />
         <NavItem isActive={location.pathname === "/marketplace"}>
           <Link to="/marketplace">Marketplace</Link>

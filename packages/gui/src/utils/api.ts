@@ -54,12 +54,14 @@ export async function updateClusterPlugins(
   return res.json();
 }
 
+import type { NavLayoutEntry } from "./extensions";
+
 export interface User {
   id: string;
   username: string;
   display_name: string;
   role: string;
-  enabledPaths: string[];
+  navLayout: NavLayoutEntry[];
 }
 
 export async function login(username: string): Promise<User> {
@@ -72,21 +74,23 @@ export async function login(username: string): Promise<User> {
   return res.json();
 }
 
-export async function fetchUserPreferences(userId: string): Promise<string[]> {
+export async function fetchUserPreferences(
+  userId: string,
+): Promise<NavLayoutEntry[]> {
   const res = await fetch(`${API_BASE}/users/${userId}/preferences`);
   const data = await res.json();
-  return data.enabledPaths;
+  return data.navLayout;
 }
 
 export async function updateUserPreferences(
   userId: string,
-  paths: string[],
-): Promise<string[]> {
+  navLayout: NavLayoutEntry[],
+): Promise<NavLayoutEntry[]> {
   const res = await fetch(`${API_BASE}/users/${userId}/preferences`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paths }),
+    body: JSON.stringify({ navLayout }),
   });
   const data = await res.json();
-  return data.enabledPaths;
+  return data.navLayout;
 }

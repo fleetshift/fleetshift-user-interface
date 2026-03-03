@@ -29,3 +29,32 @@ export function isNavItem(e: Extension): e is NavItemExtension {
 export function pluginKeyFromName(pluginName: string): string {
   return pluginName.replace(/-plugin$/, "");
 }
+
+// --- Nav Layout types ---
+
+export interface NavLayoutItem {
+  type: "item";
+  path: string;
+}
+
+export interface NavLayoutSection {
+  type: "section";
+  id: string;
+  label: string;
+  children: { path: string }[];
+}
+
+export type NavLayoutEntry = NavLayoutItem | NavLayoutSection;
+
+/** Check whether a path exists anywhere in the layout (top-level or inside a section) */
+export function isPathInLayout(
+  layout: NavLayoutEntry[],
+  path: string,
+): boolean {
+  return layout.some(
+    (entry) =>
+      (entry.type === "item" && entry.path === path) ||
+      (entry.type === "section" &&
+        entry.children.some((child) => child.path === path)),
+  );
+}
