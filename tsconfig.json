@@ -8,6 +8,10 @@
     "skipLibCheck": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fleetshift/build-utils": ["packages/build-utils/src/index.ts"]
+    }
   }
 }

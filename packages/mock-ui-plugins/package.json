@@ -1,0 +1,35 @@
+{
+  "name": "@fleetshift/mock-ui-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "serve": "concurrently \"webpack --watch\" \"wait-on dist && http-server dist -p 8001 -c-1 --cors=*\""
+  },
+  "dependencies": {
+    "@patternfly/react-core": "^6.4.1",
+    "@patternfly/react-icons": "^6.4.0",
+    "@patternfly/react-table": "^6.4.1",
+    "@scalprum/core": "^0.9.0",
+    "@scalprum/react-core": "^0.11.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@module-federation/enhanced": "^0.10.0",
+    "@openshift/dynamic-plugin-sdk": "^5.0.1",
+    "@openshift/dynamic-plugin-sdk-webpack": "^4.0.2",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "concurrently": "^9.2.1",
+    "css-loader": "^7.1.4",
+    "http-server": "^14.1.1",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "wait-on": "^7.2.0",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
