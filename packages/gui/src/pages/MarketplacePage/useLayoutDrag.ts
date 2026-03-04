@@ -10,6 +10,10 @@ import {
 } from "../../components/NavLayoutTree/utilities";
 import type { FlatNode } from "../../components/NavLayoutTree/utilities";
 
+function isAvailablePageDrag(sourceId: string | number): boolean {
+  return String(sourceId).startsWith("avail-");
+}
+
 export function useLayoutDrag(
   navLayout: NavLayoutEntry[],
   updateNavLayout: (layout: NavLayoutEntry[]) => void,
@@ -21,6 +25,11 @@ export function useLayoutDrag(
   const activeIdRef = useRef<string | null>(null);
   const initialDepthRef = useRef(0);
   const descendantsRef = useRef<FlatNode[]>([]);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const dropTargetRef = useRef<string | null>(null);
+  const [activeAvailableTitle, setActiveAvailableTitle] = useState<
+    string | null
+  >(null);
 
   const activeNode = activeId ? items.find((i) => i.id === activeId) : null;
 
@@ -35,6 +44,16 @@ export function useLayoutDrag(
       const { source } = event.operation;
       if (!source) return;
       const id = String(source.id);
+
+      if (isAvailablePageDrag(id)) {
+        activeIdRef.current = id;
+        setActiveId(id);
+        const data = source.data as
+          | { type: string; title?: string }
+          | undefined;
+        setActiveAvailableTitle(data?.title ?? null);
+        return;
+      }
 
       activeIdRef.current = id;
       setActiveId(id);
@@ -68,6 +87,13 @@ export function useLayoutDrag(
       const sourceId = String(source.id);
       const targetId = String(target.id);
 
+      // Available page drag — just track the drop target, don't reorder
+      if (isAvailablePageDrag(sourceId)) {
+        dropTargetRef.current = targetId;
+        setDropTargetId(targetId);
+        return;
+      }
+
       setItems((prev) => {
         const sourceIdx = prev.findIndex((i) => i.id === sourceId);
         const targetIdx = prev.findIndex((i) => i.id === targetId);
@@ -94,7 +120,7 @@ export function useLayoutDrag(
   const handleDragMove = useCallback(
     (event: { operation: { transform: { x: number } } }) => {
       const id = activeIdRef.current;
-      if (!id) return;
+      if (!id || isAvailablePageDrag(id)) return;
 
       setItems((prev) => {
         const proj = getProjection(
@@ -123,7 +149,75 @@ export function useLayoutDrag(
   const handleDragEnd = useCallback(
     (event: Parameters<NonNullable<DragEndEvent>>[0]) => {
       const { canceled } = event;
+      const currentActiveId = activeIdRef.current;
 
+      // Handle available page drop
+      if (currentActiveId && isAvailablePageDrag(currentActiveId)) {
+        if (!canceled) {
+          const data = event.operation.source?.data as
+            | { type: string; pageId?: string }
+            | undefined;
+          const pageId = data?.pageId;
+
+          if (pageId) {
+            const targetId = dropTargetRef.current;
+            const newNode: FlatNode = {
+              id: pageId,
+              kind: "page",
+              depth: 0,
+              parentId: null,
+              pageId,
+            };
+
+            setItems((prev) => {
+              let finalItems: FlatNode[];
+
+              if (!targetId) {
+                // No target — append at end
+                finalItems = [...prev, newNode];
+              } else {
+                const targetIdx = prev.findIndex((i) => i.id === targetId);
+                if (targetIdx === -1) {
+                  finalItems = [...prev, newNode];
+                } else {
+                  const target = prev[targetIdx];
+
+                  if (target.kind === "section") {
+                    // Drop on section → insert as its first child
+                    newNode.depth = 1;
+                    newNode.parentId = target.id;
+                    finalItems = [...prev];
+                    finalItems.splice(targetIdx + 1, 0, newNode);
+                  } else if (target.depth === 1 && target.parentId) {
+                    // Drop on a page inside a section → insert after it in the same section
+                    newNode.depth = 1;
+                    newNode.parentId = target.parentId;
+                    finalItems = [...prev];
+                    finalItems.splice(targetIdx + 1, 0, newNode);
+                  } else {
+                    // Drop on a top-level page → insert after it at root level
+                    finalItems = [...prev];
+                    finalItems.splice(targetIdx + 1, 0, newNode);
+                  }
+                }
+              }
+
+              const newLayout = buildLayout(finalItems);
+              updateNavLayout(newLayout);
+              return finalItems;
+            });
+          }
+        }
+
+        activeIdRef.current = null;
+        dropTargetRef.current = null;
+        setDropTargetId(null);
+        setActiveId(null);
+        setActiveAvailableTitle(null);
+        return;
+      }
+
+      // Normal tree drag end
       if (canceled) {
         setItems(flattenLayout(navLayout));
       } else {
@@ -156,6 +250,8 @@ export function useLayoutDrag(
   return {
     items,
     activeNode,
+    activeAvailableTitle,
+    dropTargetId,
     descendantsRef,
     syncItems,
     handleDragStart,

@@ -1,16 +1,21 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
   CardBody,
   CardFooter,
+  CardHeader,
   CardTitle,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   FormGroup,
   FormHelperText,
   Gallery,
   HelperText,
   HelperTextItem,
+  MenuToggle,
   Modal,
   ModalBody,
   ModalFooter,
@@ -22,13 +27,11 @@ import {
   Flex,
   FlexItem,
 } from "@patternfly/react-core";
-import {
-  PlusCircleIcon,
-  TrashIcon,
-  ThumbtackIcon,
-} from "@patternfly/react-icons";
+import { EllipsisVIcon, PlusCircleIcon } from "@patternfly/react-icons";
 import { useUserPreferences } from "../../contexts/UserPreferencesContext";
-import { validatePagePath } from "../../utils/extensions";
+import { useClusters } from "../../contexts/ClusterContext";
+import { pluginKeyFromName, validatePagePath } from "../../utils/extensions";
+import type { CanvasPage } from "../../utils/extensions";
 import "./CanvasPageListPage.scss";
 
 function slugify(text: string): string {
@@ -38,15 +41,112 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Check if any module in a page has its plugin available on at least one cluster */
+function usePageAvailability() {
+  const { installed } = useClusters();
+
+  return useCallback(
+    (page: CanvasPage): boolean => {
+      if (page.modules.length === 0) return true; // empty pages are always "available"
+      return page.modules.some((mod) => {
+        const pluginKey = pluginKeyFromName(mod.moduleRef.scope);
+        return installed.some((c) => c.plugins.includes(pluginKey));
+      });
+    },
+    [installed],
+  );
+}
+
+function PageCard({
+  page,
+  isAvailable,
+  onNavigate,
+  onDelete,
+}: {
+  page: CanvasPage;
+  isAvailable: boolean;
+  onNavigate: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <Card
+      isClickable
+      isSelectable
+      isDisabled={!isAvailable}
+      className="fs-page-card"
+    >
+      <CardHeader
+        actions={{
+          actions: (
+            <Dropdown
+              isOpen={menuOpen}
+              onSelect={() => setMenuOpen(false)}
+              onOpenChange={setMenuOpen}
+              toggle={{
+                toggleRef,
+                toggleNode: (
+                  <MenuToggle
+                    ref={toggleRef}
+                    variant="plain"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen((prev) => !prev);
+                    }}
+                    isExpanded={menuOpen}
+                    aria-label="Page actions"
+                  >
+                    <EllipsisVIcon />
+                  </MenuToggle>
+                ),
+              }}
+            >
+              <DropdownList>
+                <DropdownItem
+                  key="delete"
+                  isDanger
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  Delete page
+                </DropdownItem>
+              </DropdownList>
+            </Dropdown>
+          ),
+          hasNoOffset: true,
+        }}
+        selectableActions={{
+          onClickAction: onNavigate,
+          selectableActionAriaLabel: `Navigate to ${page.title}`,
+          isHidden: true,
+        }}
+      >
+        <CardTitle>{page.title}</CardTitle>
+      </CardHeader>
+      <CardBody>
+        <div className="fs-page-card__count">{page.modules.length}</div>
+        <div className="fs-page-card__count-label">
+          {page.modules.length === 1 ? "module" : "modules"}
+        </div>
+        <div className="fs-page-card__path">/{page.path}</div>
+      </CardBody>
+      {!isAvailable && (
+        <CardFooter>
+          <span className="fs-page-card__unavailable">Plugins unavailable</span>
+        </CardFooter>
+      )}
+    </Card>
+  );
+}
+
 export const CanvasPageListPage = () => {
-  const {
-    canvasPages,
-    createPage,
-    deletePage,
-    isPageInNav,
-    togglePageInNav,
-  } = useUserPreferences();
+  const { canvasPages, createPage, deletePage } = useUserPreferences();
   const navigate = useNavigate();
+  const isPageAvailable = usePageAvailability();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -95,7 +195,7 @@ export const CanvasPageListPage = () => {
       <Flex
         justifyContent={{ default: "justifyContentSpaceBetween" }}
         alignItems={{ default: "alignItemsCenter" }}
-        className="pf-v6-u-mb-md"
+        className="fs-page-header"
       >
         <FlexItem>
           <Title headingLevel="h1">Composer</Title>
@@ -120,52 +220,13 @@ export const CanvasPageListPage = () => {
       ) : (
         <Gallery hasGutter minWidths={{ default: "280px" }}>
           {canvasPages.map((page) => (
-            <Card
+            <PageCard
               key={page.id}
-              isClickable
-              isSelectable
-              onClick={() => navigate(`/${page.path}`)}
-              className="fs-page-card"
-            >
-              <CardTitle>{page.title}</CardTitle>
-              <CardBody>
-                <div>
-                  {page.modules.length === 0
-                    ? "Empty canvas"
-                    : `${page.modules.length} module${page.modules.length === 1 ? "" : "s"}`}
-                </div>
-                <div className="fs-page-card__path">/{page.path}</div>
-              </CardBody>
-              <CardFooter>
-                <Flex gap={{ default: "gapMd" }}>
-                  <FlexItem>
-                    <Button
-                      variant="link"
-                      icon={<ThumbtackIcon />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePageInNav(page.id);
-                      }}
-                    >
-                      {isPageInNav(page.id) ? "Unpin from nav" : "Pin to nav"}
-                    </Button>
-                  </FlexItem>
-                  <FlexItem>
-                    <Button
-                      variant="link"
-                      isDanger
-                      icon={<TrashIcon />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deletePage(page.id);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </FlexItem>
-                </Flex>
-              </CardFooter>
-            </Card>
+              page={page}
+              isAvailable={isPageAvailable(page)}
+              onNavigate={() => navigate(`/${page.path}`)}
+              onDelete={() => deletePage(page.id)}
+            />
           ))}
         </Gallery>
       )}

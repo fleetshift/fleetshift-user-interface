@@ -4,8 +4,6 @@ import {
   EmptyStateBody,
   EmptyStateFooter,
   Button,
-  Grid,
-  GridItem,
   Title,
 } from "@patternfly/react-core";
 import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
@@ -38,23 +36,17 @@ export const Dashboard = () => {
 
   return (
     <>
-      <Title headingLevel="h1" style={{ marginBottom: 16 }}>
+      <Title headingLevel="h1" className="fs-page-header">
         Dashboard
       </Title>
-      <Grid hasGutter>
-        {widgetsResolved &&
-          widgets.map((ext) => {
-            const pluginKey = pluginKeyFromName(ext.pluginName);
-            const clusterIds = clusterIdsForPlugin(pluginKey);
-            if (clusterIds.length === 0) return null;
-            const Widget = ext.properties.component;
-            return (
-              <GridItem md={6} key={ext.uid}>
-                <Widget clusterIds={clusterIds} />
-              </GridItem>
-            );
-          })}
-      </Grid>
+      {widgetsResolved &&
+        widgets.map((ext) => {
+          const pluginKey = pluginKeyFromName(ext.pluginName);
+          const clusterIds = clusterIdsForPlugin(pluginKey);
+          if (clusterIds.length === 0) return null;
+          const Widget = ext.properties.component;
+          return <Widget key={ext.uid} clusterIds={clusterIds} />;
+        })}
     </>
   );
 };

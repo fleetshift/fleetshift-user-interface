@@ -12,6 +12,7 @@ import {
   FlexItem,
   Divider,
 } from "@patternfly/react-core";
+import { CheckCircleIcon } from "@patternfly/react-icons";
 import { useClusters } from "../../contexts/ClusterContext";
 import "./ClusterDrawerContent.scss";
 
@@ -48,7 +49,7 @@ export const ClusterManagerDrawerContent = () => {
 
   return (
     <div className="cluster-drawer">
-      <Title headingLevel="h2" size="lg">
+      <Title headingLevel="h2" size="lg" className="cluster-drawer__title">
         Cluster Manager
       </Title>
 
@@ -73,7 +74,7 @@ export const ClusterManagerDrawerContent = () => {
                   <FlexItem>{cluster.name}</FlexItem>
                   <FlexItem>
                     {isInstalled ? (
-                      <Label color="green" isCompact>
+                      <Label color="green" icon={<CheckCircleIcon />} isCompact>
                         Installed
                       </Label>
                     ) : (
@@ -85,17 +86,15 @@ export const ClusterManagerDrawerContent = () => {
                 </Flex>
               </AccordionToggle>
               <AccordionContent>
-                <Flex className="cluster-drawer__info">
-                  <FlexItem>
-                    <Label isCompact>Version: {cluster.version}</Label>
-                  </FlexItem>
-                </Flex>
+                <div className="cluster-drawer__version">
+                  Version {cluster.version}
+                </div>
 
                 {isInstalled && installedCluster ? (
                   <>
-                    <Title headingLevel="h4" size="md">
+                    <div className="cluster-drawer__section-title">
                       Ops Plugins
-                    </Title>
+                    </div>
                     <div className="cluster-drawer__plugins">
                       {OPS_PLUGINS.map((p) => (
                         <Switch
@@ -108,9 +107,9 @@ export const ClusterManagerDrawerContent = () => {
                       ))}
                     </div>
 
-                    <Title headingLevel="h4" size="md">
+                    <div className="cluster-drawer__section-title">
                       Dev Plugins
-                    </Title>
+                    </div>
                     <div className="cluster-drawer__plugins">
                       {DEV_PLUGINS.map((p) => (
                         <Switch
@@ -125,14 +124,15 @@ export const ClusterManagerDrawerContent = () => {
 
                     <Divider />
 
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => uninstall(cluster.id)}
-                      style={{ marginTop: 8 }}
-                    >
-                      Uninstall
-                    </Button>
+                    <div className="cluster-drawer__actions">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => uninstall(cluster.id)}
+                      >
+                        Uninstall
+                      </Button>
+                    </div>
                   </>
                 ) : (
                   <Button

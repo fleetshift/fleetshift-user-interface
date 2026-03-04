@@ -203,7 +203,9 @@ db.exec(`
 
 // Migrate: add canvas_pages column if missing
 try {
-  db.exec(`ALTER TABLE users ADD COLUMN canvas_pages TEXT NOT NULL DEFAULT '[]'`);
+  db.exec(
+    `ALTER TABLE users ADD COLUMN canvas_pages TEXT NOT NULL DEFAULT '[]'`,
+  );
 } catch {
   // Column already exists
 }

@@ -12,12 +12,7 @@ import {
   TextInput,
   Spinner,
 } from "@patternfly/react-core";
-import {
-  CubesIcon,
-  PencilAltIcon,
-  TimesIcon,
-  ThumbtackIcon,
-} from "@patternfly/react-icons";
+import { CubesIcon, PencilAltIcon, TimesIcon } from "@patternfly/react-icons";
 import { ScalprumComponent, useScalprum } from "@scalprum/react-core";
 import {
   GridLayout,
@@ -65,14 +60,8 @@ export const CanvasPage = () => {
   const paramPageId = params.pageId;
   const canvasPath = params["*"];
   const navigate = useNavigate();
-  const {
-    getPage,
-    getPageByPath,
-    updatePage,
-    canvasPages,
-    isPageInNav,
-    togglePageInNav,
-  } = useUserPreferences();
+  const { getPage, getPageByPath, updatePage, canvasPages } =
+    useUserPreferences();
   const { clusterIdsForPlugin } = useScope();
   const { config: scalprumConfig } = useScalprum();
   const availableModules = useAvailableModules();
@@ -109,7 +98,7 @@ export const CanvasPage = () => {
     };
   }, [closeDrawer]);
 
-  const { width, containerRef, mounted } = useContainerWidth();
+  const { containerRef, mounted } = useContainerWidth();
 
   const handleLayoutChange = useCallback(
     (newLayout: Layout) => {
@@ -288,24 +277,6 @@ export const CanvasPage = () => {
                   icon={<PencilAltIcon />}
                 />
               </FlexItem>
-              <FlexItem>
-                <Button
-                  variant="plain"
-                  size="sm"
-                  aria-label={
-                    isPageInNav(pageId!)
-                      ? "Unpin from navigation"
-                      : "Pin to navigation"
-                  }
-                  onClick={() => togglePageInNav(pageId!)}
-                  icon={<ThumbtackIcon />}
-                  className={
-                    isPageInNav(pageId!)
-                      ? "pf-v6-u-text-color-brand"
-                      : undefined
-                  }
-                />
-              </FlexItem>
             </Flex>
           )}
         </FlexItem>
@@ -319,7 +290,6 @@ export const CanvasPage = () => {
           </Button>
         </FlexItem>
       </Flex>
-
       <div
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ref={containerRef as any}
@@ -327,7 +297,11 @@ export const CanvasPage = () => {
       >
         {mounted && page.modules.length > 0 && (
           <GridLayout
-            width={width}
+            width={
+              containerRef.current
+                ? containerRef.current.getBoundingClientRect().width
+                : 1200
+            }
             layout={layout}
             gridConfig={{ cols: 12, rowHeight: 80 }}
             dragConfig={{ enabled: editing }}

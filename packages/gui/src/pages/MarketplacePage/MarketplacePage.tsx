@@ -10,20 +10,40 @@ import {
   TextInput,
   Title,
 } from "@patternfly/react-core";
-import { PlusCircleIcon, PlusIcon } from "@patternfly/react-icons";
-import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
+import { GripVerticalIcon, PlusCircleIcon } from "@patternfly/react-icons";
+import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { isPageInLayout } from "../../utils/extensions";
 import { useUserPreferences } from "../../contexts/UserPreferencesContext";
 import {
   TreeItem,
   TreeItemOverlay,
 } from "../../components/NavLayoutTree/TreeItem";
+import { AvailablePageItem } from "./AvailablePageItem";
 import { useLayoutDrag } from "./useLayoutDrag";
 import "./MarketplacePage.scss";
 
 let sectionIdCounter = 0;
 function nextSectionId(): string {
   return `section-${Date.now()}-${sectionIdCounter++}`;
+}
+
+function NavTreeDropZone({
+  children,
+  isEmpty,
+}: {
+  children: React.ReactNode;
+  isEmpty: boolean;
+}) {
+  const { ref } = useDroppable({ id: "nav-tree" });
+
+  return (
+    <ul
+      ref={ref}
+      style={{ padding: 0, margin: 0, minHeight: isEmpty ? 60 : undefined }}
+    >
+      {children}
+    </ul>
+  );
 }
 
 export const MarketplacePage = () => {
@@ -33,6 +53,8 @@ export const MarketplacePage = () => {
   const {
     items,
     activeNode,
+    activeAvailableTitle,
+    dropTargetId,
     descendantsRef,
     syncItems,
     handleDragStart,
@@ -139,47 +161,47 @@ export const MarketplacePage = () => {
 
   return (
     <>
-      <Title headingLevel="h1" className="pf-v6-u-mb-md">
+      <Title headingLevel="h1" className="fs-page-header">
         Navigation
       </Title>
 
-      <Flex
-        gap={{ default: "gapLg" }}
-        alignItems={{ default: "alignItemsFlexStart" }}
+      <DragDropProvider
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
       >
-        {/* --- Navigation Layout Editor --- */}
-        <FlexItem className="fs-nav-editor__panel">
-          <Flex
-            justifyContent={{ default: "justifyContentSpaceBetween" }}
-            alignItems={{ default: "alignItemsCenter" }}
-            className="pf-v6-u-mb-sm"
-          >
-            <FlexItem>
-              <Title headingLevel="h2">Navigation Layout</Title>
-            </FlexItem>
-            <FlexItem>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<PlusCircleIcon />}
-                onClick={() => {
-                  setEditingSectionId(null);
-                  setSectionName("");
-                  setSectionModalOpen(true);
-                }}
-              >
-                Add Section
-              </Button>
-            </FlexItem>
-          </Flex>
+        <Flex
+          gap={{ default: "gapLg" }}
+          alignItems={{ default: "alignItemsFlexStart" }}
+        >
+          {/* --- Navigation Layout Editor --- */}
+          <FlexItem className="fs-nav-editor__panel">
+            <Flex
+              justifyContent={{ default: "justifyContentSpaceBetween" }}
+              alignItems={{ default: "alignItemsCenter" }}
+              className="pf-v6-u-mb-sm"
+            >
+              <FlexItem>
+                <Title headingLevel="h2">Navigation Layout</Title>
+              </FlexItem>
+              <FlexItem>
+                <Button
+                  variant="link"
+                  size="sm"
+                  icon={<PlusCircleIcon />}
+                  onClick={() => {
+                    setEditingSectionId(null);
+                    setSectionName("");
+                    setSectionModalOpen(true);
+                  }}
+                >
+                  Add Section
+                </Button>
+              </FlexItem>
+            </Flex>
 
-          <DragDropProvider
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragMove={handleDragMove}
-            onDragEnd={handleDragEnd}
-          >
-            <ul style={{ padding: 0, margin: 0 }}>
+            <NavTreeDropZone isEmpty={items.length === 0}>
               {items.map((node, index) => (
                 <TreeItem
                   key={node.id}
@@ -187,6 +209,7 @@ export const MarketplacePage = () => {
                   index={index}
                   label={getLabel(node.pageId, node.label, node.kind)}
                   pathSlug={getPathSlug(node.pageId)}
+                  isDropTarget={dropTargetId === node.id}
                   onRemove={
                     node.kind === "page"
                       ? () => removeItem(node.pageId!)
@@ -208,63 +231,55 @@ export const MarketplacePage = () => {
                   }
                 />
               ))}
-            </ul>
+            </NavTreeDropZone>
 
-            <DragOverlay>
-              {activeNode ? (
-                <TreeItemOverlay
-                  label={getLabel(
-                    activeNode.pageId,
-                    activeNode.label,
-                    activeNode.kind,
-                  )}
-                  isSection={activeNode.kind === "section"}
-                  descendantCount={descendantsRef.current.length}
-                />
-              ) : null}
-            </DragOverlay>
-          </DragDropProvider>
-
-          {items.length === 0 && (
-            <div className="fs-nav-editor__empty">
-              No items in layout. Add pages from the right.
-            </div>
-          )}
-        </FlexItem>
-
-        {/* --- Available Pages --- */}
-        {availablePages.length > 0 && (
-          <FlexItem className="fs-nav-editor__panel">
-            <Title headingLevel="h2" className="pf-v6-u-mb-sm">
-              Available Pages
-            </Title>
-            <ul style={{ padding: 0, margin: 0 }}>
-              {availablePages.map((page) => (
-                <li
-                  key={page.id}
-                  style={{ listStyle: "none", marginBottom: 2 }}
-                >
-                  <div className="fs-available-page">
-                    <span className="fs-available-page__title">
-                      {page.title}
-                    </span>
-                    <span className="fs-available-page__path">
-                      /{page.path}
-                    </span>
-                    <Button
-                      variant="plain"
-                      size="sm"
-                      aria-label={`Add ${page.title}`}
-                      onClick={() => addItem(page.id)}
-                      icon={<PlusIcon />}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {items.length === 0 && (
+              <div className="fs-nav-editor__empty">
+                No items in layout. Add pages from the right.
+              </div>
+            )}
           </FlexItem>
-        )}
-      </Flex>
+
+          {/* --- Available Pages --- */}
+          {availablePages.length > 0 && (
+            <FlexItem className="fs-nav-editor__panel">
+              <Title headingLevel="h2" className="pf-v6-u-mb-sm">
+                Available Pages
+              </Title>
+              <ul style={{ padding: 0, margin: 0 }}>
+                {availablePages.map((page) => (
+                  <AvailablePageItem
+                    key={page.id}
+                    page={page}
+                    onAdd={addItem}
+                  />
+                ))}
+              </ul>
+            </FlexItem>
+          )}
+        </Flex>
+
+        <DragOverlay>
+          {activeNode ? (
+            <TreeItemOverlay
+              label={getLabel(
+                activeNode.pageId,
+                activeNode.label,
+                activeNode.kind,
+              )}
+              isSection={activeNode.kind === "section"}
+              descendantCount={descendantsRef.current.length}
+            />
+          ) : activeAvailableTitle ? (
+            <div className="fs-tree-overlay fs-tree-overlay--page">
+              <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
+              <span className="fs-tree-overlay__label fs-tree-overlay__label--page">
+                {activeAvailableTitle}
+              </span>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DragDropProvider>
 
       {/* Section name modal */}
       <Modal

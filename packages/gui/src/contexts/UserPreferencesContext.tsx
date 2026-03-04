@@ -15,7 +15,11 @@ import {
   updateCanvasPage as apiUpdatePage,
   deleteCanvasPage as apiDeletePage,
 } from "../utils/api";
-import type { NavLayoutEntry, CanvasPage, CanvasModule } from "../utils/extensions";
+import type {
+  NavLayoutEntry,
+  CanvasPage,
+  CanvasModule,
+} from "../utils/extensions";
 import { isPageInLayout } from "../utils/extensions";
 
 interface UserPreferencesContextValue {

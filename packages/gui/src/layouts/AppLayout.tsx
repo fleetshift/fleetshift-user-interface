@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
   Drawer,
@@ -31,7 +32,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@patternfly/react-core";
-import { BarsIcon, CogIcon } from "@patternfly/react-icons";
+import { BarsIcon, CogIcon, MoonIcon, SunIcon } from "@patternfly/react-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import { useDrawer, DrawerProvider } from "../contexts/DrawerContext";
@@ -55,6 +56,37 @@ const UserSwitcher = () => {
         onChange={() => switchUser("dev")}
       />
     </ToggleGroup>
+  );
+};
+
+const DARK_MODE_KEY = "fleetshift_dark_mode";
+const DARK_CLASS = "pf-v6-theme-dark";
+
+function initDarkMode(): boolean {
+  const stored = localStorage.getItem(DARK_MODE_KEY);
+  const isDark = stored === "true";
+  if (isDark) {
+    document.documentElement.classList.add(DARK_CLASS);
+  }
+  return isDark;
+}
+
+const DarkModeToggle = () => {
+  const [dark, setDark] = useState(initDarkMode);
+
+  const toggle = useCallback(() => {
+    setDark((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle(DARK_CLASS, next);
+      localStorage.setItem(DARK_MODE_KEY, String(next));
+      return next;
+    });
+  }, []);
+
+  return (
+    <Button variant="plain" aria-label="Toggle dark mode" onClick={toggle}>
+      {dark ? <SunIcon /> : <MoonIcon />}
+    </Button>
   );
 };
 
@@ -95,6 +127,9 @@ const AppMasthead = () => (
             <UserSwitcher />
           </ToolbarItem>
           <ToolbarGroup align={{ default: "alignEnd" }}>
+            <ToolbarItem>
+              <DarkModeToggle />
+            </ToolbarItem>
             <ToolbarItem>
               <ClusterManagerButton />
             </ToolbarItem>

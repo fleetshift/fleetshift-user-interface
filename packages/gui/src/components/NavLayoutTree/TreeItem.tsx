@@ -15,6 +15,7 @@ interface TreeItemProps {
   index: number;
   label: string;
   pathSlug?: string;
+  isDropTarget?: boolean;
   onRemove?: () => void;
   onEditSection?: () => void;
   onDeleteSection?: () => void;
@@ -25,6 +26,7 @@ export function TreeItem({
   index,
   label,
   pathSlug,
+  isDropTarget,
   onRemove,
   onEditSection,
   onDeleteSection,
@@ -45,12 +47,16 @@ export function TreeItem({
       className={`fs-tree-item ${isDragSource ? "fs-tree-item--dragging" : ""}`}
       style={{ marginLeft: node.depth * INDENTATION }}
     >
-      <div className={`fs-tree-item__row fs-tree-item__row--${kindClass}`}>
+      <div
+        className={`fs-tree-item__row fs-tree-item__row--${kindClass}${isDropTarget ? " fs-tree-item__row--drop-target" : ""}`}
+      >
         <span ref={handleRef} className="fs-tree-item__handle">
           <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
         </span>
 
-        <span className={`fs-tree-item__label fs-tree-item__label--${kindClass}`}>
+        <span
+          className={`fs-tree-item__label fs-tree-item__label--${kindClass}`}
+        >
           {label}
         </span>
 
@@ -105,7 +111,9 @@ export function TreeItemOverlay({
   return (
     <div className={`fs-tree-overlay fs-tree-overlay--${kindClass}`}>
       <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
-      <span className={`fs-tree-overlay__label fs-tree-overlay__label--${kindClass}`}>
+      <span
+        className={`fs-tree-overlay__label fs-tree-overlay__label--${kindClass}`}
+      >
         {label}
       </span>
       {descendantCount > 0 && (

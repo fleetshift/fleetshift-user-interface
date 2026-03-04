@@ -1,0 +1,19 @@
+// FleetShift global theme — inspired by OpenShift console design patterns
+
+// Light gray page background for content area
+.pf-v6-c-page__main-section {
+  background-color: var(--pf-t--global--background--color--secondary--default);
+}
+
+// Cards — subtle borders, toned-down radius
+.pf-v6-c-card {
+  border-radius: var(--pf-t--global--border--radius--medium);
+  box-shadow: none;
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+}
+
+// Page titles — consistent spacing
+.fs-page-header {
+  margin-bottom: var(--pf-t--global--spacer--lg);
+}
