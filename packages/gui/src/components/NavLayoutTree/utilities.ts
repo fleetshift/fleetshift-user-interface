@@ -2,10 +2,10 @@ import type { NavLayoutEntry, NavLayoutSection } from "../../utils/extensions";
 
 export interface FlatNode {
   id: string;
-  kind: "item" | "section";
+  kind: "page" | "section";
   depth: number;
   parentId: string | null;
-  path?: string;
+  pageId?: string;
   label?: string;
 }
 
@@ -14,15 +14,15 @@ export const INDENTATION = 36;
 export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
   const result: FlatNode[] = [];
   for (const entry of layout) {
-    if (entry.type === "item") {
+    if (entry.type === "page") {
       result.push({
-        id: entry.path,
-        kind: "item",
+        id: entry.pageId,
+        kind: "page",
         depth: 0,
         parentId: null,
-        path: entry.path,
+        pageId: entry.pageId,
       });
-    } else {
+    } else if (entry.type === "section") {
       result.push({
         id: entry.id,
         kind: "section",
@@ -32,11 +32,11 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
       });
       for (const child of entry.children) {
         result.push({
-          id: child.path,
-          kind: "item",
+          id: child.pageId,
+          kind: "page",
           depth: 1,
           parentId: entry.id,
-          path: child.path,
+          pageId: child.pageId,
         });
       }
     }
@@ -58,10 +58,10 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
       };
       result.push(currentSection);
     } else if (node.depth === 1 && currentSection) {
-      currentSection.children.push({ path: node.path! });
+      currentSection.children.push({ pageId: node.pageId! });
     } else {
       currentSection = null;
-      result.push({ type: "item", path: node.path! });
+      result.push({ type: "page", pageId: node.pageId! });
     }
   }
   return result;
@@ -102,7 +102,7 @@ export function getProjection(
   const dragDepth = Math.round(dragOffsetX / INDENTATION);
   const projectedDepth = Math.max(0, Math.min(1, initialDepth + dragDepth));
 
-  // Nesting is only allowed under sections (not under other items/extensions)
+  // Nesting is only allowed under sections (not under other items)
   let maxDepth = 0;
   let parentId: string | null = null;
 

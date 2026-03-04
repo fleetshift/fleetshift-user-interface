@@ -201,6 +201,13 @@ db.exec(`
   DROP TABLE IF EXISTS user_nav_prefs;
 `);
 
+// Migrate: add canvas_pages column if missing
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN canvas_pages TEXT NOT NULL DEFAULT '[]'`);
+} catch {
+  // Column already exists
+}
+
 // Seed default users if they don't exist
 const userCount = (
   db.prepare("SELECT COUNT(*) as c FROM users").get() as { c: number }
@@ -210,32 +217,10 @@ if (userCount === 0) {
     "INSERT INTO users (id, username, display_name, role, nav_layout) VALUES (?, ?, ?, ?, ?)",
   );
 
-  const opsLayout = JSON.stringify([
-    { type: "item", path: "pods" },
-    { type: "item", path: "ns" },
-    { type: "item", path: "metrics" },
-    { type: "item", path: "nodes" },
-    { type: "item", path: "networking" },
-    { type: "item", path: "storage" },
-    { type: "item", path: "upgrades" },
-    { type: "item", path: "alerts" },
-    { type: "item", path: "cost" },
-  ]);
+  const emptyLayout = JSON.stringify([]);
 
-  const devLayout = JSON.stringify([
-    { type: "item", path: "pods" },
-    { type: "item", path: "ns" },
-    { type: "item", path: "deployments" },
-    { type: "item", path: "logs" },
-    { type: "item", path: "pipelines" },
-    { type: "item", path: "config" },
-    { type: "item", path: "gitops" },
-    { type: "item", path: "events" },
-    { type: "item", path: "routes" },
-  ]);
-
-  insertUser.run("ops-user", "ops", "Ops Admin", "ops", opsLayout);
-  insertUser.run("dev-user", "dev", "Dev User", "dev", devLayout);
+  insertUser.run("ops-user", "ops", "Ops Admin", "ops", emptyLayout);
+  insertUser.run("dev-user", "dev", "Dev User", "dev", emptyLayout);
 }
 
 export default db;

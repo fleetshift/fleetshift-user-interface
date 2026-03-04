@@ -40,18 +40,16 @@ const CorePlugin = new DynamicRemotePlugin({
       },
     },
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Pods",
-        path: "pods",
         component: { $codeRef: "PodList.default" },
       },
     },
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Namespaces",
-        path: "ns",
         component: { $codeRef: "NamespaceList.default" },
       },
     },
@@ -81,10 +79,9 @@ const CorePlugin = new DynamicRemotePlugin({
 const ObservabilityPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Observability",
-        path: "metrics",
         component: { $codeRef: "MetricsDashboard.default" },
       },
     },
@@ -113,10 +110,9 @@ const ObservabilityPlugin = new DynamicRemotePlugin({
 const NodesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Nodes",
-        path: "nodes",
         component: { $codeRef: "NodeList.default" },
       },
     },
@@ -141,10 +137,9 @@ const NodesPlugin = new DynamicRemotePlugin({
 const NetworkingPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Networking",
-        path: "networking",
         component: { $codeRef: "NetworkingPage.default" },
       },
     },
@@ -169,10 +164,9 @@ const NetworkingPlugin = new DynamicRemotePlugin({
 const StoragePlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Storage",
-        path: "storage",
         component: { $codeRef: "StoragePage.default" },
       },
     },
@@ -197,10 +191,9 @@ const StoragePlugin = new DynamicRemotePlugin({
 const UpgradesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Upgrades",
-        path: "upgrades",
         component: { $codeRef: "UpgradePage.default" },
       },
     },
@@ -225,10 +218,9 @@ const UpgradesPlugin = new DynamicRemotePlugin({
 const AlertsPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Alerts",
-        path: "alerts",
         component: { $codeRef: "AlertList.default" },
       },
     },
@@ -253,10 +245,9 @@ const AlertsPlugin = new DynamicRemotePlugin({
 const CostPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Cost",
-        path: "cost",
         component: { $codeRef: "CostPage.default" },
       },
     },
@@ -281,10 +272,9 @@ const CostPlugin = new DynamicRemotePlugin({
 const DeploymentsPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Deployments",
-        path: "deployments",
         component: { $codeRef: "DeploymentList.default" },
       },
     },
@@ -309,10 +299,9 @@ const DeploymentsPlugin = new DynamicRemotePlugin({
 const LogsPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Logs",
-        path: "logs",
         component: { $codeRef: "LogViewer.default" },
       },
     },
@@ -337,10 +326,9 @@ const LogsPlugin = new DynamicRemotePlugin({
 const PipelinesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Pipelines",
-        path: "pipelines",
         component: { $codeRef: "PipelineList.default" },
       },
     },
@@ -365,10 +353,9 @@ const PipelinesPlugin = new DynamicRemotePlugin({
 const ConfigPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Config",
-        path: "config",
         component: { $codeRef: "ConfigPage.default" },
       },
     },
@@ -393,10 +380,9 @@ const ConfigPlugin = new DynamicRemotePlugin({
 const GitOpsPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "GitOps",
-        path: "gitops",
         component: { $codeRef: "GitOpsList.default" },
       },
     },
@@ -421,10 +407,9 @@ const GitOpsPlugin = new DynamicRemotePlugin({
 const EventsPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Events",
-        path: "events",
         component: { $codeRef: "EventList.default" },
       },
     },
@@ -449,10 +434,9 @@ const EventsPlugin = new DynamicRemotePlugin({
 const RoutesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
-      type: "fleetshift.nav-item",
+      type: "fleetshift.module",
       properties: {
         label: "Routes",
-        path: "routes",
         component: { $codeRef: "RouteList.default" },
       },
     },

@@ -1,0 +1,35 @@
+// MarketplacePage (Navigation layout editor) styles
+
+.fs-nav-editor {
+  &__empty {
+    padding: var(--pf-t--global--spacer--lg) 0;
+    text-align: center;
+    color: var(--pf-t--global--text--color--subtle);
+    font-style: italic;
+  }
+
+  &__panel {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+// Available pages list
+.fs-available-page {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm);
+  background: var(--pf-t--global--background--color--secondary--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+
+  &__title {
+    flex: 1;
+    font-weight: var(--pf-t--global--font--weight--heading--default);
+  }
+
+  &__path {
+    font-size: var(--pf-t--global--font--size--xs);
+    color: var(--pf-t--global--text--color--subtle);
+  }
+}

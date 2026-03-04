@@ -1,0 +1,62 @@
+// CanvasPage styles
+
+.fs-canvas-page {
+  &__header {
+    margin-bottom: var(--pf-t--global--spacer--md);
+  }
+
+  &__empty {
+    padding: var(--pf-t--global--spacer--2xl);
+    text-align: center;
+    color: var(--pf-t--global--text--color--subtle);
+    font-style: italic;
+  }
+}
+
+// Grid module card
+.fs-module-card {
+  background: var(--pf-t--global--background--color--primary--default);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--large);
+  overflow: hidden;
+  position: relative;
+
+  &__remove {
+    position: absolute;
+    top: var(--pf-t--global--spacer--xs);
+    right: var(--pf-t--global--spacer--xs);
+    z-index: 10;
+  }
+
+  &__content {
+    padding: var(--pf-t--global--spacer--sm);
+    height: 100%;
+    overflow: auto;
+  }
+}
+
+// Module palette (drawer)
+.fs-module-palette {
+  padding: var(--pf-t--global--spacer--md);
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-t--global--spacer--sm);
+    padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm);
+    margin-bottom: var(--pf-t--global--spacer--xs);
+    background: var(--pf-t--global--background--color--secondary--default);
+    border-radius: var(--pf-t--global--border--radius--medium);
+  }
+
+  &__label {
+    flex: 1;
+    font-weight: var(--pf-t--global--font--weight--heading--default);
+  }
+
+  &__scope {
+    font-size: var(--pf-t--global--font--size--xs);
+    color: var(--pf-t--global--text--color--subtle);
+  }
+}

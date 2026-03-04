@@ -12,8 +12,9 @@ import { buildScalprumConfig } from "./utils/buildScalprumConfig";
 import { Dashboard } from "./pages/Dashboard";
 import { ClusterListPage } from "./pages/ClusterListPage";
 import { ClusterDetailPage } from "./pages/ClusterDetailPage";
-import { ExtensionPage } from "./pages/ExtensionPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
+import { CanvasPageListPage } from "./pages/CanvasPageListPage";
+import { CanvasPage } from "./pages/CanvasPage";
 
 const API_BASE = "http://localhost:4000/api/v1";
 
@@ -113,12 +114,20 @@ export const App = () => (
                         element={<ClusterDetailPage />}
                       />
                       <Route
-                        path="/marketplace"
+                        path="/navigation"
                         element={<MarketplacePage />}
                       />
                       <Route
-                        path="/:extensionPath"
-                        element={<ExtensionPage />}
+                        path="/pages"
+                        element={<CanvasPageListPage />}
+                      />
+                      <Route
+                        path="/pages/:pageId"
+                        element={<CanvasPage />}
+                      />
+                      <Route
+                        path="*"
+                        element={<CanvasPage />}
                       />
                     </Route>
                   </Routes>

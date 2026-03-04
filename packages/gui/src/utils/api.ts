@@ -54,7 +54,7 @@ export async function updateClusterPlugins(
   return res.json();
 }
 
-import type { NavLayoutEntry } from "./extensions";
+import type { NavLayoutEntry, CanvasPage, CanvasModule } from "./extensions";
 
 export interface User {
   id: string;
@@ -93,4 +93,50 @@ export async function updateUserPreferences(
   });
   const data = await res.json();
   return data.navLayout;
+}
+
+// --- Canvas Pages ---
+
+export async function fetchCanvasPages(userId: string): Promise<CanvasPage[]> {
+  const res = await fetch(`${API_BASE}/users/${userId}/canvas-pages`);
+  const data = await res.json();
+  return data.pages;
+}
+
+export async function createCanvasPage(
+  userId: string,
+  title: string,
+  path: string,
+): Promise<CanvasPage> {
+  const res = await fetch(`${API_BASE}/users/${userId}/canvas-pages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, path }),
+  });
+  return res.json();
+}
+
+export async function updateCanvasPage(
+  userId: string,
+  pageId: string,
+  updates: { title?: string; path?: string; modules?: CanvasModule[] },
+): Promise<CanvasPage> {
+  const res = await fetch(
+    `${API_BASE}/users/${userId}/canvas-pages/${pageId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    },
+  );
+  return res.json();
+}
+
+export async function deleteCanvasPage(
+  userId: string,
+  pageId: string,
+): Promise<void> {
+  await fetch(`${API_BASE}/users/${userId}/canvas-pages/${pageId}`, {
+    method: "DELETE",
+  });
 }

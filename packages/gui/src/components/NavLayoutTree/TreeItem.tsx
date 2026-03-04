@@ -8,12 +8,13 @@ import {
 import { Button } from "@patternfly/react-core";
 import type { FlatNode } from "./utilities";
 import { INDENTATION } from "./utilities";
+import "./TreeItem.scss";
 
 interface TreeItemProps {
   node: FlatNode;
   index: number;
   label: string;
-  isDisabled?: boolean;
+  pathSlug?: string;
   onRemove?: () => void;
   onEditSection?: () => void;
   onDeleteSection?: () => void;
@@ -23,7 +24,7 @@ export function TreeItem({
   node,
   index,
   label,
-  isDisabled,
+  pathSlug,
   onRemove,
   onEditSection,
   onDeleteSection,
@@ -36,80 +37,25 @@ export function TreeItem({
   });
 
   const isSection = node.kind === "section";
+  const kindClass = isSection ? "section" : "page";
 
   return (
     <li
       ref={ref}
-      style={{
-        listStyle: "none",
-        marginLeft: node.depth * INDENTATION,
-        opacity: isDragSource ? 0.4 : 1,
-        marginBottom: 2,
-      }}
+      className={`fs-tree-item ${isDragSource ? "fs-tree-item--dragging" : ""}`}
+      style={{ marginLeft: node.depth * INDENTATION }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 12px",
-          background: isSection
-            ? "var(--pf-t--global--background--color--primary--default)"
-            : "var(--pf-t--global--background--color--secondary--default)",
-          borderRadius: 6,
-          border: isSection
-            ? "1px solid var(--pf-t--global--border--color--default)"
-            : "none",
-        }}
-      >
-        <span
-          ref={handleRef}
-          style={{
-            cursor: "grab",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <GripVerticalIcon
-            color="var(--pf-t--global--icon--color--subtle)"
-          />
+      <div className={`fs-tree-item__row fs-tree-item__row--${kindClass}`}>
+        <span ref={handleRef} className="fs-tree-item__handle">
+          <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
         </span>
 
-        <span
-          style={{
-            flex: 1,
-            fontWeight: isSection ? 600 : 500,
-            opacity: isDisabled ? 0.6 : 1,
-          }}
-        >
+        <span className={`fs-tree-item__label fs-tree-item__label--${kindClass}`}>
           {label}
         </span>
 
-        {!isSection && isDisabled && (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "var(--pf-t--global--color--status--danger--default)",
-              background: "rgba(201, 25, 11, 0.1)",
-              padding: "2px 8px",
-              borderRadius: 10,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Plugin unavailable
-          </span>
-        )}
-
-        {!isSection && node.path && (
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--pf-t--global--text--color--subtle)",
-            }}
-          >
-            /{node.path}
-          </span>
+        {!isSection && pathSlug && (
+          <span className="fs-tree-item__path">/{pathSlug}</span>
         )}
 
         {isSection && (
@@ -154,42 +100,16 @@ export function TreeItemOverlay({
   isSection: boolean;
   descendantCount: number;
 }) {
+  const kindClass = isSection ? "section" : "page";
+
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "6px 12px",
-        background: isSection
-          ? "var(--pf-t--global--background--color--primary--default)"
-          : "var(--pf-t--global--background--color--secondary--default)",
-        borderRadius: 6,
-        border: "1px solid var(--pf-t--global--border--color--default)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        width: "min-content",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <GripVerticalIcon color="var(--pf-t--global--icon--color--subtle)" />
-      <span style={{ fontWeight: isSection ? 600 : 500 }}>{label}</span>
+    <div className={`fs-tree-overlay fs-tree-overlay--${kindClass}`}>
+      <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
+      <span className={`fs-tree-overlay__label fs-tree-overlay__label--${kindClass}`}>
+        {label}
+      </span>
       {descendantCount > 0 && (
-        <span
-          style={{
-            background: "var(--pf-t--global--color--brand--default)",
-            color: "#fff",
-            borderRadius: "50%",
-            width: 20,
-            height: 20,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-        >
-          {descendantCount}
-        </span>
+        <span className="fs-tree-overlay__badge">{descendantCount}</span>
       )}
     </div>
   );

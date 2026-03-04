@@ -1,5 +1,12 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
+  Drawer,
+  DrawerActions,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerContentBody,
+  DrawerHead,
+  DrawerPanelContent,
   Masthead,
   MastheadBrand,
   MastheadContent,
@@ -23,11 +30,9 @@ import {
   ToggleGroupItem,
 } from "@patternfly/react-core";
 import { BarsIcon } from "@patternfly/react-icons";
-import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
-import { useScope } from "../contexts/ScopeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
-import { isNavItem, pluginKeyFromName } from "../utils/extensions";
+import { useDrawer, DrawerProvider } from "../contexts/DrawerContext";
 import { ClusterSwitcher } from "./ClusterSwitcher";
 import logo from "../assets/masthead.png";
 
@@ -81,47 +86,33 @@ const AppMasthead = () => (
 
 const AppNav = () => {
   const location = useLocation();
-  const { clusterIdsForPlugin } = useScope();
-  const { navLayout } = useUserPreferences();
-  const [navExtensions, navResolved] = useResolvedExtensions(isNavItem);
+  const { navLayout, getPage } = useUserPreferences();
 
-  // Build a lookup: path → extension (deduplicated)
-  const extByPath = new Map<string, (typeof navExtensions)[number]>();
-  if (navResolved) {
-    for (const ext of navExtensions) {
-      if (extByPath.has(ext.properties.path)) continue;
-      const pluginKey = pluginKeyFromName(ext.pluginName);
-      if (clusterIdsForPlugin(pluginKey).length > 0) {
-        extByPath.set(ext.properties.path, ext);
-      }
-    }
-  }
-
-  const renderNavItem = (path: string) => {
-    const ext = extByPath.get(path);
-    if (!ext) return null;
-    const fullPath = `/${path}`;
+  const renderPageNavItem = (pageId: string) => {
+    const page = getPage(pageId);
+    if (!page) return null;
+    const fullPath = `/${page.path}`;
     return (
-      <NavItem key={path} isActive={location.pathname === fullPath}>
-        <Link to={fullPath}>{ext.properties.label}</Link>
+      <NavItem key={pageId} isActive={location.pathname === fullPath}>
+        <Link to={fullPath}>{page.title}</Link>
       </NavItem>
     );
   };
 
-  // Collect rendered layout entries, filtering out items whose plugin isn't available
   const layoutEntries: React.ReactNode[] = [];
   for (const entry of navLayout) {
-    if (entry.type === "item") {
-      const node = renderNavItem(entry.path);
+    if (entry.type === "page") {
+      const node = renderPageNavItem(entry.pageId);
       if (node) layoutEntries.push(node);
-    } else {
+    } else if (entry.type === "section") {
       const children = entry.children
-        .map((child) => renderNavItem(child.path))
+        .map((child) => renderPageNavItem(child.pageId))
         .filter(Boolean);
       if (children.length > 0) {
-        const isActive = entry.children.some(
-          (child) => location.pathname === `/${child.path}`,
-        );
+        const isActive = entry.children.some((child) => {
+          const page = getPage(child.pageId);
+          return page && location.pathname === `/${page.path}`;
+        });
         layoutEntries.push(
           <NavExpandable
             key={entry.id}
@@ -148,8 +139,11 @@ const AppNav = () => {
         {layoutEntries.length > 0 && <Divider component="li" />}
         {layoutEntries}
         <Divider component="li" />
-        <NavItem isActive={location.pathname === "/marketplace"}>
-          <Link to="/marketplace">Marketplace</Link>
+        <NavItem isActive={location.pathname === "/navigation"}>
+          <Link to="/navigation">Navigation</Link>
+        </NavItem>
+        <NavItem isActive={location.pathname.startsWith("/pages")}>
+          <Link to="/pages">Composer</Link>
         </NavItem>
       </NavList>
     </Nav>
@@ -164,10 +158,41 @@ const Sidebar = () => (
   </PageSidebar>
 );
 
+const AppDrawer = () => {
+  const { isOpen, content, closeDrawer } = useDrawer();
+
+  const panelContent = (
+    <DrawerPanelContent widths={{ default: "width_33" }}>
+      <DrawerHead>
+        <DrawerActions>
+          <DrawerCloseButton onClick={closeDrawer} />
+        </DrawerActions>
+      </DrawerHead>
+      {content}
+    </DrawerPanelContent>
+  );
+
+  return (
+    <Drawer isExpanded={isOpen} onExpand={() => {}} position="end" isInline>
+      <DrawerContent panelContent={panelContent}>
+        <DrawerContentBody>
+          <Page
+            masthead={<AppMasthead />}
+            sidebar={<Sidebar />}
+            isManagedSidebar
+          >
+            <PageSection isFilled>
+              <Outlet />
+            </PageSection>
+          </Page>
+        </DrawerContentBody>
+      </DrawerContent>
+    </Drawer>
+  );
+};
+
 export const AppLayout = () => (
-  <Page masthead={<AppMasthead />} sidebar={<Sidebar />} isManagedSidebar>
-    <PageSection isFilled>
-      <Outlet />
-    </PageSection>
-  </Page>
+  <DrawerProvider>
+    <AppDrawer />
+  </DrawerProvider>
 );
