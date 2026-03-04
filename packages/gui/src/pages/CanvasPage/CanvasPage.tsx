@@ -2,6 +2,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Button,
+  EmptyState,
+  EmptyStateActions,
+  EmptyStateBody,
+  EmptyStateFooter,
   Flex,
   FlexItem,
   Title,
@@ -9,12 +13,17 @@ import {
   Spinner,
 } from "@patternfly/react-core";
 import {
+  CubesIcon,
   PencilAltIcon,
   TimesIcon,
   ThumbtackIcon,
 } from "@patternfly/react-icons";
-import { ScalprumComponent } from "@scalprum/react-core";
-import { GridLayout, useContainerWidth } from "react-grid-layout";
+import { ScalprumComponent, useScalprum } from "@scalprum/react-core";
+import {
+  GridLayout,
+  useContainerWidth,
+  verticalCompactor,
+} from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -26,6 +35,28 @@ import type { CanvasModule, ModuleRef } from "../../utils/extensions";
 import { useAvailableModules } from "./useAvailableModules";
 import { ModulePalette } from "./ModulePalette";
 import "./CanvasPage.scss";
+
+const ModuleUnavailable = ({
+  moduleName,
+  onRemove,
+}: {
+  moduleName: string;
+  onRemove: () => void;
+}) => (
+  <EmptyState icon={CubesIcon} headingLevel="h3" titleText="Plugin unavailable">
+    <EmptyStateBody>
+      The plugin providing <strong>{moduleName}</strong> is not currently
+      available. It may have been disabled or uninstalled.
+    </EmptyStateBody>
+    <EmptyStateFooter>
+      <EmptyStateActions>
+        <Button variant="secondary" onClick={onRemove}>
+          Remove from page
+        </Button>
+      </EmptyStateActions>
+    </EmptyStateFooter>
+  </EmptyState>
+);
 
 let instanceCounter = 0;
 
@@ -43,8 +74,10 @@ export const CanvasPage = () => {
     togglePageInNav,
   } = useUserPreferences();
   const { clusterIdsForPlugin } = useScope();
+  const { config: scalprumConfig } = useScalprum();
   const availableModules = useAvailableModules();
-  const { isOpen: editing, openDrawer, closeDrawer } = useDrawer();
+  const { isOpen, drawerKey, openDrawer, closeDrawer } = useDrawer();
+  const editing = isOpen && drawerKey === "canvas-edit";
 
   const [editTitle, setEditTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -138,6 +171,7 @@ export const CanvasPage = () => {
           clusterIdsForPlugin={clusterIdsForPlugin}
           onAdd={addModule}
         />,
+        "canvas-edit",
       );
     }
   }, [
@@ -159,6 +193,7 @@ export const CanvasPage = () => {
           clusterIdsForPlugin={clusterIdsForPlugin}
           onAdd={addModule}
         />,
+        "canvas-edit",
       );
     }
   }, [
@@ -285,8 +320,11 @@ export const CanvasPage = () => {
         </FlexItem>
       </Flex>
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <div ref={containerRef as any}>
+      <div
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ref={containerRef as any}
+        className={editing ? "fs-canvas-grid--editing" : "fs-canvas-grid--view"}
+      >
         {mounted && page.modules.length > 0 && (
           <GridLayout
             width={width}
@@ -295,10 +333,12 @@ export const CanvasPage = () => {
             dragConfig={{ enabled: editing }}
             resizeConfig={{ enabled: editing }}
             onLayoutChange={handleLayoutChange}
+            compactor={verticalCompactor}
           >
             {page.modules.map((mod) => {
               const pluginKey = pluginKeyFromName(mod.moduleRef.scope);
               const clusterIds = clusterIdsForPlugin(pluginKey);
+              const isAvailable = mod.moduleRef.scope in scalprumConfig;
               return (
                 <div key={mod.i} className="fs-module-card">
                   {editing && (
@@ -312,12 +352,25 @@ export const CanvasPage = () => {
                     />
                   )}
                   <div className="fs-module-card__content">
-                    <ScalprumComponent
-                      scope={mod.moduleRef.scope}
-                      module={mod.moduleRef.module}
-                      fallback={<Spinner size="lg" />}
-                      {...{ clusterIds }}
-                    />
+                    {isAvailable ? (
+                      <ScalprumComponent
+                        scope={mod.moduleRef.scope}
+                        module={mod.moduleRef.module}
+                        fallback={<Spinner size="lg" />}
+                        ErrorComponent={
+                          <ModuleUnavailable
+                            moduleName={mod.moduleRef.module}
+                            onRemove={() => removeModule(mod.i)}
+                          />
+                        }
+                        {...{ clusterIds }}
+                      />
+                    ) : (
+                      <ModuleUnavailable
+                        moduleName={mod.moduleRef.module}
+                        onRemove={() => removeModule(mod.i)}
+                      />
+                    )}
                   </div>
                 </div>
               );

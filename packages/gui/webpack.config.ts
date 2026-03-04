@@ -49,6 +49,7 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
         "react-router-dom": { singleton: true, requiredVersion: "^6" },
         "@scalprum/core": { singleton: true },
         "@scalprum/react-core": { singleton: true },
+        "@openshift/dynamic-plugin-sdk": { singleton: true },
         ...pfSharedModules,
       },
     }),

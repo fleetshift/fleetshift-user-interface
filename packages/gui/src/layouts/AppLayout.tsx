@@ -24,16 +24,19 @@ import {
   PageToggleButton,
   Toolbar,
   ToolbarContent,
+  ToolbarGroup,
   ToolbarItem,
+  Button,
   Divider,
   ToggleGroup,
   ToggleGroupItem,
 } from "@patternfly/react-core";
-import { BarsIcon } from "@patternfly/react-icons";
+import { BarsIcon, CogIcon } from "@patternfly/react-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useUserPreferences } from "../contexts/UserPreferencesContext";
 import { useDrawer, DrawerProvider } from "../contexts/DrawerContext";
 import { ClusterSwitcher } from "./ClusterSwitcher";
+import { ClusterManagerDrawerContent } from "../pages/ClusterListPage/ClusterManagerDrawerContent";
 import logo from "../assets/masthead.png";
 
 const UserSwitcher = () => {
@@ -52,6 +55,19 @@ const UserSwitcher = () => {
         onChange={() => switchUser("dev")}
       />
     </ToggleGroup>
+  );
+};
+
+const ClusterManagerButton = () => {
+  const { openDrawer } = useDrawer();
+  return (
+    <Button
+      variant="plain"
+      aria-label="Cluster manager"
+      onClick={() => openDrawer(<ClusterManagerDrawerContent />)}
+    >
+      <CogIcon />
+    </Button>
   );
 };
 
@@ -78,6 +94,11 @@ const AppMasthead = () => (
           <ToolbarItem>
             <UserSwitcher />
           </ToolbarItem>
+          <ToolbarGroup align={{ default: "alignEnd" }}>
+            <ToolbarItem>
+              <ClusterManagerButton />
+            </ToolbarItem>
+          </ToolbarGroup>
         </ToolbarContent>
       </Toolbar>
     </MastheadContent>

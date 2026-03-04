@@ -1,0 +1,21 @@
+.cluster-drawer {
+  padding: var(--pf-t--global--spacer--md);
+
+  &__info {
+    margin-bottom: var(--pf-t--global--spacer--md);
+
+    .pf-v6-c-label {
+      margin-right: var(--pf-t--global--spacer--sm);
+    }
+  }
+
+  &__actions {
+    margin-bottom: var(--pf-t--global--spacer--md);
+  }
+
+  &__plugins {
+    .pf-v6-c-switch {
+      margin-bottom: var(--pf-t--global--spacer--sm);
+    }
+  }
+}

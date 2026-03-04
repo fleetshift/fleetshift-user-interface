@@ -8,13 +8,15 @@
     "serve": "concurrently \"webpack --watch\" \"wait-on dist && http-server dist -p 8001 -c-1 --cors=*\""
   },
   "dependencies": {
+    "@patternfly/react-charts": "^8.4.1",
     "@patternfly/react-core": "^6.4.1",
     "@patternfly/react-icons": "^6.4.0",
     "@patternfly/react-table": "^6.4.1",
     "@scalprum/core": "^0.9.0",
     "@scalprum/react-core": "^0.11.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "victory": "^37.3.6"
   },
   "devDependencies": {
     "@module-federation/enhanced": "^0.10.0",

@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import {
   Grid,
   GridItem,
@@ -11,10 +10,14 @@ import {
   Title,
   Spinner,
 } from "@patternfly/react-core";
-import { useClusters } from "../contexts/ClusterContext";
+import { useClusters } from "../../contexts/ClusterContext";
+import { useDrawer } from "../../contexts/DrawerContext";
+import { ClusterManagerDrawerContent } from "./ClusterManagerDrawerContent";
+import "./ClusterListPage.scss";
 
 export const ClusterListPage = () => {
   const { available, installed, loading, install, uninstall } = useClusters();
+  const { openDrawer } = useDrawer();
 
   if (loading) return <Spinner size="xl" />;
 
@@ -22,7 +25,7 @@ export const ClusterListPage = () => {
 
   return (
     <>
-      <Title headingLevel="h1" style={{ marginBottom: 16 }}>
+      <Title headingLevel="h1" className="cluster-list__title">
         Available Clusters
       </Title>
       <Grid hasGutter>
@@ -43,11 +46,11 @@ export const ClusterListPage = () => {
                   {isInstalled ? (
                     <>
                       <Button
-                        component={(props) => (
-                          <Link to={`/clusters/${cluster.id}`} {...props} />
-                        )}
                         variant="primary"
                         style={{ marginRight: 8 }}
+                        onClick={() =>
+                          openDrawer(<ClusterManagerDrawerContent />)
+                        }
                       >
                         Manage
                       </Button>

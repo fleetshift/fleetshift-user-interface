@@ -19,6 +19,7 @@ const PLUGIN_DEFS: { key: string; name: string }[] = [
   { key: "gitops", name: "gitops-plugin" },
   { key: "events", name: "events-plugin" },
   { key: "routes", name: "routes-plugin" },
+  { key: "operator", name: "operator-plugin" },
 ];
 
 export function buildScalprumConfig(

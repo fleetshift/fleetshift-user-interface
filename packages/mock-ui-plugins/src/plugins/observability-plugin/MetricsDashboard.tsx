@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
   Card,
   CardTitle,
@@ -10,6 +10,11 @@ import {
   Spinner,
 } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
+import {
+  type Extension,
+  type CodeRef,
+  useResolvedExtensions,
+} from "@openshift/dynamic-plugin-sdk";
 import { useApiBase, fetchJson } from "./api";
 
 interface MetricsData {
@@ -27,6 +32,19 @@ interface MetricsData {
 
 interface MetricsDashboardProps {
   clusterIds: string[];
+}
+
+// Extension point type: other plugins can contribute charts here
+type ObservabilityChartExtension = Extension<
+  "fleetshift.observability-chart",
+  {
+    component: CodeRef<ComponentType<{ clusterIds: string[] }>>;
+    label: string;
+  }
+>;
+
+function isObservabilityChart(e: Extension): e is ObservabilityChartExtension {
+  return e.type === "fleetshift.observability-chart";
 }
 
 const ClusterMetricsSection = ({ metrics }: { metrics: MetricsData }) => {
@@ -125,6 +143,10 @@ const MetricsDashboard = ({ clusterIds }: MetricsDashboardProps) => {
   const [allMetrics, setAllMetrics] = useState<MetricsData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Consume chart extensions from other plugins (e.g. operator-plugin)
+  const [chartExtensions, chartsResolved] =
+    useResolvedExtensions(isObservabilityChart);
+
   useEffect(() => {
     Promise.all(
       clusterIds.map((id) =>
@@ -144,6 +166,15 @@ const MetricsDashboard = ({ clusterIds }: MetricsDashboardProps) => {
       {allMetrics.map((metrics) => (
         <ClusterMetricsSection key={metrics.clusterId} metrics={metrics} />
       ))}
+      {chartsResolved &&
+        chartExtensions.map((ext) => {
+          const ChartComponent = ext.properties.component;
+          return (
+            <GridItem key={ext.uid}>
+              <ChartComponent clusterIds={clusterIds} />
+            </GridItem>
+          );
+        })}
     </Grid>
   );
 };

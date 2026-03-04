@@ -13,14 +13,11 @@
   }
 }
 
-// Grid module card
+// Grid module card — invisible chrome by default, only visible when editing
 .fs-module-card {
-  background: var(--pf-t--global--background--color--primary--default);
-  border: var(--pf-t--global--border--width--regular) solid
-    var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--large);
   overflow: hidden;
   position: relative;
+  border-radius: var(--pf-t--global--border--radius--large);
 
   &__remove {
     position: absolute;
@@ -33,6 +30,33 @@
     padding: var(--pf-t--global--spacer--sm);
     height: 100%;
     overflow: auto;
+  }
+}
+
+// Hide all react-grid-layout chrome when NOT editing
+.fs-canvas-grid--view {
+  // Remove placeholder styling
+  .react-grid-placeholder {
+    display: none;
+  }
+
+  // Make items non-interactive
+  .react-grid-item {
+    cursor: default;
+
+    // Hide resize handles
+    .react-resizable-handle {
+      display: none;
+    }
+  }
+}
+
+// Show card borders + grid affordances only when editing
+.fs-canvas-grid--editing {
+  .fs-module-card {
+    background: var(--pf-t--global--background--color--primary--default);
+    border: var(--pf-t--global--border--width--regular) solid
+      var(--pf-t--global--border--color--default);
   }
 }
 

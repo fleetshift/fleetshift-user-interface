@@ -18,7 +18,11 @@ const sharedModules = {
   "react-dom": { singleton: true, requiredVersion: "*" },
   "@scalprum/core": { singleton: true, requiredVersion: "*" },
   "@scalprum/react-core": { singleton: true, requiredVersion: "*" },
-  "@openshift/dynamic-plugin-sdk": { singleton: true, requiredVersion: "*" },
+  "@openshift/dynamic-plugin-sdk": {
+    singleton: true,
+    requiredVersion: "*",
+    version: "*",
+  },
   ...pfSharedModules,
 };
 
@@ -431,6 +435,33 @@ const EventsPlugin = new DynamicRemotePlugin({
   },
 });
 
+const OperatorPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.observability-chart",
+      properties: {
+        component: { $codeRef: "CpuTrendChart.default" },
+        label: "CPU Trend",
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "operator-plugin.[contenthash].js",
+  pluginManifestFilename: "operator-plugin-manifest.json",
+  // @ts-ignore — enhanced MF types differ from SDK expectations
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "operator-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      CpuTrendChart: path.resolve(
+        __dirname,
+        "./src/plugins/operator-plugin/CpuTrendChart.tsx",
+      ),
+    },
+  },
+});
+
 const RoutesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
@@ -482,6 +513,7 @@ const config: Configuration = {
     GitOpsPlugin,
     EventsPlugin,
     RoutesPlugin,
+    OperatorPlugin,
   ],
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"],

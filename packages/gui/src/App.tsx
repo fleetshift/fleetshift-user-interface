@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ScalprumProvider } from "@scalprum/react-core";
 import { useScalprum } from "@scalprum/react-core";
 import { initSharedScope } from "@scalprum/core";
-import { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "./layouts/AppLayout";
 import { ClusterProvider, useClusters } from "./contexts/ClusterContext";
 import { ScopeProvider } from "./contexts/ScopeContext";
@@ -11,7 +11,6 @@ import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
 import { buildScalprumConfig } from "./utils/buildScalprumConfig";
 import { Dashboard } from "./pages/Dashboard";
 import { ClusterListPage } from "./pages/ClusterListPage";
-import { ClusterDetailPage } from "./pages/ClusterDetailPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { CanvasPageListPage } from "./pages/CanvasPageListPage";
 import { CanvasPage } from "./pages/CanvasPage";
@@ -56,9 +55,18 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
   const { installed } = useClusters();
   const config = useMemo(() => buildScalprumConfig(installed), [installed]);
 
+  const installedRef = useRef(installed);
+  installedRef.current = installed;
+
   const api = useMemo(
     () => ({
-      fleetshift: { apiBase: API_BASE },
+      fleetshift: {
+        apiBase: API_BASE,
+        getClusterIdsForPlugin: (pluginKey: string) =>
+          installedRef.current
+            .filter((c) => c.plugins.includes(pluginKey))
+            .map((c) => c.id),
+      },
     }),
     [],
   );
@@ -109,26 +117,10 @@ export const App = () => (
                     <Route element={<AppLayout />}>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/clusters" element={<ClusterListPage />} />
-                      <Route
-                        path="/clusters/:clusterId"
-                        element={<ClusterDetailPage />}
-                      />
-                      <Route
-                        path="/navigation"
-                        element={<MarketplacePage />}
-                      />
-                      <Route
-                        path="/pages"
-                        element={<CanvasPageListPage />}
-                      />
-                      <Route
-                        path="/pages/:pageId"
-                        element={<CanvasPage />}
-                      />
-                      <Route
-                        path="*"
-                        element={<CanvasPage />}
-                      />
+                      <Route path="/navigation" element={<MarketplacePage />} />
+                      <Route path="/pages" element={<CanvasPageListPage />} />
+                      <Route path="/pages/:pageId" element={<CanvasPage />} />
+                      <Route path="*" element={<CanvasPage />} />
                     </Route>
                   </Routes>
                 </UserPreferencesProvider>
