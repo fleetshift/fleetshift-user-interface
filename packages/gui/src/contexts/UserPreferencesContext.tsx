@@ -112,7 +112,18 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   );
 
   const getPageByPath = useCallback(
-    (path: string) => canvasPages.find((p) => p.path === path),
+    (path: string) => {
+      const exact = canvasPages.find((p) => p.path === path);
+      if (exact) return exact;
+      // Walk path segments right-to-left for longest prefix match
+      const segments = path.split("/");
+      for (let i = segments.length - 1; i > 0; i--) {
+        const prefix = segments.slice(0, i).join("/");
+        const match = canvasPages.find((p) => p.path === prefix);
+        if (match) return match;
+      }
+      return undefined;
+    },
     [canvasPages],
   );
 

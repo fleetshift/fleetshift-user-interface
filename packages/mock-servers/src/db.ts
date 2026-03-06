@@ -325,6 +325,25 @@ if (userCount === 0) {
         },
       ],
     },
+    {
+      id: "seed-deployment-details",
+      title: "Deployment Details",
+      path: "deployment-details",
+      modules: [
+        {
+          i: "seed-dep-details-1",
+          x: 0,
+          y: 0,
+          w: 12,
+          h: 14,
+          moduleRef: {
+            scope: "core-plugin",
+            module: "DeploymentDetailsPage",
+            label: "Deployment Details",
+          },
+        },
+      ],
+    },
   ];
 
   const devPages = [
@@ -400,6 +419,7 @@ if (userCount === 0) {
     },
     { type: "page", pageId: "seed-nodes" },
     { type: "page", pageId: "seed-alerts" },
+    { type: "page", pageId: "seed-deployment-details" },
   ];
 
   const devNavLayout = [

@@ -19,5 +19,12 @@ export function buildScalprumConfig(
     }
   }
 
+  // Always include utility plugins (not cluster-specific)
+  config["routing-plugin"] = {
+    name: "routing-plugin",
+    manifestLocation: `${registry.assetsHost}/routing-plugin-manifest.json`,
+    assetsHost: registry.assetsHost,
+  };
+
   return config;
 }

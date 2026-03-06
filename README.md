@@ -82,3 +82,7 @@ npm run lint:fix      # auto-fix
 **Scope Model** — Users switch between "All Clusters" and a specific cluster via the masthead dropdown. Components receive the appropriate cluster IDs based on the current scope.
 
 **Dark Mode** — Toggle via the moon/sun icon in the masthead. Uses PatternFly's `pf-v6-theme-dark` class.
+
+## Documentation
+
+- [Routing Plugin — Cross-Plugin Linking](docs/routing-plugin.md)

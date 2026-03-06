@@ -13,6 +13,9 @@ import {
   usePluginRegistry,
 } from "./contexts/PluginRegistryContext";
 import { buildScalprumConfig } from "./utils/buildScalprumConfig";
+import { useUserPreferences } from "./contexts/UserPreferencesContext";
+import type { CanvasPage as CanvasPageDef, NavLayoutEntry } from "./utils/extensions";
+import { isPageInLayout } from "./utils/extensions";
 import { Dashboard } from "./pages/Dashboard";
 import { ClusterListPage } from "./pages/ClusterListPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
@@ -25,6 +28,8 @@ const API_BASE = "http://localhost:4000/api/v1";
 // so we use refs + listeners to bridge scope into the Scalprum API object.
 const scopeRef = { current: "all" as string };
 const scopeListenersRef = { current: new Set<() => void>() };
+const canvasPagesRef = { current: [] as CanvasPageDef[] };
+const navLayoutRef = { current: [] as NavLayoutEntry[] };
 
 const ScopeInitializer = ({ children }: PropsWithChildren) => {
   const [loading, setLoading] = useState(true);
@@ -97,6 +102,28 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
             clusterListenersRef.current.delete(fn);
           };
         },
+        getPluginPagePath: (scope: string, module: string) => {
+          const matchingPages = canvasPagesRef.current.filter((page) =>
+            page.modules.some(
+              (m) =>
+                m.moduleRef.scope === scope && m.moduleRef.module === module,
+            ),
+          );
+          if (matchingPages.length === 0) return undefined;
+
+          const bySpecificity = (a: CanvasPageDef, b: CanvasPageDef) =>
+            b.path.split("/").length - a.path.split("/").length;
+
+          const inNav = matchingPages
+            .filter((p) => isPageInLayout(navLayoutRef.current, p.id))
+            .sort(bySpecificity);
+          const notInNav = matchingPages
+            .filter((p) => !isPageInLayout(navLayoutRef.current, p.id))
+            .sort(bySpecificity);
+
+          const best = inNav[0] ?? notInNav[0];
+          return best ? `/${best.path}` : undefined;
+        },
         getScope: () => scopeRef.current,
         onScopeChange: (fn: () => void) => {
           scopeListenersRef.current.add(fn);
@@ -118,6 +145,14 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
           transformPluginManifest: (manifest) => {
             // noo-op transfor to not use the default transform. That would append the `auto` prefix (our public path) to the loadScripts URLs
             const newManifest = { ...manifest };
+            if (manifest.name === "routing-plugin") {
+              // For the routing plugin, we want to ensure the manifestLocation is absolute so it can be loaded from the public directory
+              newManifest.loadScripts = manifest.loadScripts.map((script) =>
+                script.startsWith("http")
+                  ? script
+                  : `${registry.assetsHost}/${script}`,
+              );
+            }
             return newManifest;
           },
         },
@@ -139,10 +174,51 @@ const ScopeBridge = () => {
   return null;
 };
 
+/** Syncs canvas pages into the module-level ref so the Scalprum API
+ *  (created outside UserPreferencesProvider) can expose them to plugins. */
+const CanvasPagesBridge = () => {
+  const { canvasPages, navLayout } = useUserPreferences();
+  useEffect(() => {
+    canvasPagesRef.current = canvasPages;
+    navLayoutRef.current = navLayout;
+  }, [canvasPages, navLayout]);
+  return null;
+};
+
 const AuthGate = ({ children }: PropsWithChildren) => {
   const { loading } = useAuth();
   if (loading) return null;
   return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  const { canvasPages } = useUserPreferences();
+
+  // Sort by path length descending — longest (most specific) first
+  const sortedPages = useMemo(
+    () => [...canvasPages].sort((a, b) => b.path.length - a.path.length),
+    [canvasPages],
+  );
+
+  return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/clusters" element={<ClusterListPage />} />
+        <Route path="/navigation" element={<MarketplacePage />} />
+        <Route path="/pages" element={<CanvasPageListPage />} />
+        <Route path="/pages/:pageId" element={<CanvasPage />} />
+        {sortedPages.map((page) => (
+          <Route
+            key={page.id}
+            path={`/${page.path}/*`}
+            element={<CanvasPage pageId={page.id} />}
+          />
+        ))}
+        <Route path="*" element={<CanvasPage />} />
+      </Route>
+    </Routes>
+  );
 };
 
 export const App = () => (
@@ -156,19 +232,8 @@ export const App = () => (
                 <ScopeProvider>
                   <ScopeBridge />
                   <UserPreferencesProvider>
-                    <Routes>
-                      <Route element={<AppLayout />}>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/clusters" element={<ClusterListPage />} />
-                        <Route
-                          path="/navigation"
-                          element={<MarketplacePage />}
-                        />
-                        <Route path="/pages" element={<CanvasPageListPage />} />
-                        <Route path="/pages/:pageId" element={<CanvasPage />} />
-                        <Route path="*" element={<CanvasPage />} />
-                      </Route>
-                    </Routes>
+                    <CanvasPagesBridge />
+                    <AppRoutes />
                   </UserPreferencesProvider>
                 </ScopeProvider>
               </ScalprumShell>

@@ -502,6 +502,33 @@ const RoutesPlugin = new DynamicRemotePlugin({
   },
 });
 
+const RoutingPlugin = new DynamicRemotePlugin({
+  extensions: [],
+  sharedModules,
+  entryScriptFilename: "routing-plugin.[contenthash].js",
+  pluginManifestFilename: "routing-plugin-manifest.json",
+  // @ts-ignore — enhanced MF types differ from SDK expectations
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "routing-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      PluginLink: path.resolve(
+        __dirname,
+        "./src/plugins/routing-plugin/PluginLink.tsx",
+      ),
+      usePluginNavigate: path.resolve(
+        __dirname,
+        "./src/plugins/routing-plugin/usePluginNavigate.tsx",
+      ),
+      usePluginLinks: path.resolve(
+        __dirname,
+        "./src/plugins/routing-plugin/usePluginLinks.tsx",
+      ),
+    },
+  },
+});
+
 const config: Configuration = {
   entry: {
     mock: path.resolve(__dirname, "./src/index.ts"),
@@ -530,6 +557,7 @@ const config: Configuration = {
     EventsPlugin,
     RoutesPlugin,
     OperatorPlugin,
+    RoutingPlugin,
     new PluginRegistryPlugin({
       assetsHost: "http://localhost:8001",
       plugins: [
@@ -608,6 +636,12 @@ const config: Configuration = {
           key: "routes",
           label: "Routes",
           persona: "dev",
+        },
+        {
+          name: "routing-plugin",
+          key: "routing",
+          label: "Routing",
+          persona: "ops",
         },
       ],
     }),

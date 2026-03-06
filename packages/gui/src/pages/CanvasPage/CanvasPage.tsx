@@ -81,9 +81,11 @@ const useLayoutWidth = (
   return width;
 };
 
-export const CanvasPage = () => {
+export const CanvasPage = ({
+  pageId: propPageId,
+}: { pageId?: string } = {}) => {
   const params = useParams();
-  const paramPageId = params.pageId;
+  const paramPageId = propPageId ?? params.pageId;
   const canvasPath = params["*"];
   const navigate = useNavigate();
   const { getPage, getPageByPath, updatePage, canvasPages } =

@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
-import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
+import {
+  ActionsColumn,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+} from "@patternfly/react-table";
+import { useRemoteHook } from "@scalprum/react-core";
 import { useApiBase, fetchJson } from "./api";
 
 interface Pod {
@@ -31,6 +40,27 @@ const PodList = ({ clusterIds, namespace }: PodListProps) => {
   const [pods, setPods] = useState<Pod[]>([]);
   const [loading, setLoading] = useState(true);
   const multiCluster = clusterIds.length > 1;
+
+  const navigateArgs = useMemo(
+    () => ["core-plugin", "DeploymentDetailsPage"],
+    [],
+  );
+  const {
+    hookResult,
+    loading: hookLoading,
+    error: hookError,
+  } = useRemoteHook<{
+    navigate: (to?: string | { pathname?: string; search?: string }) => void;
+    available: boolean;
+  }>({
+    scope: "routing-plugin",
+    module: "usePluginNavigate",
+    args: navigateArgs,
+  });
+
+  const navigateToPlugin = hookResult?.navigate;
+  const actionsDisabled =
+    hookLoading || !!hookError || !(hookResult?.available ?? false);
 
   useEffect(() => {
     const doFetch = () => {
@@ -67,6 +97,7 @@ const PodList = ({ clusterIds, namespace }: PodListProps) => {
           <Th>Restarts</Th>
           <Th>CPU</Th>
           <Th>Memory (MB)</Th>
+          <Th />
         </Tr>
       </Thead>
       <Tbody>
@@ -81,6 +112,31 @@ const PodList = ({ clusterIds, namespace }: PodListProps) => {
             <Td>{pod.restarts}</Td>
             <Td>{pod.cpu_usage} cores</Td>
             <Td>{pod.memory_usage}</Td>
+            <Td isActionCell>
+              <ActionsColumn
+                isDisabled={actionsDisabled}
+                items={(() => {
+                  const ns = pod.namespace_id.replace(`${pod.cluster_id}-`, "");
+                  const search = `?namespace=${ns}`;
+                  return [
+                    {
+                      title: "View Deployment",
+                      onClick: () => navigateToPlugin?.({ search }),
+                    },
+                    {
+                      title: "Deployment Metrics",
+                      onClick: () =>
+                        navigateToPlugin?.({ pathname: "metrics", search }),
+                    },
+                    {
+                      title: "Deployment Pods",
+                      onClick: () =>
+                        navigateToPlugin?.({ pathname: "pods", search }),
+                    },
+                  ];
+                })()}
+              />
+            </Td>
           </Tr>
         ))}
       </Tbody>

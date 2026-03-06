@@ -149,7 +149,13 @@ const AppNav = () => {
     if (!page) return null;
     const fullPath = `/${page.path}`;
     return (
-      <NavItem key={pageId} isActive={location.pathname === fullPath}>
+      <NavItem
+        key={pageId}
+        isActive={
+          location.pathname === fullPath ||
+          location.pathname.startsWith(fullPath + "/")
+        }
+      >
         <Link to={fullPath}>{page.title}</Link>
       </NavItem>
     );
@@ -167,7 +173,11 @@ const AppNav = () => {
       if (children.length > 0) {
         const isActive = entry.children.some((child) => {
           const page = getPage(child.pageId);
-          return page && location.pathname === `/${page.path}`;
+          if (!page) return false;
+          const fp = `/${page.path}`;
+          return (
+            location.pathname === fp || location.pathname.startsWith(fp + "/")
+          );
         });
         layoutEntries.push(
           <NavExpandable

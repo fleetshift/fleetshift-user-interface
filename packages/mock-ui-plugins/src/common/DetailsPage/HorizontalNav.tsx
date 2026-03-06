@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-extra-non-null-assertion */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { ComponentType, memo, useState, Suspense, useMemo } from "react";
+import { ComponentType, memo, Suspense, useMemo } from "react";
 import * as _ from "lodash";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   ExtensionK8sGroupModel,
   ExtensionK8sKindVersionModel,
@@ -96,7 +96,8 @@ export type HorizontalNavProps = Omit<
 
 export const HorizontalNav = memo<HorizontalNavProps>((props) => {
   const params = useParams();
-  const [activeTabKey, setActiveTabKey] = useState<string>("");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const componentProps = {
     ..._.pick(props, ["filters", "selected", "loaded"]),
@@ -152,6 +153,24 @@ export const HorizontalNav = memo<HorizontalNavProps>((props) => {
     ...pluginPages,
   ];
 
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const lastSegment = pathSegments[pathSegments.length - 1] || "";
+  const matchedTab = pages.find((p) => p.href && p.href === lastSegment);
+  const activeTabKey = matchedTab?.href ?? "";
+
+  const basePath = matchedTab
+    ? "/" + pathSegments.slice(0, -1).join("/")
+    : location.pathname;
+
+  const handleTabChange = (href: string) => {
+    if (!href) {
+      navigate(basePath);
+    } else {
+      const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
+      navigate(`${base}/${href}`);
+    }
+  };
+
   const activePage =
     pages.find((p) => (p.href ?? "") === activeTabKey) ?? pages[0];
 
@@ -187,7 +206,7 @@ export const HorizontalNav = memo<HorizontalNavProps>((props) => {
         <NavBar
           pages={pages}
           activeKey={activeTabKey}
-          onTabChange={setActiveTabKey}
+          onTabChange={handleTabChange}
         />
       )}
       {content}

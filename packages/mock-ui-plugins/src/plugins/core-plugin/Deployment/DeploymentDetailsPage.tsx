@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { navFactory } from "../../../common/DetailsPage/HorizontalNav";
 import { DetailsPage } from "../../../common/DetailsPage/DetailsPage";
 import {
@@ -41,6 +42,8 @@ export const DeploymentsDetailsPage = ({
 /** Inner component that fetches deployments once a cluster is selected. */
 const DeploymentDetailsInner = () => {
   const { clusterId, apiBase } = useClusterScope();
+  const [searchParams] = useSearchParams();
+  const namespace = searchParams.get("namespace");
   const [deployments, setDeployments] = useState<DeploymentKind[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -49,7 +52,10 @@ const DeploymentDetailsInner = () => {
     let cancelled = false;
 
     const doFetch = () => {
-      fetch(`${apiBase}/clusters/${clusterId}/deployments`)
+      const url = namespace
+        ? `${apiBase}/clusters/${clusterId}/deployments?namespace=${namespace}`
+        : `${apiBase}/clusters/${clusterId}/deployments`;
+      fetch(url)
         .then((res) => {
           if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
           return res.json();
@@ -72,7 +78,7 @@ const DeploymentDetailsInner = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [apiBase, clusterId]);
+  }, [apiBase, clusterId, namespace]);
 
   if (!loaded) return <div>Loading deployments...</div>;
   if (deployments.length === 0) return <div>No deployments found.</div>;
