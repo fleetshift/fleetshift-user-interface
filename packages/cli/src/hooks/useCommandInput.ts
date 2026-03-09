@@ -74,11 +74,16 @@ export function useCommandInput({
   };
 
   useInput((input, key) => {
-    // --- Ctrl+C: double-tap exit ---
+    // --- Ctrl+C: clear input + warn on first press, exit on second ---
     if (input === "c" && key.ctrl) {
       if (exitPending) {
         exit();
         return;
+      }
+      if (currentValue.length > 0) {
+        remountInput("");
+        setMenuOpen(false);
+        setMenuIndex(0);
       }
       setExitPending(true);
       clearTimeout(exitTimer.current);
@@ -87,6 +92,17 @@ export function useCommandInput({
     }
     if (exitPending) {
       setExitPending(false);
+    }
+
+    // --- Escape: close menu or clear input ---
+    if (key.escape) {
+      if (menuOpen) {
+        setMenuOpen(false);
+        setMenuIndex(0);
+      } else if (currentValue.length > 0) {
+        remountInput("");
+      }
+      return;
     }
 
     // --- Menu mode: arrow keys, accept, cancel ---
@@ -119,11 +135,6 @@ export function useCommandInput({
             onSubmit(selected.trim());
           }, 0);
         }
-        return;
-      }
-      if (key.escape) {
-        setMenuOpen(false);
-        setMenuIndex(0);
         return;
       }
       // Any other key closes menu (TextInput will handle the character)
