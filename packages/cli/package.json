@@ -1,6 +1,27 @@
 {
   "name": "@fleetshift/cli",
-  "description": "CLI tool for FleetShift (scaffolding only, no source yet).",
-  "version": "0.0.0",
-  "private": true
+  "description": "FleetShift CLI — terminal dashboard powered by Ink.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "fleetshift": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "node dist/cli.js",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@fleetshift/common": "*",
+    "@inkjs/ui": "^2.0.0",
+    "ink": "^5.2.0",
+    "ink-scroll-view": "^0.3.6",
+    "meow": "^13.2.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18"
+  }
 }
