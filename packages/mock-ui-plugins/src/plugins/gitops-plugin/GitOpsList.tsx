@@ -1,18 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface GitOpsApp {
-  id: string;
-  cluster_id: string;
-  name: string;
-  repo: string;
-  path: string;
-  sync_status: string;
-  health_status: string;
-  last_synced: string;
-}
+import type { GitOpsApp } from "@fleetshift/common";
+import { fetchGitOpsApps } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface GitOpsListProps {
   clusterIds: string[];
@@ -38,14 +29,12 @@ const GitOpsList = ({ clusterIds }: GitOpsListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<GitOpsApp[]>(`${apiBase}/clusters/${id}/gitops`),
-      ),
-    ).then((results) => {
-      setApps(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchGitOpsApps(apiBase, id))).then(
+      (results) => {
+        setApps(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface Deployment {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  replicas: number;
-  available: number;
-  ready: number;
-  strategy: string;
-  image: string;
-}
+import type { Deployment } from "@fleetshift/common";
+import { fetchDeployments } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface DeploymentListProps {
   clusterIds: string[];
@@ -26,14 +16,12 @@ const DeploymentList = ({ clusterIds }: DeploymentListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<Deployment[]>(`${apiBase}/clusters/${id}/deployments`),
-      ),
-    ).then((results) => {
-      setDeployments(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchDeployments(apiBase, id))).then(
+      (results) => {
+        setDeployments(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;
@@ -56,7 +44,9 @@ const DeploymentList = ({ clusterIds }: DeploymentListProps) => {
           <Tr key={dep.id}>
             <Td>{dep.name}</Td>
             {multiCluster && <Td>{dep.cluster_id}</Td>}
-            <Td>{dep.namespace_id.replace(`${dep.cluster_id}-`, "")}</Td>
+            <Td>
+              {dep.namespace_id?.replace(`${dep.cluster_id}-`, "") ?? "N/A"}
+            </Td>
             <Td>
               <Label
                 color={dep.available === dep.replicas ? "green" : "orange"}

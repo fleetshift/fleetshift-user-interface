@@ -15,7 +15,8 @@ import {
   type CodeRef,
   useResolvedExtensions,
 } from "@openshift/dynamic-plugin-sdk";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface MetricsData {
   clusterId: string;
@@ -150,7 +151,7 @@ const MetricsDashboard = ({ clusterIds }: MetricsDashboardProps) => {
   useEffect(() => {
     Promise.all(
       clusterIds.map((id) =>
-        fetchJson<MetricsData>(`${apiBase}/clusters/${id}/metrics`),
+        makeRequest<MetricsData>(`${apiBase}/clusters/${id}/metrics`),
       ),
     ).then((results) => {
       setAllMetrics(results);

@@ -10,7 +10,8 @@ import {
   Tr,
 } from "@patternfly/react-table";
 import { useRemoteHook } from "@scalprum/react-core";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface Pod {
   id: string;
@@ -69,7 +70,7 @@ const PodList = ({ clusterIds, namespace }: PodListProps) => {
           const url = namespace
             ? `${apiBase}/clusters/${id}/pods?namespace=${namespace}`
             : `${apiBase}/clusters/${id}/pods`;
-          return fetchJson<Pod[]>(url).then((data) =>
+          return makeRequest<Pod[]>(url).then((data) =>
             data.map((pod) => ({ ...pod, cluster_id: id })),
           );
         }),

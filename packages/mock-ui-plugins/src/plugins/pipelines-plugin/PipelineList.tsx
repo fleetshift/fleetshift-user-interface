@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface Pipeline {
-  id: string;
-  cluster_id: string;
-  name: string;
-  status: string;
-  started_at: string;
-  duration_seconds: number;
-  stages: string[];
-}
+import type { Pipeline } from "@fleetshift/common";
+import { fetchPipelines } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface PipelineListProps {
   clusterIds: string[];
@@ -37,14 +29,12 @@ const PipelineList = ({ clusterIds }: PipelineListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<Pipeline[]>(`${apiBase}/clusters/${id}/pipelines`),
-      ),
-    ).then((results) => {
-      setPipelines(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchPipelines(apiBase, id))).then(
+      (results) => {
+        setPipelines(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

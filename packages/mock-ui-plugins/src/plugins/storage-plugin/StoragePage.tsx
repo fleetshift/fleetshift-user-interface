@@ -7,28 +7,15 @@ import {
   Title,
 } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface PersistentVolume {
-  id: string;
-  cluster_id: string;
-  name: string;
-  capacity: string;
-  access_mode: string;
-  status: string;
-  storage_class: string;
-}
-
-interface PersistentVolumeClaim {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  status: string;
-  capacity: string;
-  storage_class: string;
-  pv_name: string;
-}
+import type {
+  PersistentVolume,
+  PersistentVolumeClaim,
+} from "@fleetshift/common";
+import {
+  fetchPersistentVolumes,
+  fetchPersistentVolumeClaims,
+} from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface StoragePageProps {
   clusterIds: string[];
@@ -53,15 +40,9 @@ const StoragePage = ({ clusterIds }: StoragePageProps) => {
 
   useEffect(() => {
     Promise.all([
+      Promise.all(clusterIds.map((id) => fetchPersistentVolumes(apiBase, id))),
       Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<PersistentVolume[]>(`${apiBase}/clusters/${id}/pvs`),
-        ),
-      ),
-      Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<PersistentVolumeClaim[]>(`${apiBase}/clusters/${id}/pvcs`),
-        ),
+        clusterIds.map((id) => fetchPersistentVolumeClaims(apiBase, id)),
       ),
     ]).then(([pvResults, pvcResults]) => {
       setPvs(pvResults.flat());

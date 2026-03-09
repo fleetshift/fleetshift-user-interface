@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@dnd-kit/react": "^0.3.2",
+    "@fleetshift/common": "*",
     "@module-federation/enhanced": "^2.0.1",
     "@openshift/dynamic-plugin-sdk": "^8.0.0",
     "@patternfly/react-charts": "^8.4.1",

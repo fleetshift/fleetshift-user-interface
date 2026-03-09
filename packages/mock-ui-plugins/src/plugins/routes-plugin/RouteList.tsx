@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface Route {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  host: string;
-  path: string;
-  service_name: string;
-  tls: number;
-  status: string;
-}
+import type { Route } from "@fleetshift/common";
+import { fetchRoutes } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface RouteListProps {
   clusterIds: string[];
@@ -26,14 +16,12 @@ const RouteList = ({ clusterIds }: RouteListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<Route[]>(`${apiBase}/clusters/${id}/routes`),
-      ),
-    ).then((results) => {
-      setRoutes(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchRoutes(apiBase, id))).then(
+      (results) => {
+        setRoutes(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

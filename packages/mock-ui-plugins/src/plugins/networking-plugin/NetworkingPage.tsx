@@ -13,34 +13,9 @@ import {
   Title,
 } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface ServicePort {
-  port: number;
-  targetPort: number;
-  protocol: string;
-}
-
-interface Service {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  type: string;
-  cluster_ip: string;
-  ports: ServicePort[];
-}
-
-interface Ingress {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  host: string;
-  path: string;
-  service_name: string;
-  tls: number;
-}
+import type { Service, ServicePort, Ingress } from "@fleetshift/common";
+import { fetchServices, fetchIngresses } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface NetworkingPageProps {
   clusterIds: string[];
@@ -72,16 +47,8 @@ const NetworkingPage = ({ clusterIds }: NetworkingPageProps) => {
 
   useEffect(() => {
     Promise.all([
-      Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<Service[]>(`${apiBase}/clusters/${id}/services`),
-        ),
-      ),
-      Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<Ingress[]>(`${apiBase}/clusters/${id}/ingresses`),
-        ),
-      ),
+      Promise.all(clusterIds.map((id) => fetchServices(apiBase, id))),
+      Promise.all(clusterIds.map((id) => fetchIngresses(apiBase, id))),
     ]).then(([svcResults, ingResults]) => {
       setServices(svcResults.flat());
       setIngresses(ingResults.flat());

@@ -1,24 +1,9 @@
 import { useEffect, useState } from "react";
 import { Spinner, Title } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface ConfigMap {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  data_keys: string[];
-}
-
-interface Secret {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  type: string;
-  data_keys: string[];
-}
+import type { ConfigMap, Secret } from "@fleetshift/common";
+import { fetchConfigMaps, fetchSecrets } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface ConfigPageProps {
   clusterIds: string[];
@@ -33,16 +18,8 @@ const ConfigPage = ({ clusterIds }: ConfigPageProps) => {
 
   useEffect(() => {
     Promise.all([
-      Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<ConfigMap[]>(`${apiBase}/clusters/${id}/configmaps`),
-        ),
-      ),
-      Promise.all(
-        clusterIds.map((id) =>
-          fetchJson<Secret[]>(`${apiBase}/clusters/${id}/secrets`),
-        ),
-      ),
+      Promise.all(clusterIds.map((id) => fetchConfigMaps(apiBase, id))),
+      Promise.all(clusterIds.map((id) => fetchSecrets(apiBase, id))),
     ]).then(([cmResults, secretResults]) => {
       setConfigMaps(cmResults.flat());
       setSecrets(secretResults.flat());

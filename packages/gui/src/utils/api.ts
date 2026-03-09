@@ -1,6 +1,19 @@
+import type {
+  AvailableCluster,
+  Cluster,
+  User as BaseUser,
+} from "@fleetshift/common";
 import { getSessionId } from "../hooks/useInvalidationSocket";
+import type { NavLayoutEntry, CanvasPage, CanvasModule } from "./extensions";
 
 const API_BASE = "http://localhost:4000/api/v1";
+
+export type { AvailableCluster };
+export type InstalledCluster = Cluster;
+
+export interface User extends BaseUser {
+  navLayout: NavLayoutEntry[];
+}
 
 function mutationHeaders(
   extra?: Record<string, string>,
@@ -12,22 +25,6 @@ function mutationHeaders(
   const sid = getSessionId();
   if (sid) headers["X-Session-Id"] = sid;
   return headers;
-}
-
-export interface AvailableCluster {
-  id: string;
-  name: string;
-  version: string;
-  installed: boolean;
-}
-
-export interface InstalledCluster {
-  id: string;
-  name: string;
-  status: string;
-  version: string;
-  plugins: string[];
-  created_at: string;
 }
 
 export async function fetchAvailableClusters(): Promise<AvailableCluster[]> {
@@ -70,16 +67,6 @@ export async function updateClusterPlugins(
     body: JSON.stringify({ plugins }),
   });
   return res.json();
-}
-
-import type { NavLayoutEntry, CanvasPage, CanvasModule } from "./extensions";
-
-export interface User {
-  id: string;
-  username: string;
-  display_name: string;
-  role: string;
-  navLayout: NavLayoutEntry[];
 }
 
 export async function login(username: string): Promise<User> {

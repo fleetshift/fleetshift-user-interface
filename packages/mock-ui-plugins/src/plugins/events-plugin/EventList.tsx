@@ -1,18 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface ClusterEvent {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  type: string;
-  reason: string;
-  message: string;
-  source: string;
-  created_at: string;
-}
+import type { Event } from "@fleetshift/common";
+import { fetchEvents } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface EventListProps {
   clusterIds: string[];
@@ -20,19 +11,17 @@ interface EventListProps {
 
 const EventList = ({ clusterIds }: EventListProps) => {
   const apiBase = useApiBase();
-  const [events, setEvents] = useState<ClusterEvent[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<ClusterEvent[]>(`${apiBase}/clusters/${id}/events`),
-      ),
-    ).then((results) => {
-      setEvents(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchEvents(apiBase, id))).then(
+      (results) => {
+        setEvents(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

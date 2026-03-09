@@ -9,7 +9,8 @@ import {
   Title,
 } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface NamespaceCost {
   namespace: string;
@@ -39,7 +40,7 @@ const CostPage = ({ clusterIds }: CostPageProps) => {
   useEffect(() => {
     Promise.all(
       clusterIds.map((id) =>
-        fetchJson<CostData>(`${apiBase}/clusters/${id}/cost`),
+        makeRequest<CostData>(`${apiBase}/clusters/${id}/cost`),
       ),
     ).then((results) => {
       setCostData(results);

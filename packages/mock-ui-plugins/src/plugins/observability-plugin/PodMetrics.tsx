@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface PodMetric {
   name: string;
@@ -32,7 +33,7 @@ const PodMetrics = ({ clusterId }: PodMetricsProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchJson<MetricsResponse>(`${apiBase}/clusters/${clusterId}/metrics`).then(
+    makeRequest<MetricsResponse>(`${apiBase}/clusters/${clusterId}/metrics`).then(
       (data) => {
         setPods(data.pods);
         setLoading(false);

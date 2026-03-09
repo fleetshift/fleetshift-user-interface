@@ -113,7 +113,12 @@ const AppMasthead = () => (
       </MastheadToggle>
       <MastheadBrand>
         <MastheadLogo component="a" href="/">
-          <img src={logo} alt="FleetShift" className="fs-masthead-logo" style={{ height: 36 }} />
+          <img
+            src={logo}
+            alt="FleetShift"
+            className="fs-masthead-logo"
+            style={{ height: 36 }}
+          />
         </MastheadLogo>
       </MastheadBrand>
     </MastheadMain>

@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
-
-interface Alert {
-  id: string;
-  cluster_id: string;
-  name: string;
-  severity: string;
-  state: string;
-  message: string;
-  fired_at: string;
-}
+import type { Alert } from "@fleetshift/common";
+import { fetchAlerts } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface AlertListProps {
   clusterIds: string[];
@@ -38,14 +30,12 @@ const AlertList = ({ clusterIds }: AlertListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<Alert[]>(`${apiBase}/clusters/${id}/alerts`),
-      ),
-    ).then((results) => {
-      setAlerts(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchAlerts(apiBase, id))).then(
+      (results) => {
+        setAlerts(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

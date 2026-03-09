@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
-import { useApiBase, fetchJson } from "./api";
+import type { Namespace } from "@fleetshift/common";
+import * as common from "@fleetshift/common";
+import { useApiBase } from "./api";
 
-interface Namespace {
-  id: string;
-  cluster_id: string;
-  name: string;
-  status: string;
-  podCount: number;
-}
-
+const { fetchNamespaces } = common;
 interface NamespaceListProps {
   clusterIds: string[];
 }
@@ -22,14 +17,12 @@ const NamespaceList = ({ clusterIds }: NamespaceListProps) => {
   const multiCluster = clusterIds.length > 1;
 
   useEffect(() => {
-    Promise.all(
-      clusterIds.map((id) =>
-        fetchJson<Namespace[]>(`${apiBase}/clusters/${id}/namespaces`),
-      ),
-    ).then((results) => {
-      setNamespaces(results.flat());
-      setLoading(false);
-    });
+    Promise.all(clusterIds.map((id) => fetchNamespaces(apiBase, id))).then(
+      (results) => {
+        setNamespaces(results.flat());
+        setLoading(false);
+      },
+    );
   }, [apiBase, clusterIds]);
 
   if (loading) return <Spinner size="lg" />;

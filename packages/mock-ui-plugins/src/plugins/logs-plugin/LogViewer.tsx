@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label, Spinner } from "@patternfly/react-core";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface LogEntry {
   timestamp: string;
@@ -29,7 +30,7 @@ const LogViewer = ({ clusterIds }: LogViewerProps) => {
   useEffect(() => {
     Promise.all(
       clusterIds.map((id) =>
-        fetchJson<LogEntry[]>(`${apiBase}/clusters/${id}/logs`),
+        makeRequest<LogEntry[]>(`${apiBase}/clusters/${id}/logs`),
       ),
     ).then((results) => {
       setLogs(results.flat());

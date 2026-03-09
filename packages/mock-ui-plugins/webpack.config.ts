@@ -12,10 +12,16 @@ import { PluginRegistryPlugin } from "./src/PluginRegistryPlugin";
 const monorepoRoot = path.resolve(__dirname, "../..");
 const nodeModulesRoot = path.resolve(monorepoRoot, "node_modules");
 const pfSharedModules = getDynamicModules(__dirname, monorepoRoot);
-const tsLoaderRule = createTsLoaderRule({ nodeModulesRoot });
+const tsLoaderRule = {
+  ...createTsLoaderRule({ nodeModulesRoot }),
+  exclude: [/node_modules/, /packages\/common\/dist/],
+};
 
 const sharedModules = {
   react: { singleton: true, requiredVersion: "*" },
+  "@fleetshift/common": {
+    requiredVersion: "*",
+  },
   "react-dom": { singleton: true, requiredVersion: "*" },
   "@scalprum/core": { singleton: true, requiredVersion: "*" },
   "@scalprum/react-core": { singleton: true, requiredVersion: "*" },

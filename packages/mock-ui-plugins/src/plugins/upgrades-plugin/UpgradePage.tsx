@@ -10,7 +10,8 @@ import {
   List,
   ListItem,
 } from "@patternfly/react-core";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface UpgradeInfo {
   clusterId: string;
@@ -32,7 +33,7 @@ const UpgradePage = ({ clusterIds }: UpgradePageProps) => {
   useEffect(() => {
     Promise.all(
       clusterIds.map((id) =>
-        fetchJson<UpgradeInfo>(`${apiBase}/clusters/${id}/upgrades`),
+        makeRequest<UpgradeInfo>(`${apiBase}/clusters/${id}/upgrades`),
       ),
     ).then((results) => {
       setUpgrades(results);

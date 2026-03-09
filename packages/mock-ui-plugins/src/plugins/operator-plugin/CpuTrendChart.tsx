@@ -15,7 +15,8 @@ import {
   ChartVoronoiContainer,
 } from "@patternfly/react-charts/victory";
 import { useScalprum } from "@scalprum/react-core";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface MetricsData {
   clusterId: string;
@@ -98,7 +99,7 @@ const CpuTrendChart = (_props: CpuTrendChartProps) => {
     setLoading(true);
     Promise.all(
       ids.map((id) =>
-        fetchJson<MetricsData>(`${apiBase}/clusters/${id}/metrics`),
+        makeRequest<MetricsData>(`${apiBase}/clusters/${id}/metrics`),
       ),
     ).then((results) => {
       setClusterTrends(

@@ -11,7 +11,8 @@ import {
   GridItem,
 } from "@patternfly/react-core";
 import { CheckCircleIcon } from "@patternfly/react-icons";
-import { useApiBase, fetchJson } from "./api";
+import { makeRequest } from "@fleetshift/common";
+import { useApiBase } from "./api";
 
 interface PodAggregate {
   cluster_id: string;
@@ -84,10 +85,10 @@ const ClusterOverview = ({ clusterIds }: ClusterOverviewProps) => {
     Promise.all([
       Promise.all(
         clusterIds.map((id) =>
-          fetchJson<ClusterMeta>(`${apiBase}/clusters/${id}`),
+          makeRequest<ClusterMeta>(`${apiBase}/clusters/${id}`),
         ),
       ),
-      fetchJson<PodAggregate[]>(`${apiBase}/pods/aggregate`),
+      makeRequest<PodAggregate[]>(`${apiBase}/pods/aggregate`),
     ]).then(([clusterData, aggregateData]) => {
       setClusters(clusterData);
       setPodStats(
