@@ -21,6 +21,8 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
   mode: "development",
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"],
+    // Don't follow symlinks so workspace packages resolve via their package.json exports
+    symlinks: false,
   },
   module: {
     rules: [

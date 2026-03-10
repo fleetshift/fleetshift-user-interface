@@ -3,6 +3,14 @@ import type {
   Cluster,
   User as BaseUser,
 } from "@fleetshift/common";
+import {
+  fetchAvailableClusters as commonFetchAvailable,
+  fetchClusters as commonFetchInstalled,
+  fetchCluster as commonFetchCluster,
+  installCluster as commonInstall,
+  uninstallCluster as commonUninstall,
+  updateClusterPlugins as commonUpdatePlugins,
+} from "@fleetshift/common";
 import { getSessionId } from "../hooks/useInvalidationSocket";
 import type { NavLayoutEntry, CanvasPage, CanvasModule } from "./extensions";
 
@@ -15,58 +23,40 @@ export interface User extends BaseUser {
   navLayout: NavLayoutEntry[];
 }
 
-function mutationHeaders(
-  extra?: Record<string, string>,
-): Record<string, string> {
+function mutationHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...extra,
   };
   const sid = getSessionId();
   if (sid) headers["X-Session-Id"] = sid;
   return headers;
 }
 
-export async function fetchAvailableClusters(): Promise<AvailableCluster[]> {
-  const res = await fetch(`${API_BASE}/clusters/available`);
-  return res.json();
+export function fetchAvailableClusters(): Promise<AvailableCluster[]> {
+  return commonFetchAvailable(API_BASE);
 }
 
-export async function fetchInstalledClusters(): Promise<InstalledCluster[]> {
-  const res = await fetch(`${API_BASE}/clusters`);
-  return res.json();
+export function fetchInstalledClusters(): Promise<InstalledCluster[]> {
+  return commonFetchInstalled(API_BASE);
 }
 
-export async function fetchCluster(id: string): Promise<InstalledCluster> {
-  const res = await fetch(`${API_BASE}/clusters/${id}`);
-  return res.json();
+export function fetchCluster(id: string): Promise<InstalledCluster> {
+  return commonFetchCluster(API_BASE, id);
 }
 
-export async function installCluster(id: string): Promise<InstalledCluster> {
-  const res = await fetch(`${API_BASE}/clusters/${id}/install`, {
-    method: "POST",
-    headers: mutationHeaders(),
-  });
-  return res.json();
+export function installCluster(id: string): Promise<InstalledCluster> {
+  return commonInstall(API_BASE, id, mutationHeaders());
 }
 
-export async function uninstallCluster(id: string): Promise<void> {
-  await fetch(`${API_BASE}/clusters/${id}`, {
-    method: "DELETE",
-    headers: mutationHeaders(),
-  });
+export function uninstallCluster(id: string): Promise<void> {
+  return commonUninstall(API_BASE, id, mutationHeaders());
 }
 
-export async function updateClusterPlugins(
+export function updateClusterPlugins(
   id: string,
   plugins: string[],
 ): Promise<InstalledCluster> {
-  const res = await fetch(`${API_BASE}/clusters/${id}/plugins`, {
-    method: "PATCH",
-    headers: mutationHeaders(),
-    body: JSON.stringify({ plugins }),
-  });
-  return res.json();
+  return commonUpdatePlugins(API_BASE, id, plugins, mutationHeaders());
 }
 
 export async function login(username: string): Promise<User> {

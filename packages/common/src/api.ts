@@ -12,6 +12,7 @@ import type {
   PersistentVolume,
   PersistentVolumeClaim,
   Pipeline,
+  PluginRegistry,
   Pod,
   Route,
   Secret,
@@ -141,4 +142,45 @@ export function fetchRoutes(
   clusterId: string,
 ): Promise<Route[]> {
   return makeRequest(`${apiBase}/clusters/${clusterId}/routes`);
+}
+
+export function fetchPluginRegistry(apiBase: string): Promise<PluginRegistry> {
+  return makeRequest(`${apiBase}/plugin-registry`);
+}
+
+export function installCluster(
+  apiBase: string,
+  clusterId: string,
+  headers?: Record<string, string>,
+): Promise<Cluster> {
+  return makeRequest(`${apiBase}/clusters/${clusterId}/install`, {
+    method: "POST",
+    headers,
+  });
+}
+
+export function uninstallCluster(
+  apiBase: string,
+  clusterId: string,
+  headers?: Record<string, string>,
+): Promise<void> {
+  return fetch(`${apiBase}/clusters/${clusterId}`, {
+    method: "DELETE",
+    headers,
+  }).then((res) => {
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  });
+}
+
+export function updateClusterPlugins(
+  apiBase: string,
+  clusterId: string,
+  plugins: string[],
+  headers?: Record<string, string>,
+): Promise<Cluster> {
+  return makeRequest(`${apiBase}/clusters/${clusterId}/plugins`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ plugins }),
+  });
 }

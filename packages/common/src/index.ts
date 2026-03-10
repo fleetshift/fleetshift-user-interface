@@ -18,6 +18,8 @@ export type {
   Service,
   ServicePort,
   User,
+  PluginEntry,
+  PluginRegistry,
 } from "./types.js";
 
 export {
@@ -40,4 +42,8 @@ export {
   fetchGitOpsApps,
   fetchEvents,
   fetchRoutes,
+  fetchPluginRegistry,
+  installCluster,
+  uninstallCluster,
+  updateClusterPlugins,
 } from "./api.js";
