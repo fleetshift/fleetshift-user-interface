@@ -9,7 +9,8 @@ const mfInstance = createInstance({
 });
 
 /** Loaded plugin entries for startup display. */
-const loadedPlugins: Array<{ label: string; name: string; exposes: string[] }> = [];
+const loadedPlugins: Array<{ label: string; name: string; exposes: string[] }> =
+  [];
 
 interface CliPluginMfManifest {
   name: string;
@@ -61,16 +62,11 @@ export async function initPlugins(apiBase: string): Promise<void> {
   for (const plugin of entries) {
     await initPlugin(plugin, registry.assetsHost);
   }
+}
 
-  // Show loaded plugins on startup
-  if (loadedPlugins.length > 0) {
-    console.log(`Loaded ${loadedPlugins.length} remote plugin(s):`);
-    for (const p of loadedPlugins) {
-      const modules = p.exposes.map((e) => e).join(", ");
-      console.log(`  \u2713 ${p.label} (${p.name}) — ${modules}`);
-    }
-    console.log();
-  }
+/** Info about plugins loaded at startup, for rendering in the UI. */
+export function getLoadedPlugins(): Array<{ label: string; name: string; exposes: string[] }> {
+  return loadedPlugins;
 }
 
 /**
@@ -101,7 +97,6 @@ async function initPlugin(
         | undefined;
 
       if (typeof fn !== "function") continue;
-      console.log({ fn });
 
       exposedNames.push(exposed.name);
 
@@ -152,9 +147,18 @@ async function initPlugin(
   }
 }
 
-/** Get commands registered by plugins. */
-export function getPluginCommands(): PluginCommand[] {
+/** Get ALL registered plugin commands (unfiltered). Use for metadata lookups only. */
+export function getAllPluginCommands(): PluginCommand[] {
   return pluginCommands;
+}
+
+/** Get plugin commands filtered to only those with at least one cluster enabled. */
+export function getPluginCommands(
+  clusters: Array<{ plugins?: string[] }>,
+): PluginCommand[] {
+  return pluginCommands.filter((pc) =>
+    clusters.some((c) => c.plugins?.includes(pc.pluginKey)),
+  );
 }
 
 /** Get the loaded registry (null if not yet initialized or unavailable). */

@@ -39,11 +39,11 @@ export const install: Command = {
                   <Badge color="gray">available</Badge>
                 )}
               </Box>
-              <Text dimColor>{c.id}</Text>
+              <Text color="gray">{c.id}</Text>
             </Box>
           ))}
           <Text> </Text>
-          <Text dimColor>
+          <Text color="gray">
             Usage: install {"<cluster>"} (name matched by prefix)
           </Text>
         </Box>
@@ -82,25 +82,25 @@ export const install: Command = {
         </StatusMessage>
         <Box>
           <Box width={14}>
-            <Text dimColor>ID:</Text>
+            <Text color="gray">ID:</Text>
           </Box>
           <Text>{cluster.id}</Text>
         </Box>
         <Box>
           <Box width={14}>
-            <Text dimColor>Version:</Text>
+            <Text color="gray">Version:</Text>
           </Box>
           <Text>{cluster.version}</Text>
         </Box>
         <Box>
           <Box width={14}>
-            <Text dimColor>Status:</Text>
+            <Text color="gray">Status:</Text>
           </Box>
           <Badge color="green">{cluster.status}</Badge>
         </Box>
         <Box>
           <Box width={14}>
-            <Text dimColor>Plugins:</Text>
+            <Text color="gray">Plugins:</Text>
           </Box>
           <Text>{cluster.plugins.join(", ")}</Text>
         </Box>

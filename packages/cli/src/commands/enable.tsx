@@ -28,7 +28,7 @@ export const enable: Command = {
           <Text> </Text>
           <Text bold>Installed clusters:</Text>
           {installed.length === 0 ? (
-            <Text dimColor> No clusters installed.</Text>
+            <Text color="gray"> No clusters installed.</Text>
           ) : (
             installed.map((c) => (
               <Box key={c.id}>
@@ -38,7 +38,7 @@ export const enable: Command = {
                 <Box width={24}>
                   <Text>{c.name}</Text>
                 </Box>
-                <Text dimColor>{c.plugins.join(", ")}</Text>
+                <Text color="gray">{c.plugins.join(", ")}</Text>
               </Box>
             ))
           )}
@@ -96,7 +96,7 @@ export const enable: Command = {
                 </Box>
               ))}
               <Text> </Text>
-              <Text dimColor>
+              <Text color="gray">
                 Run: enable {cluster.id} {"<plugin>"}
               </Text>
             </>
@@ -119,7 +119,7 @@ export const enable: Command = {
           <StatusMessage variant="error">
             Unknown plugin &quot;{pluginKey}&quot;.
           </StatusMessage>
-          <Text dimColor>Available: {knownKeys.join(", ")}</Text>
+          <Text color="gray">Available: {knownKeys.join(", ")}</Text>
         </Box>
       );
     }
@@ -153,7 +153,7 @@ export const enable: Command = {
           Enabled &quot;{pluginKey}&quot; on {cluster.name}
         </StatusMessage>
         <Box>
-          <Text dimColor>Plugins: </Text>
+          <Text color="gray">Plugins: </Text>
           {updated.plugins.map((p, i) => (
             <Text key={p}>
               {i > 0 ? ", " : ""}

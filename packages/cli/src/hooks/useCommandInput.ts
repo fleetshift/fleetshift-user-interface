@@ -29,6 +29,12 @@ export function useCommandInput({
   // TextInput's redundant call when we already submitted from useInput.
   const skipNextSubmitRef = useRef(false);
 
+  // Command history (up/down arrow)
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  // Stash the in-progress input when navigating history
+  const historyStashRef = useRef("");
+
   // Matching suggestions for the current input
   const matches = useMemo(() => {
     if (currentValue.length === 0) return [];
@@ -41,6 +47,16 @@ export function useCommandInput({
     setCurrentValue(value);
     onInputChange(value);
     setInputKey((k) => k + 1);
+  };
+
+  /** Push a command to history (most recent first, max 100) */
+  const pushHistory = (cmd: string) => {
+    // Avoid duplicating the last entry
+    if (historyRef.current[0] !== cmd) {
+      historyRef.current = [cmd, ...historyRef.current].slice(0, 100);
+    }
+    historyIndexRef.current = -1;
+    historyStashRef.current = "";
   };
 
   /** Accept a completion value into the input */
@@ -102,12 +118,14 @@ export function useCommandInput({
         // will also fire for this Enter keystroke, so set a flag to skip it.
         const selected = matches[menuIndex];
         if (selected) {
+          const trimmed = selected.trim();
           skipNextSubmitRef.current = true;
+          pushHistory(trimmed);
           remountInput("");
           setMenuOpen(false);
           setMenuIndex(0);
           setTimeout(() => {
-            onSubmit(selected.trim());
+            onSubmit(trimmed);
           }, 0);
         }
         return;
@@ -115,6 +133,30 @@ export function useCommandInput({
       // Any other key closes menu (TextInput will handle the character)
       setMenuOpen(false);
       setMenuIndex(0);
+      return;
+    }
+
+    // --- History navigation (not in menu) ---
+    if (key.upArrow && historyRef.current.length > 0) {
+      if (historyIndexRef.current === -1) {
+        historyStashRef.current = currentValue;
+      }
+      const nextIndex = Math.min(
+        historyIndexRef.current + 1,
+        historyRef.current.length - 1,
+      );
+      historyIndexRef.current = nextIndex;
+      remountInput(historyRef.current[nextIndex]!);
+      return;
+    }
+    if (key.downArrow && historyIndexRef.current >= 0) {
+      const nextIndex = historyIndexRef.current - 1;
+      historyIndexRef.current = nextIndex;
+      if (nextIndex < 0) {
+        remountInput(historyStashRef.current);
+      } else {
+        remountInput(historyRef.current[nextIndex]!);
+      }
       return;
     }
 
@@ -152,6 +194,7 @@ export function useCommandInput({
     setMenuOpen(false);
     setMenuIndex(0);
     if (trimmed) {
+      pushHistory(trimmed);
       setTimeout(() => {
         onSubmit(trimmed);
       }, 0);

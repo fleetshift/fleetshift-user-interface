@@ -45,7 +45,7 @@ export const App = ({ apiBase, mode }: AppProps) => {
     const parts = input.split(/\s+/);
 
     if (parts.length <= 1 && !input.endsWith(" ")) {
-      return getCommandNames().map((n) => n + " ");
+      return getCommandNames(clustersRef.current).map((n) => n + " ");
     }
 
     const cmd = parts[0]!.toLowerCase();
@@ -65,7 +65,7 @@ export const App = ({ apiBase, mode }: AppProps) => {
       setRunning(true);
       setInput("");
       try {
-        const result = await runCommand(value, apiBase);
+        const result = await runCommand(value, apiBase, clustersRef.current);
 
         if (result === "exit") {
           exit();

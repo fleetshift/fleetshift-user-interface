@@ -24,7 +24,7 @@ export const disable: Command = {
           <Text> </Text>
           <Text bold>Installed clusters:</Text>
           {installed.length === 0 ? (
-            <Text dimColor> No clusters installed.</Text>
+            <Text color="gray"> No clusters installed.</Text>
           ) : (
             installed.map((c) => (
               <Box key={c.id}>
@@ -34,7 +34,7 @@ export const disable: Command = {
                 <Box width={24}>
                   <Text>{c.name}</Text>
                 </Box>
-                <Text dimColor>{c.plugins.join(", ")}</Text>
+                <Text color="gray">{c.plugins.join(", ")}</Text>
               </Box>
             ))
           )}
@@ -62,11 +62,11 @@ export const disable: Command = {
           <Text>{cluster.plugins.join(", ")}</Text>
           <Text> </Text>
           {removable.length > 0 ? (
-            <Text dimColor>
+            <Text color="gray">
               Run: disable {cluster.id} {"<plugin>"}
             </Text>
           ) : (
-            <Text dimColor>Only the core plugin is enabled (cannot be disabled).</Text>
+            <Text color="gray">Only the core plugin is enabled (cannot be disabled).</Text>
           )}
         </Box>
       );
@@ -104,7 +104,7 @@ export const disable: Command = {
             Plugin &quot;{pluginKey}&quot; is not enabled on {cluster.name}.
             {!knownKeys.includes(pluginKey) ? " (unknown plugin)" : ""}
           </StatusMessage>
-          <Text dimColor>Enabled: {cluster.plugins.join(", ")}</Text>
+          <Text color="gray">Enabled: {cluster.plugins.join(", ")}</Text>
         </Box>
       );
     }
@@ -120,7 +120,7 @@ export const disable: Command = {
           Disabled &quot;{pluginKey}&quot; on {cluster.name}
         </StatusMessage>
         <Box>
-          <Text dimColor>Plugins: </Text>
+          <Text color="gray">Plugins: </Text>
           {updated.plugins.map((p, i) => (
             <Text key={p}>
               {i > 0 ? ", " : ""}

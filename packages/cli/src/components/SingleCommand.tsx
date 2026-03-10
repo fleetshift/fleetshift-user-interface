@@ -2,6 +2,7 @@ import { type ReactNode, useState, useEffect } from "react";
 import { useApp } from "ink";
 import { Spinner, StatusMessage } from "@inkjs/ui";
 import { runCommand } from "../commands";
+import { fetchClusters } from "@fleetshift/common";
 
 interface SingleCommandProps {
   input: string;
@@ -14,7 +15,8 @@ export const SingleCommand = ({ input, apiBase }: SingleCommandProps) => {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    runCommand(input, apiBase)
+    fetchClusters(apiBase)
+      .then((clusters) => runCommand(input, apiBase, clusters))
       .then((r) => {
         if (r === "exit" || r === "clear") {
           exit();

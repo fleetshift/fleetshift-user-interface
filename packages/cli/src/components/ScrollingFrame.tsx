@@ -23,7 +23,7 @@ export const ScrollingFrame = ({
       <Static items={blocks}>
         {(block) => (
           <Box key={block.id} flexDirection="column" marginBottom={1}>
-            <Text dimColor>
+            <Text color="gray">
               {">"} {block.command}
             </Text>
             {block.content}
@@ -53,7 +53,7 @@ export const ScrollingFrame = ({
             />
           </Box>
         )}
-        {input.exitPending && <Text dimColor> press Ctrl+C again to exit</Text>}
+        {input.exitPending && <Text color="gray"> press Ctrl+C again to exit</Text>}
       </Box>
     </Box>
   );

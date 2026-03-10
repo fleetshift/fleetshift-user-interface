@@ -85,7 +85,7 @@ export const FullScreenFrame = ({
         <Text bold color="cyan">
           FleetShift CLI
         </Text>
-        <Text dimColor>
+        <Text color="gray">
           {" "}
           — type &apos;help&apos; for commands, &apos;quit&apos; to exit
         </Text>
@@ -96,7 +96,7 @@ export const FullScreenFrame = ({
         <ScrollView ref={scrollRef} flexGrow={1}>
           {blocks.map((block) => (
             <Box key={block.id} flexDirection="column" marginBottom={1}>
-              <Text dimColor>
+              <Text color="gray">
                 {">"} {block.command}
               </Text>
               {block.content}
@@ -131,7 +131,7 @@ export const FullScreenFrame = ({
           onSubmit={input.handleSubmit}
         />
       </Box>
-      {input.exitPending && <Text dimColor> press Ctrl+C again to exit</Text>}
+      {input.exitPending && <Text color="gray"> press Ctrl+C again to exit</Text>}
     </Box>
   );
 };

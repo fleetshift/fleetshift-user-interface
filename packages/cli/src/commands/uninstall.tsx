@@ -25,11 +25,11 @@ export const uninstall: Command = {
               <Box width={24}>
                 <Text>{c.name}</Text>
               </Box>
-              <Text dimColor>{c.id}</Text>
+              <Text color="gray">{c.id}</Text>
             </Box>
           ))}
           <Text> </Text>
-          <Text dimColor>
+          <Text color="gray">
             Usage: uninstall {"<cluster>"} (name matched by prefix)
           </Text>
         </Box>

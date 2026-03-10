@@ -68,7 +68,7 @@ export const pods: Command = {
             <Text>{p.memory_usage}Mi</Text>
           </Box>
         ))}
-        <Text dimColor>
+        <Text color="gray">
           {"\n"}
           {data.length} pod(s)
         </Text>

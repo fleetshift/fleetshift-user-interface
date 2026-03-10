@@ -36,7 +36,7 @@ export const clusters: Command = {
               <Text>{c.name}</Text>
             </Box>
             <Box width={16}>
-              <Text dimColor>{c.id}</Text>
+              <Text color="gray">{c.id}</Text>
             </Box>
             <Box width={12}>
               <Badge
@@ -57,7 +57,7 @@ export const clusters: Command = {
             <Text>{(c.plugins ?? []).join(", ")}</Text>
           </Box>
         ))}
-        <Text dimColor>
+        <Text color="gray">
           {"\n"}
           {data.length} cluster(s) installed
         </Text>
