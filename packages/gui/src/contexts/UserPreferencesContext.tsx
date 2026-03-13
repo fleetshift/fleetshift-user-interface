@@ -3,7 +3,6 @@ import {
   useContext,
   useState,
   useCallback,
-  useEffect,
   ReactNode,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -42,16 +41,22 @@ interface UserPreferencesContextValue {
 const UserPreferencesContext =
   createContext<UserPreferencesContextValue | null>(null);
 
-export function UserPreferencesProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [navLayout, setNavLayout] = useState<NavLayoutEntry[]>([]);
-  const [canvasPages, setCanvasPages] = useState<CanvasPage[]>([]);
+interface UserPreferencesProviderProps {
+  initialNavLayout: NavLayoutEntry[];
+  initialCanvasPages: CanvasPage[];
+  children: ReactNode;
+}
 
-  useEffect(() => {
-    if (!user) return;
-    fetchUserPreferences(user.id).then(setNavLayout);
-    fetchCanvasPages(user.id).then(setCanvasPages);
-  }, [user]);
+export function UserPreferencesProvider({
+  initialNavLayout,
+  initialCanvasPages,
+  children,
+}: UserPreferencesProviderProps) {
+  const { user } = useAuth();
+  const [navLayout, setNavLayout] =
+    useState<NavLayoutEntry[]>(initialNavLayout);
+  const [canvasPages, setCanvasPages] =
+    useState<CanvasPage[]>(initialCanvasPages);
 
   useInvalidationSocket(user?.id, (resource) => {
     if (!user) return;

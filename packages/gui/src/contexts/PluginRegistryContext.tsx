@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, ReactNode } from "react";
 import type { PluginManifest } from "@openshift/dynamic-plugin-sdk";
 
 export interface PluginEntry {
@@ -29,26 +23,23 @@ const PluginRegistryContext = createContext<PluginRegistryContextValue | null>(
   null,
 );
 
-const API_BASE = "http://localhost:4000/api/v1";
+interface PluginRegistryProviderProps {
+  pluginEntries: PluginEntry[];
+  assetsHost: string;
+  children: ReactNode;
+}
 
-export function PluginRegistryProvider({ children }: { children: ReactNode }) {
-  const [registry, setRegistry] = useState<PluginRegistry | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/plugin-registry`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`);
-        return res.json();
-      })
-      .then((data: PluginRegistry) => setRegistry(data))
-      .catch(() => {
-        // Will retry on next mount (e.g. after auth redirect)
-      });
-  }, []);
-
-  if (!registry?.plugins) return null;
-
-  const pluginEntries = Object.values(registry.plugins);
+export function PluginRegistryProvider({
+  pluginEntries,
+  assetsHost,
+  children,
+}: PluginRegistryProviderProps) {
+  // Build the registry object from pluginEntries for backward compat
+  const plugins: Record<string, PluginEntry> = {};
+  for (const entry of pluginEntries) {
+    plugins[entry.name] = entry;
+  }
+  const registry: PluginRegistry = { assetsHost, plugins };
 
   return (
     <PluginRegistryContext.Provider value={{ registry, pluginEntries }}>

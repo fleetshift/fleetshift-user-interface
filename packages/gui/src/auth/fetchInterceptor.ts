@@ -1,4 +1,5 @@
 let _token: string | undefined;
+let _onUnauthorized: (() => void) | undefined;
 
 const _originalFetch = window.fetch;
 
@@ -8,9 +9,14 @@ export function setAccessToken(token: string | undefined) {
   _token = token;
 }
 
+export function setOnUnauthorized(handler: () => void) {
+  _onUnauthorized = handler;
+}
+
 /**
  * Monkey-patches `window.fetch` to inject the Authorization header
  * on requests to the app origin (proxied API) or the API server directly.
+ * On 401 responses, triggers a re-login redirect.
  */
 export function installFetchInterceptor() {
   window.fetch = function patchedFetch(
@@ -42,6 +48,11 @@ export function installFetchInterceptor() {
       headers.set("Authorization", `Bearer ${_token}`);
     }
 
-    return _originalFetch(input, { ...init, headers });
+    return _originalFetch(input, { ...init, headers }).then((response) => {
+      if (response.status === 401 && _onUnauthorized) {
+        _onUnauthorized();
+      }
+      return response;
+    });
   };
 }

@@ -14,6 +14,7 @@ import {
 import { oidcConfig } from "../auth/oidcConfig";
 import {
   setAccessToken,
+  setOnUnauthorized,
   installFetchInterceptor,
 } from "../auth/fetchInterceptor";
 
@@ -111,6 +112,13 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
         setLoading(false);
       });
   }, [oidc.isLoading, oidc.isAuthenticated, accessToken]);
+
+  // On 401 from any API call, redirect to Keycloak login
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      oidcRef.current.signinRedirect();
+    });
+  }, []);
 
   const login = useCallback(() => {
     oidcRef.current.signinRedirect();

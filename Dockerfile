@@ -20,7 +20,7 @@ COPY packages/cli/package.json packages/cli/
 # Install build tools needed for native addons (better-sqlite3)
 RUN dnf install -y python3 make gcc g++ && dnf clean all
 
-RUN npm ci
+RUN npm i
 
 # Copy all source
 COPY . .

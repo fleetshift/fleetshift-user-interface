@@ -11,6 +11,7 @@ services:
     build:
       context: .
       target: mock-servers
+    command: ["npm", "run", "dev", "-w", "packages/mock-servers"]
     volumes:
       - ./packages/mock-servers/src:/opt/app-root/src/packages/mock-servers/src:ro
       - ./packages/common/src:/opt/app-root/src/packages/common/src:ro

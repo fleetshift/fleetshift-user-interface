@@ -11,6 +11,7 @@ import { initK8sClient } from "./k8s/client";
 import { createK8sRouter } from "./k8s/routes";
 import mockRoutes from "./routes/mock";
 import userRoutes from "./routes/users";
+import { setLiveClusters } from "./routes/users";
 import pluginRegistryRoutes from "./routes/pluginRegistry";
 import cliPluginRegistryRoutes from "./routes/cliPluginRegistry";
 
@@ -38,6 +39,7 @@ async function start() {
       process.exit(1);
     }
 
+    setLiveClusters(liveClusters);
     app.use("/api/v1", createK8sRouter(liveClusters));
   } else {
     app.use("/api/v1", mockRoutes);

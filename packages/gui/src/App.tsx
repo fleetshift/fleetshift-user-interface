@@ -8,11 +8,8 @@ import { ClusterProvider, useClusters } from "./contexts/ClusterContext";
 import { ScopeProvider, useScope } from "./contexts/ScopeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
-import {
-  PluginRegistryProvider,
-  usePluginRegistry,
-} from "./contexts/PluginRegistryContext";
-import { buildScalprumConfig } from "./utils/buildScalprumConfig";
+import { PluginRegistryProvider } from "./contexts/PluginRegistryContext";
+import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
 import { useUserPreferences } from "./contexts/UserPreferencesContext";
 import type {
   CanvasPage as CanvasPageDef,
@@ -76,11 +73,7 @@ const PluginLoader = ({ children }: PropsWithChildren) => {
 
 const ScalprumShell = ({ children }: PropsWithChildren) => {
   const { installed } = useClusters();
-  const { registry } = usePluginRegistry();
-  const config = useMemo(
-    () => buildScalprumConfig(registry, installed),
-    [registry, installed],
-  );
+  const { scalprumConfig, assetsHost } = useAppConfig();
 
   const installedRef = useRef(installed);
   installedRef.current = installed;
@@ -141,7 +134,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
 
   return (
     <ScalprumProvider
-      config={config}
+      config={scalprumConfig}
       api={api}
       pluginSDKOptions={{
         pluginLoaderOptions: {
@@ -153,7 +146,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
               newManifest.loadScripts = manifest.loadScripts.map((script) =>
                 script.startsWith("http")
                   ? script
-                  : `${registry.assetsHost}/${script}`,
+                  : `${assetsHost}/${script}`,
               );
             }
             return newManifest;
@@ -234,24 +227,39 @@ const AppRoutes = () => {
   );
 };
 
+const AppConfigBridge = ({ children }: PropsWithChildren) => {
+  const { pluginEntries, assetsHost, canvasPages, navLayout } = useAppConfig();
+
+  return (
+    <PluginRegistryProvider pluginEntries={pluginEntries} assetsHost={assetsHost}>
+      <ClusterProvider>
+        <ScalprumShell>
+          <ScopeProvider>
+            <ScopeBridge />
+            <UserPreferencesProvider
+              initialNavLayout={navLayout}
+              initialCanvasPages={canvasPages}
+            >
+              <CanvasPagesBridge />
+              {children}
+            </UserPreferencesProvider>
+          </ScopeProvider>
+        </ScalprumShell>
+      </ClusterProvider>
+    </PluginRegistryProvider>
+  );
+};
+
 export const App = () => (
   <ScopeInitializer>
     <BrowserRouter>
       <AuthProvider>
         <AuthGate>
-          <PluginRegistryProvider>
-            <ClusterProvider>
-              <ScalprumShell>
-                <ScopeProvider>
-                  <ScopeBridge />
-                  <UserPreferencesProvider>
-                    <CanvasPagesBridge />
-                    <AppRoutes />
-                  </UserPreferencesProvider>
-                </ScopeProvider>
-              </ScalprumShell>
-            </ClusterProvider>
-          </PluginRegistryProvider>
+          <AppConfigProvider>
+            <AppConfigBridge>
+              <AppRoutes />
+            </AppConfigBridge>
+          </AppConfigProvider>
         </AuthGate>
       </AuthProvider>
     </BrowserRouter>

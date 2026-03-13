@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../db";
 import { broadcast } from "../ws";
+import { getPluginRegistry } from "../pluginRegistry";
 
 const router = Router();
 
@@ -10,7 +11,193 @@ interface UserRow {
   display_name: string;
   role: string;
   nav_layout: string;
+  canvas_pages: string;
 }
+
+interface ClusterInfo {
+  id: string;
+  plugins: string[];
+}
+
+interface PluginManifest {
+  name: string;
+  version: string;
+  extensions: Array<{
+    type: string;
+    properties: Record<string, unknown>;
+  }>;
+  registrationMethod: string;
+  baseURL: string;
+  loadScripts: string[];
+}
+
+interface PluginEntry {
+  name: string;
+  key: string;
+  label: string;
+  persona: "ops" | "dev";
+  pluginManifest: PluginManifest;
+}
+
+interface PluginRegistry {
+  assetsHost: string;
+  plugins: Record<string, PluginEntry>;
+}
+
+// Live clusters from K8s mode — set by the server at startup
+let liveClusters: ClusterInfo[] | null = null;
+
+export function setLiveClusters(clusters: ClusterInfo[]): void {
+  liveClusters = clusters;
+}
+
+function getClusters(): ClusterInfo[] {
+  // In live mode, use the K8s-discovered clusters
+  if (liveClusters) return liveClusters;
+
+  // In mock mode, read from SQLite
+  const rows = db
+    .prepare("SELECT id, plugins FROM clusters")
+    .all() as Array<{ id: string; plugins: string }>;
+
+  return rows.map((r) => ({
+    id: r.id,
+    plugins: JSON.parse(r.plugins) as string[],
+  }));
+}
+
+function buildScalprumConfigServer(
+  registry: PluginRegistry,
+  clusters: ClusterInfo[],
+) {
+  const config: Record<string, unknown> = {};
+
+  for (const [name, entry] of Object.entries(registry.plugins)) {
+    if (clusters.some((c) => c.plugins.includes(entry.key))) {
+      config[name] = {
+        name: entry.name,
+        pluginManifest: entry.pluginManifest,
+        assetsHost: registry.assetsHost,
+      };
+    }
+  }
+
+  // Always include utility plugins (not cluster-specific)
+  config["routing-plugin"] = {
+    name: "routing-plugin",
+    manifestLocation: `${registry.assetsHost}/routing-plugin-manifest.json`,
+    assetsHost: registry.assetsHost,
+  };
+
+  return config;
+}
+
+function generateDefaultConfig(
+  registry: PluginRegistry,
+  clusters: ClusterInfo[],
+  userId: string,
+) {
+  const pages: CanvasPage[] = [];
+  const navLayout: Array<{ type: string; pageId?: string }> = [];
+
+  for (const [, entry] of Object.entries(registry.plugins)) {
+    // Only include plugins that are installed on at least one cluster
+    const isInstalled = clusters.some((c) => c.plugins.includes(entry.key));
+    if (!isInstalled) continue;
+
+    const manifest = entry.pluginManifest;
+    if (!manifest.extensions) continue;
+
+    for (const ext of manifest.extensions) {
+      if (ext.type !== "fleetshift.module") continue;
+
+      const props = ext.properties as {
+        label?: string;
+        module?: string;
+      };
+      const label = props.label ?? entry.label;
+      const moduleName = props.module ?? "";
+      const slug = label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      // Avoid duplicate paths
+      if (pages.some((p) => p.path === slug)) continue;
+
+      const pageId = `auto-${entry.name}-${moduleName.replace(/^\.\//, "")}`;
+      pages.push({
+        id: pageId,
+        title: label,
+        path: slug,
+        modules: [
+          {
+            i: `${pageId}-1`,
+            x: 0,
+            y: 0,
+            w: 12,
+            h: 14,
+            moduleRef: {
+              scope: entry.name,
+              module: moduleName,
+              label,
+            },
+          },
+        ],
+      });
+
+      navLayout.push({ type: "page", pageId });
+    }
+  }
+
+  // Persist to DB
+  db.prepare(
+    "UPDATE users SET canvas_pages = ?, nav_layout = ? WHERE id = ?",
+  ).run(JSON.stringify(pages), JSON.stringify(navLayout), userId);
+
+  return { pages, navLayout };
+}
+
+// GET /users/:id/config — full per-user config payload
+router.get("/users/:id/config", (req, res) => {
+  const user = db
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(req.params.id) as UserRow | undefined;
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const registry = getPluginRegistry() as PluginRegistry | null;
+  if (!registry) {
+    res.status(503).json({ error: "Plugin registry not yet available" });
+    return;
+  }
+
+  const clusters = getClusters();
+  const scalprumConfig = buildScalprumConfigServer(registry, clusters);
+
+  let canvasPages: CanvasPage[] = JSON.parse(user.canvas_pages);
+  let navLayout = JSON.parse(user.nav_layout);
+
+  // Auto-generate defaults for new users with empty config
+  if (canvasPages.length === 0 && navLayout.length === 0) {
+    const generated = generateDefaultConfig(registry, clusters, user.id);
+    canvasPages = generated.pages;
+    navLayout = generated.navLayout;
+  }
+
+  const pluginEntries = Object.values(registry.plugins);
+
+  res.json({
+    scalprumConfig,
+    canvasPages,
+    navLayout,
+    pluginEntries,
+    assetsHost: registry.assetsHost,
+  });
+});
 
 // POST /auth/login — login by username
 router.post("/auth/login", (req, res) => {
