@@ -26,7 +26,11 @@ import {
   HelperText,
   HelperTextItem,
 } from "@patternfly/react-core";
-import { CubesIcon, RedhatIcon, CheckCircleIcon } from "@patternfly/react-icons";
+import {
+  CubesIcon,
+  RedhatIcon,
+  CheckCircleIcon,
+} from "@patternfly/react-icons";
 import { createCluster } from "../../utils/api";
 
 type ClusterType = "kubeconfig" | "token" | null;
@@ -95,7 +99,10 @@ export const AddClusterPage = () => {
         <Title headingLevel="h1" size="2xl">
           Add Cluster
         </Title>
-        <Content component="p" style={{ color: "var(--pf-t--global--color--subtle)" }}>
+        <Content
+          component="p"
+          style={{ color: "var(--pf-t--global--color--subtle)" }}
+        >
           Connect a Kubernetes cluster to FleetShift. Select the cluster type
           and provide connection details.
         </Content>
@@ -129,10 +136,18 @@ export const AddClusterPage = () => {
             <Card
               isSelectable
               isSelected={clusterType === "kubeconfig"}
-              onClick={() => !submitting && !success && setClusterType("kubeconfig")}
               isClickable
             >
-              <CardHeader>
+              <CardHeader
+                selectableActions={{
+                  selectableActionId: "select-minikube",
+                  selectableActionAriaLabel: "Select Minikube cluster type",
+                  name: "cluster-type",
+                  variant: "single",
+                  onChange: () =>
+                    !submitting && !success && setClusterType("kubeconfig"),
+                }}
+              >
                 <Icon size="xl">
                   <CubesIcon color="var(--pf-t--global--color--brand--default)" />
                 </Icon>
@@ -149,13 +164,17 @@ export const AddClusterPage = () => {
             </Card>
           </GridItem>
           <GridItem>
-            <Card
-              isSelectable
-              isSelected={clusterType === "token"}
-              onClick={() => !submitting && !success && setClusterType("token")}
-              isClickable
-            >
-              <CardHeader>
+            <Card isSelectable isSelected={clusterType === "token"} isClickable>
+              <CardHeader
+                selectableActions={{
+                  selectableActionId: "select-openshift",
+                  selectableActionAriaLabel: "Select OpenShift cluster type",
+                  name: "cluster-type",
+                  variant: "single",
+                  onChange: () =>
+                    !submitting && !success && setClusterType("token"),
+                }}
+              >
                 <Icon size="xl">
                   <RedhatIcon color="#EE0000" />
                 </Icon>

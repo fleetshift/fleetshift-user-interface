@@ -469,6 +469,44 @@ const UpgradesPlugin = new DynamicRemotePlugin({
   },
 });
 
+const ClowderPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.module",
+      properties: {
+        label: "Clowder",
+        component: { $codeRef: "ClowderPage.default" },
+      },
+    },
+    {
+      type: "fleetshift.deployment-detail-tab",
+      properties: {
+        label: "Clowder",
+        priority: 300,
+        component: { $codeRef: "ClowderDeploymentTab.default" },
+        isApplicable: { $codeRef: "ClowderApplicable.isApplicable" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "clowder-plugin.[contenthash].js",
+  pluginManifestFilename: "clowder-plugin-manifest.json",
+  // @ts-ignore
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "clowder-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      ClowderPage: p("./src/plugins/clowder-plugin/ClowderPage.tsx"),
+      ClowderDeploymentTab: p(
+        "./src/plugins/clowder-plugin/ClowderDeploymentTab.tsx",
+      ),
+      ClowderApplicable: p("./src/plugins/clowder-plugin/ClowderApplicable.ts"),
+      useClowderStore: p("./src/plugins/clowder-plugin/clowderStore.ts"),
+    },
+  },
+});
+
 const RoutingPlugin = new DynamicRemotePlugin({
   extensions: [],
   sharedModules,
@@ -516,6 +554,7 @@ const config: Configuration = {
     RoutesPlugin,
     CostPlugin,
     UpgradesPlugin,
+    ClowderPlugin,
     RoutingPlugin,
     new PluginRegistryPlugin({
       assetsHost: "http://localhost:8001",
@@ -588,6 +627,12 @@ const config: Configuration = {
           name: "upgrades-plugin",
           key: "upgrades",
           label: "Upgrades",
+          persona: "ops",
+        },
+        {
+          name: "clowder-plugin",
+          key: "clowder",
+          label: "Clowder",
           persona: "ops",
         },
         {

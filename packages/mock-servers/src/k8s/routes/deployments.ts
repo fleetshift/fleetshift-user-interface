@@ -26,5 +26,32 @@ export function deploymentRoutes(clusterMap: ClusterMap): Router {
     }
   });
 
+  router.get("/clusters/:id/deployments/:deployId", async (req, res) => {
+    const clusterId = requireCluster(req, res, clusterMap);
+    if (!clusterId) return;
+    try {
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const depResponse = await client.apps.listDeploymentForAllNamespaces();
+      const all = (depResponse.items ?? []).map((dep) =>
+        transformDeployment(dep, clusterId),
+      );
+      const { deployId } = req.params;
+      const found =
+        all.find((d) => d.id === deployId) ??
+        all.find((d) => d.name === deployId);
+      if (!found) {
+        res.status(404).json({ error: "Deployment not found" });
+        return;
+      }
+      res.json(found);
+    } catch (err) {
+      k8sError(res, err);
+    }
+  });
+
   return router;
 }

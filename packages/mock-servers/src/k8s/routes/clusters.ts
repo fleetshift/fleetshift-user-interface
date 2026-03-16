@@ -161,6 +161,60 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
     }
   });
 
+  router.patch("/clusters/:id", async (req, res) => {
+    const id = req.params.id;
+    const existing = getClusterClient(id);
+    if (!existing) {
+      res.status(404).json({ error: "Cluster not found" });
+      return;
+    }
+
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ error: "token is required" });
+      return;
+    }
+
+    // Build updated config from existing
+    const cfg: ClusterConfig = {
+      ...existing.config,
+      tokenValue: token,
+    };
+
+    try {
+      const client = await connectCluster(cfg);
+      if (!client) {
+        res.status(400).json({ error: "Failed to reconnect. Check token." });
+        return;
+      }
+
+      // Replace in runtime
+      unregisterClusterClient(id);
+      registerClusterClient(client);
+
+      // Update in-memory arrays
+      const idx = liveClusters.findIndex((c) => c.id === id);
+      if (idx !== -1) {
+        liveClusters[idx] = client.live;
+        clusterMap.set(id, client.live);
+      }
+
+      // Update DB
+      addClusterToDb(cfg);
+
+      // Update users.ts cluster list
+      setLiveClusters(liveClusters);
+
+      // Notify
+      broadcastToAuthenticated({ resource: "clusters" });
+
+      res.json(clusterToJson(client.live));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ error: msg });
+    }
+  });
+
   router.delete("/clusters/:id", (req, res) => {
     const id = req.params.id;
     const idx = liveClusters.findIndex((c) => c.id === id);

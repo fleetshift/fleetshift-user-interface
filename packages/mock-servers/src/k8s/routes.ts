@@ -13,6 +13,7 @@ import { storageRoutes } from "./routes/storage";
 import { logRoutes } from "./routes/logs";
 import { configRoutes } from "./routes/config";
 import { miscRoutes } from "./routes/misc";
+import { clowderRoutes } from "./routes/clowder";
 
 export function createK8sRouter(liveClusters: LiveCluster[]): Router {
   const router = Router();
@@ -31,6 +32,7 @@ export function createK8sRouter(liveClusters: LiveCluster[]): Router {
   router.use(logRoutes(clusterMap));
   router.use(configRoutes(clusterMap));
   router.use(miscRoutes(clusterMap, liveClusters));
+  router.use(clowderRoutes(clusterMap));
 
   return router;
 }

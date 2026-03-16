@@ -6,7 +6,7 @@ export const CRD_PLUGIN_MAP: Record<string, string> = {
   "keda.sh": "autoscaling",
   "cert-manager.io": "networking",
   "elasticsearch.k8s.elastic.co": "logs",
-  "cloud.redhat.com": "deployments",
+  "cloud.redhat.com": "clowder",
   "cyndi.cloud.redhat.com": "pipelines",
 };
 
@@ -100,21 +100,31 @@ export async function discoverPlugins(kc: k8s.KubeConfig): Promise<string[]> {
     for (const [group, plugin] of Object.entries(CRD_PLUGIN_MAP)) {
       if (groups.has(group)) plugins.add(plugin);
     }
-
-    try {
-      const apisApi = kc.makeApiClient(k8s.ApisApi);
-      const metricsCheck = await apisApi.getAPIVersions();
-      const hasMetrics = (metricsCheck.groups ?? []).some(
-        (g) => g.name === "metrics.k8s.io",
-      );
-      if (hasMetrics) plugins.add("observability");
-    } catch {
-      // metrics API not available
-    }
   } catch (err) {
     console.log(
       `K8s: CRD discovery failed for cluster, using defaults - ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+
+  try {
+    const apisApi = kc.makeApiClient(k8s.ApisApi);
+    const metricsCheck = await apisApi.getAPIVersions();
+    const hasMetrics = (metricsCheck.groups ?? []).some(
+      (g) => g.name === "metrics.k8s.io",
+    );
+    if (hasMetrics) plugins.add("observability");
+  } catch {
+    // API groups not available
+  }
+
+  // ConsolePlugin-based discovery (OpenShift)
+  try {
+    const consolePlugins = await listConsolePlugins(kc);
+    if (consolePlugins.some((cp) => cp.name === "clowder-plugin")) {
+      plugins.add("clowder");
+    }
+  } catch {
+    // ConsolePlugin listing not available
   }
 
   return Array.from(plugins);

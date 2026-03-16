@@ -22,7 +22,7 @@ import {
   ToolbarItem,
   Button,
 } from "@patternfly/react-core";
-import { BarsIcon, MoonIcon, SunIcon } from "@patternfly/react-icons";
+import { BarsIcon, BugIcon, MoonIcon, SunIcon } from "@patternfly/react-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppConfig } from "../contexts/AppConfigContext";
 import type { PluginPage } from "../contexts/AppConfigContext";
@@ -104,6 +104,15 @@ const AppMasthead = () => (
             <UserSwitcher />
           </ToolbarItem>
           <ToolbarGroup align={{ default: "alignEnd" }}>
+            <ToolbarItem>
+              <Button
+                variant="plain"
+                aria-label="Debug"
+                component={(props) => <Link to="/debug" {...props} />}
+              >
+                <BugIcon />
+              </Button>
+            </ToolbarItem>
             <ToolbarItem>
               <DarkModeToggle />
             </ToolbarItem>

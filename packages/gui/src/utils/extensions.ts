@@ -27,6 +27,7 @@ export type DeploymentDetailTabExtension = Extension<
     label: string;
     priority: number;
     component: CodeRef<ComponentType<DeploymentTabProps>>;
+    isApplicable?: CodeRef<(props: DeploymentTabProps) => boolean>;
   }
 >;
 

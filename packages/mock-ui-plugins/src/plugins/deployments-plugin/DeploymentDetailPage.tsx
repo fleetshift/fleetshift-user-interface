@@ -52,6 +52,7 @@ type DeploymentDetailTabExtension = Extension<
     label: string;
     priority: number;
     component: CodeRef<ComponentType<DeploymentTabProps>>;
+    isApplicable?: CodeRef<(props: DeploymentTabProps) => boolean>;
   }
 >;
 
@@ -80,6 +81,7 @@ interface ResolvedTab {
     label: string;
     priority: number;
     component: ComponentType<DeploymentTabProps>;
+    isApplicable?: (props: DeploymentTabProps) => boolean;
   };
 }
 
@@ -183,8 +185,10 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
     isDeploymentDetailTab,
   );
 
-  // Try to find deployment in store first
-  const storeDeploy = deployments.find((d) => d.id === deployId);
+  // Try to find deployment in store first — match by id, then fallback to name
+  const storeDeploy =
+    deployments.find((d) => d.id === deployId) ??
+    deployments.find((d) => d.name === deployId);
   const deploy = storeDeploy ?? fetchedDeploy;
 
   // Fallback: fetch from API if not in store
@@ -264,7 +268,16 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
         const pluginKey = pluginKeyFromName(ext.pluginName);
         const pluginClusterIds =
           api.fleetshift.getClusterIdsForPlugin(pluginKey);
-        return pluginClusterIds.includes(deploy.cluster_id);
+        if (!pluginClusterIds.includes(deploy.cluster_id)) return false;
+        if (ext.properties.isApplicable) {
+          return ext.properties.isApplicable({
+            deploymentId: deploy.id,
+            deploymentName: deploy.name,
+            namespace: deploy.namespace,
+            clusterId: deploy.cluster_id,
+          });
+        }
+        return true;
       })
       .sort(
         (a, b) =>

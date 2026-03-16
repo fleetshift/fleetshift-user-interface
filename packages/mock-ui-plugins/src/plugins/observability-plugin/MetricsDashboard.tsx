@@ -204,7 +204,8 @@ function useMetricsStore() {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/metrics`)
           .then((res) => (res.ok ? res.json() : null))
-          .then((data) => (data ? { ...data, clusterId: id } : null)),
+          .then((data) => (data ? { ...data, clusterId: id } : null))
+          .catch(() => null),
       ),
     ).then((results) => {
       for (const data of results) {

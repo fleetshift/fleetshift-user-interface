@@ -98,6 +98,24 @@ export async function createCluster(
   return res.json();
 }
 
+export async function updateClusterToken(
+  id: string,
+  token: string,
+): Promise<InstalledCluster> {
+  const res = await fetch(`${API_BASE}/clusters/${id}`, {
+    method: "PATCH",
+    headers: mutationHeaders(),
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      body.error || `Failed to update cluster token (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
 export async function deleteCluster(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/clusters/${id}`, {
     method: "DELETE",

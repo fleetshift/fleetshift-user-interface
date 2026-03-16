@@ -60,9 +60,7 @@ const Dashboard: React.FC<{ clusterIds: string[] }> = () => {
           for managing workloads, monitoring, and more.
         </EmptyStateBody>
         <EmptyStateFooter>
-          <Button
-            component={(props) => <Link to="/clusters/add" {...props} />}
-          >
+          <Button component={(props) => <Link to="/clusters/add" {...props} />}>
             Add Cluster
           </Button>
         </EmptyStateFooter>

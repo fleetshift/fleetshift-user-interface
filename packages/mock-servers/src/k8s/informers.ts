@@ -76,6 +76,16 @@ function createInformer(
     });
   });
   informer.on("error", (err) => {
+    const code =
+      typeof err === "object" && err !== null && "code" in err
+        ? (err as { code: number }).code
+        : undefined;
+    if (code === 403) {
+      console.log(
+        `[${clusterId}] ${resource} informer: 403 Forbidden — skipping (no cluster-scope permission)`,
+      );
+      return; // don't retry
+    }
     console.error(`[${clusterId}] ${resource} informer error:`, err);
     setTimeout(() => informer.start(), 5000);
   });
@@ -92,16 +102,18 @@ export async function startInformers(
   clusters: LiveCluster[],
   onEvent: K8sEventHandler,
 ) {
-  for (const cluster of clusters) {
-    const client = getClusterClient(cluster.id);
-    if (!client) {
-      console.error(
-        `K8s: No client for cluster "${cluster.id}", skipping informers`,
-      );
-      continue;
-    }
-    await startClusterInformers(client, onEvent);
-  }
+  await Promise.allSettled(
+    clusters.map(async (cluster) => {
+      const client = getClusterClient(cluster.id);
+      if (!client) {
+        console.error(
+          `K8s: No client for cluster "${cluster.id}", skipping informers`,
+        );
+        return;
+      }
+      await startClusterInformers(client, onEvent);
+    }),
+  );
 }
 
 async function startClusterInformers(
@@ -111,144 +123,111 @@ async function startClusterInformers(
   const { kc, core, apps, networking, metrics, live } = client;
   const clusterId = live.id;
 
-  // --- Pod informer ---
-  const podInformer = createInformer(
-    kc,
+  // Helper to start an informer with graceful 403 handling
+  async function tryStart(
+    name: string,
+    path: string,
+    listFn: () => Promise<k8s.KubernetesListObject<k8s.KubernetesObject>>,
+  ) {
+    try {
+      const inf = createInformer(kc, name, path, listFn, clusterId, onEvent);
+      await inf.start();
+      console.log(`[${clusterId}] informer started: ${name}`);
+    } catch (err) {
+      const code =
+        typeof err === "object" && err !== null && "code" in err
+          ? (err as { code: number }).code
+          : undefined;
+      if (code === 403) {
+        console.log(`[${clusterId}] informer skipped: ${name} (403 Forbidden)`);
+      } else {
+        console.log(
+          `[${clusterId}] informer skipped: ${name} (${err instanceof Error ? err.message : String(err)})`,
+        );
+      }
+    }
+  }
+
+  await tryStart(
     "pods",
     "/api/v1/pods",
     () =>
       core.listPodForAllNamespaces() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await podInformer.start();
-  console.log(`[${clusterId}] informer started: pods`);
-
-  // --- Node informer ---
-  const nodeInformer = createInformer(
-    kc,
+  await tryStart(
     "nodes",
     "/api/v1/nodes",
     () =>
       core.listNode() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await nodeInformer.start();
-  console.log(`[${clusterId}] informer started: nodes`);
-
-  // --- Namespace informer ---
-  const nsInformer = createInformer(
-    kc,
+  await tryStart(
     "namespaces",
     "/api/v1/namespaces",
     () =>
       core.listNamespace() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await nsInformer.start();
-  console.log(`[${clusterId}] informer started: namespaces`);
-
-  // --- Deployment informer ---
-  const depInformer = createInformer(
-    kc,
+  await tryStart(
     "deployments",
     "/apis/apps/v1/deployments",
     () =>
       apps.listDeploymentForAllNamespaces() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await depInformer.start();
-  console.log(`[${clusterId}] informer started: deployments`);
-
-  // --- Event informer ---
-  const eventInformer = createInformer(
-    kc,
+  await tryStart(
     "events",
     "/api/v1/events",
     () =>
       core.listEventForAllNamespaces() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await eventInformer.start();
-  console.log(`[${clusterId}] informer started: events`);
-
-  // --- Service informer ---
-  const svcInformer = createInformer(
-    kc,
+  await tryStart(
     "services",
     "/api/v1/services",
     () =>
       core.listServiceForAllNamespaces() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await svcInformer.start();
-  console.log(`[${clusterId}] informer started: services`);
-
-  // --- PersistentVolume informer ---
-  const pvInformer = createInformer(
-    kc,
+  await tryStart(
     "persistentvolumes",
     "/api/v1/persistentvolumes",
     () =>
       core.listPersistentVolume() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await pvInformer.start();
-  console.log(`[${clusterId}] informer started: persistentvolumes`);
-
-  // --- PersistentVolumeClaim informer ---
-  const pvcInformer = createInformer(
-    kc,
+  await tryStart(
     "persistentvolumeclaims",
     "/api/v1/persistentvolumeclaims",
     () =>
       core.listPersistentVolumeClaimForAllNamespaces() as Promise<
         k8s.KubernetesListObject<k8s.KubernetesObject>
       >,
-    clusterId,
-    onEvent,
   );
-  await pvcInformer.start();
-  console.log(`[${clusterId}] informer started: persistentvolumeclaims`);
+  await tryStart(
+    "ingresses",
+    "/apis/networking.k8s.io/v1/ingresses",
+    () =>
+      networking.listIngressForAllNamespaces() as Promise<
+        k8s.KubernetesListObject<k8s.KubernetesObject>
+      >,
+  );
 
-  // --- Ingress informer (may fail if networking API not available) ---
-  try {
-    const ingInformer = createInformer(
-      kc,
-      "ingresses",
-      "/apis/networking.k8s.io/v1/ingresses",
-      () =>
-        networking.listIngressForAllNamespaces() as Promise<
-          k8s.KubernetesListObject<k8s.KubernetesObject>
-        >,
-      clusterId,
-      onEvent,
-    );
-    await ingInformer.start();
-    console.log(`[${clusterId}] informer started: ingresses`);
-  } catch {
-    console.log(
-      `[${clusterId}] informer skipped: ingresses (API not available)`,
+  // Helper: check if an error is a 403 and stop the interval if so
+  function isForbidden(err: unknown): boolean {
+    return (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: number }).code === 403
     );
   }
 
@@ -258,6 +237,8 @@ async function startClusterInformers(
       `[${clusterId}] metrics client unavailable, skipping metrics polling`,
     );
   } else {
+    let metricsForbidden = false;
+
     async function pollMetrics() {
       try {
         const [podMetrics, nodeMetrics] = await Promise.all([
@@ -279,6 +260,14 @@ async function startClusterInformers(
           items: nodeMetrics.items,
         });
       } catch (err) {
+        if (isForbidden(err)) {
+          console.log(`[${clusterId}] metrics polling stopped: 403 Forbidden`);
+          metricsForbidden = true;
+          const interval = metricsIntervals.get(clusterId);
+          if (interval) clearInterval(interval);
+          metricsIntervals.delete(clusterId);
+          return;
+        }
         console.error(
           `[${clusterId}] metrics poll error:`,
           err instanceof Error ? err.message : err,
@@ -287,14 +276,20 @@ async function startClusterInformers(
     }
 
     await pollMetrics();
-    metricsIntervals.set(clusterId, setInterval(pollMetrics, METRICS_POLL_MS));
-    console.log(
-      `[${clusterId}] metrics polling started (every ${METRICS_POLL_MS / 1000}s)`,
-    );
+    if (!metricsForbidden) {
+      metricsIntervals.set(
+        clusterId,
+        setInterval(pollMetrics, METRICS_POLL_MS),
+      );
+      console.log(
+        `[${clusterId}] metrics polling started (every ${METRICS_POLL_MS / 1000}s)`,
+      );
+    }
   }
 
   // --- Alerts polling (derived from pod/node state) ---
   let previousAlertIds = new Set<string>();
+  let alertsForbidden = false;
 
   async function pollAlerts() {
     try {
@@ -343,6 +338,14 @@ async function startClusterInformers(
 
       previousAlertIds = currentIds;
     } catch (err) {
+      if (isForbidden(err)) {
+        console.log(`[${clusterId}] alerts polling stopped: 403 Forbidden`);
+        alertsForbidden = true;
+        const interval = alertsIntervals.get(clusterId);
+        if (interval) clearInterval(interval);
+        alertsIntervals.delete(clusterId);
+        return;
+      }
       console.error(
         `[${clusterId}] alerts poll error:`,
         err instanceof Error ? err.message : err,
@@ -351,10 +354,12 @@ async function startClusterInformers(
   }
 
   await pollAlerts();
-  alertsIntervals.set(clusterId, setInterval(pollAlerts, ALERTS_POLL_MS));
-  console.log(
-    `[${clusterId}] alerts polling started (every ${ALERTS_POLL_MS / 1000}s)`,
-  );
+  if (!alertsForbidden) {
+    alertsIntervals.set(clusterId, setInterval(pollAlerts, ALERTS_POLL_MS));
+    console.log(
+      `[${clusterId}] alerts polling started (every ${ALERTS_POLL_MS / 1000}s)`,
+    );
+  }
 }
 
 export function stopInformers() {

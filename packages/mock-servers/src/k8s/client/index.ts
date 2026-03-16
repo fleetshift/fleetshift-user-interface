@@ -2,7 +2,11 @@ export type { LiveCluster, ClusterConfig, ClusterClient } from "./types";
 export type { DiscoveryDetails, ConsolePluginInfo } from "./discovery";
 export { getDiscoveryDetails, listConsolePlugins } from "./discovery";
 export { connectCluster } from "./connect";
-export { addClusterToDb, removeClusterFromDb, loadClusterConfigsFromDb } from "./persistence";
+export {
+  addClusterToDb,
+  removeClusterFromDb,
+  loadClusterConfigsFromDb,
+} from "./persistence";
 export {
   initK8sClient,
   getLiveClusters,

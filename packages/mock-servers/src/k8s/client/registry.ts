@@ -112,9 +112,7 @@ export function getLiveClusters(): LiveCluster[] {
 }
 
 /** Get the ClusterClient for a specific cluster ID */
-export function getClusterClient(
-  clusterId: string,
-): ClusterClient | undefined {
+export function getClusterClient(clusterId: string): ClusterClient | undefined {
   return clusterClients.get(clusterId);
 }
 

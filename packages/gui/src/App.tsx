@@ -12,6 +12,7 @@ import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
 import { subscribe as eventBusSubscribe } from "./hooks/useInvalidationSocket";
 import { PluginPage } from "./pages/PluginPage";
 import { AddClusterPage } from "./pages/ClusterListPage";
+import { DebugPage } from "./pages/DebugPage";
 
 const API_BASE = "http://localhost:4000/api/v1";
 
@@ -71,6 +72,9 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
           installedRef.current
             .filter((c) => c.plugins.includes(pluginKey))
             .map((c) => c.id),
+        getClusterName: (clusterId: string) =>
+          installedRef.current.find((c) => c.id === clusterId)?.name ??
+          clusterId,
         onClustersChange: (fn: () => void) => {
           clusterListenersRef.current.add(fn);
           return () => {
@@ -149,6 +153,7 @@ const AppRoutes = () => {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/clusters/add" element={<AddClusterPage />} />
+        <Route path="/debug" element={<DebugPage />} />
         {sortedPages.map((page) => (
           <Route
             key={page.id}

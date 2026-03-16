@@ -40,9 +40,7 @@ export function removeClusterFromDb(id: string): void {
 /** Load cluster configs from the database */
 export function loadClusterConfigsFromDb(): ClusterConfig[] {
   const db = getDb();
-  const rows = db
-    .prepare("SELECT * FROM cluster_configs")
-    .all() as Array<{
+  const rows = db.prepare("SELECT * FROM cluster_configs").all() as Array<{
     id: string;
     name: string;
     type: "kubeconfig" | "token";

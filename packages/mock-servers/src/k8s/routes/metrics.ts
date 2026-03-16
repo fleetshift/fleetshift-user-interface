@@ -22,8 +22,8 @@ export function metricsRoutes(clusterMap: ClusterMap): Router {
       }
       const core = client.core;
       const [podResponse, nodeResponse] = await Promise.all([
-        core.listPodForAllNamespaces(),
-        core.listNode(),
+        core.listPodForAllNamespaces().catch(() => ({ items: [] })),
+        core.listNode().catch(() => ({ items: [] })),
       ]);
 
       const pods = podResponse.items ?? [];

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
+  Alert,
   Breadcrumb,
   BreadcrumbItem,
   Button,
@@ -13,6 +14,8 @@ import {
   DescriptionListDescription,
   Flex,
   FlexItem,
+  Form,
+  FormGroup,
   Grid,
   GridItem,
   Icon,
@@ -23,6 +26,7 @@ import {
   ModalFooter,
   ModalHeader,
   Spinner,
+  TextInput,
   Title,
 } from "@patternfly/react-core";
 import {
@@ -84,6 +88,11 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [showUpdateToken, setShowUpdateToken] = useState(false);
+  const [newToken, setNewToken] = useState("");
+  const [updatingToken, setUpdatingToken] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [tokenSuccess, setTokenSuccess] = useState(false);
 
   useEffect(() => {
     if (!clusterId) return;
@@ -107,6 +116,36 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
       navigate("/clusters");
     } catch {
       setDisconnecting(false);
+    }
+  };
+
+  const handleUpdateToken = async () => {
+    if (!clusterId || !newToken.trim()) return;
+    setUpdatingToken(true);
+    setTokenError(null);
+    setTokenSuccess(false);
+    try {
+      const res = await fetch(`${apiBase}/clusters/${clusterId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: newToken }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed (${res.status})`);
+      }
+      const updated = await res.json();
+      setCluster(updated);
+      setTokenSuccess(true);
+      setTimeout(() => {
+        setShowUpdateToken(false);
+        setNewToken("");
+        setTokenSuccess(false);
+      }, 1500);
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUpdatingToken(false);
     }
   };
 
@@ -194,12 +233,27 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
               </Flex>
             </FlexItem>
             <FlexItem align={{ default: "alignRight" }}>
-              <Button
-                variant="danger"
-                onClick={() => setShowDisconnect(true)}
-              >
-                Disconnect
-              </Button>
+              <Flex gap={{ default: "gapSm" }}>
+                {isOpenShift && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowUpdateToken(true);
+                      setTokenError(null);
+                      setTokenSuccess(false);
+                      setNewToken("");
+                    }}
+                  >
+                    Update Token
+                  </Button>
+                )}
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDisconnect(true)}
+                >
+                  Disconnect
+                </Button>
+              </Flex>
             </FlexItem>
           </Flex>
         </CardBody>
@@ -228,6 +282,63 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
             variant="link"
             onClick={() => setShowDisconnect(false)}
             isDisabled={disconnecting}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        isOpen={showUpdateToken}
+        onClose={() => setShowUpdateToken(false)}
+        variant="small"
+      >
+        <ModalHeader
+          title="Update bearer token"
+          description={`Provide a new bearer token for "${cluster.name}". The cluster will be reconnected.`}
+        />
+        <ModalBody>
+          {tokenError && (
+            <Alert
+              variant="danger"
+              isInline
+              title={tokenError}
+              style={{ marginBottom: "var(--pf-t--global--spacer--md)" }}
+            />
+          )}
+          {tokenSuccess && (
+            <Alert
+              variant="success"
+              isInline
+              title="Token updated successfully. Reconnected."
+              style={{ marginBottom: "var(--pf-t--global--spacer--md)" }}
+            />
+          )}
+          <Form>
+            <FormGroup label="Bearer Token" isRequired fieldId="new-token">
+              <TextInput
+                id="new-token"
+                type="password"
+                value={newToken}
+                onChange={(_e, val) => setNewToken(val)}
+                isDisabled={updatingToken || tokenSuccess}
+              />
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={handleUpdateToken}
+            isLoading={updatingToken}
+            isDisabled={updatingToken || !newToken.trim() || tokenSuccess}
+          >
+            {updatingToken ? "Reconnecting..." : "Update & Reconnect"}
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => setShowUpdateToken(false)}
+            isDisabled={updatingToken}
           >
             Cancel
           </Button>
