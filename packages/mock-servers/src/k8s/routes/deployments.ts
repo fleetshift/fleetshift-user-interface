@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAppsApi } from "../client";
+import { getClusterClient } from "../client";
 import { transformDeployment } from "../transforms";
 import { requireCluster, k8sError, type ClusterMap } from "../utils";
 
@@ -10,7 +10,12 @@ export function deploymentRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const apps = getAppsApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const apps = client.apps;
       const depResponse = await apps.listDeploymentForAllNamespaces();
       const result = (depResponse.items ?? []).map((dep) =>
         transformDeployment(dep, clusterId),

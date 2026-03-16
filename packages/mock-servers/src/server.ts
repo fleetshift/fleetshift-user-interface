@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";
@@ -9,7 +10,7 @@ import { initCliPluginRegistryWatcher } from "./cliPluginRegistry";
 import { attachWebSocket, broadcastToAuthenticated } from "./ws";
 import { startInformers } from "./k8s/informers";
 import { startLogStreaming, handlePodEvent } from "./k8s/logStreamer";
-import { initK8sClient } from "./k8s/client";
+import { initK8sClient, getAllClusterClients } from "./k8s/client";
 import type { LiveCluster } from "./k8s/client";
 import { createK8sRouter } from "./k8s/routes";
 import mockRoutes from "./routes/mock";
@@ -35,11 +36,17 @@ async function start() {
   }
 
   if (MODE === "live") {
-    discoveredClusters = await initK8sClient();
+    discoveredClusters = await initK8sClient((updatedClusters) => {
+      // Hot-reload callback when clusters.yaml changes
+      setLiveClusters(updatedClusters);
+      console.log(
+        `K8s: Cluster config reloaded — ${updatedClusters.length} cluster(s) active`,
+      );
+    });
 
     if (discoveredClusters.length === 0) {
       console.error(
-        "MODE=live but no Kubernetes cluster is reachable. Start minikube or switch to MODE=mock.",
+        "MODE=live but no Kubernetes cluster is reachable. Check clusters.yaml or switch to MODE=mock.",
       );
       process.exit(1);
     }
@@ -102,21 +109,21 @@ async function start() {
 
     // Start K8s informers after WS is ready (live mode only)
     if (MODE === "live" && discoveredClusters.length > 0) {
-      const clusterId = discoveredClusters[0]?.id ?? "unknown";
+      // Start informers for all connected clusters
+      const clients = getAllClusterClients();
+      for (const client of clients) {
+        startInformers([client.live], (event) => {
+          broadcastToAuthenticated(event);
 
-      startInformers(discoveredClusters, (event) => {
-        broadcastToAuthenticated(event);
+          if (event.type === "k8s" && event.resource === "pods") {
+            handlePodEvent(event.verb, event.object);
+          }
+        });
 
-        // Pipe pod events to log streamer so it can start/stop streams
-        if (event.type === "k8s" && event.resource === "pods") {
-          handlePodEvent(event.verb, event.object);
-        }
-      });
-
-      // Start log streaming (follows pod logs via K8s API)
-      startLogStreaming(clusterId, (logEvent) => {
-        broadcastToAuthenticated(logEvent);
-      });
+        startLogStreaming(client.live.id, (logEvent) => {
+          broadcastToAuthenticated(logEvent);
+        });
+      }
     }
   });
 }

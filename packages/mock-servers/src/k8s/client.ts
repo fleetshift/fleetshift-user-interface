@@ -1,10 +1,12 @@
 import * as k8s from "@kubernetes/client-node";
+import * as fs from "fs";
+import * as path from "path";
+import * as yaml from "js-yaml";
+import chokidar, { FSWatcher } from "chokidar";
 
-let coreApi: k8s.CoreV1Api | null = null;
-let appsApi: k8s.AppsV1Api | null = null;
-let networkingApi: k8s.NetworkingV1Api | null = null;
-let metricsClient: k8s.Metrics | null = null;
-let kubeConfig: k8s.KubeConfig | null = null;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface LiveCluster {
   id: string;
@@ -14,10 +16,39 @@ export interface LiveCluster {
   plugins: string[];
 }
 
-/**
- * Map CRD API groups to FleetShift plugin keys.
- * "core" and "nodes" are always present (built-in k8s resources).
- */
+export interface ClusterConfig {
+  id: string;
+  name: string;
+  type: "kubeconfig" | "token";
+  /** For type: kubeconfig — the kubeconfig context name */
+  context?: string;
+  /** For type: token — the K8s API server URL */
+  server?: string;
+  /** For type: token — env var name holding the bearer token */
+  tokenEnv?: string;
+  /** Skip TLS verification */
+  skipTLSVerify?: boolean;
+}
+
+interface ClustersYaml {
+  clusters: ClusterConfig[];
+}
+
+/** Runtime state for a connected cluster */
+export interface ClusterClient {
+  config: ClusterConfig;
+  kc: k8s.KubeConfig;
+  core: k8s.CoreV1Api;
+  apps: k8s.AppsV1Api;
+  networking: k8s.NetworkingV1Api;
+  metrics: k8s.Metrics | null;
+  live: LiveCluster;
+}
+
+// ---------------------------------------------------------------------------
+// CRD → plugin discovery
+// ---------------------------------------------------------------------------
+
 const CRD_PLUGIN_MAP: Record<string, string> = {
   "monitoring.coreos.com": "observability",
   "kafka.strimzi.io": "pipelines",
@@ -29,106 +60,6 @@ const CRD_PLUGIN_MAP: Record<string, string> = {
 };
 
 const ALWAYS_PLUGINS = ["core", "nodes", "storage", "events", "alerts"];
-
-/**
- * Try to initialize the k8s client from the default kubeconfig.
- * Returns the list of discovered clusters, or an empty array if k8s is unavailable.
- */
-export async function initK8sClient(): Promise<LiveCluster[]> {
-  try {
-    const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
-
-    const contexts = kc.getContexts();
-    if (contexts.length === 0) {
-      console.log("K8s: No contexts found in kubeconfig");
-      return [];
-    }
-
-    // Skip TLS verification when running in Docker (cert SANs won't match host.docker.internal)
-    if (process.env.K8S_TLS_INSECURE === "1") {
-      for (const cluster of kc.clusters) {
-        (cluster as { skipTLSVerify: boolean }).skipTLSVerify = true;
-      }
-    }
-
-    // Use current context
-    const currentContext = kc.getCurrentContext();
-    kc.setCurrentContext(currentContext);
-
-    const core = kc.makeApiClient(k8s.CoreV1Api);
-    const apps = kc.makeApiClient(k8s.AppsV1Api);
-    const networking = kc.makeApiClient(k8s.NetworkingV1Api);
-
-    // Verify connectivity
-    const versionApi = kc.makeApiClient(k8s.VersionApi);
-    const versionInfo = await versionApi.getCode();
-    const version = `${versionInfo.major}.${versionInfo.minor}`;
-
-    coreApi = core;
-    appsApi = apps;
-    networkingApi = networking;
-    kubeConfig = kc;
-
-    try {
-      metricsClient = new k8s.Metrics(kc);
-    } catch {
-      console.log("K8s: Metrics client unavailable");
-    }
-
-    const clusterName = kc.getCurrentCluster()?.name ?? currentContext;
-
-    // Discover installed plugins from CRDs
-    const plugins = await discoverPlugins(kc);
-
-    console.log(
-      `K8s: Connected to ${clusterName} (v${version}) via context "${currentContext}"`,
-    );
-    console.log(`K8s: Discovered plugins: ${plugins.join(", ")}`);
-
-    return [
-      {
-        id: currentContext,
-        name: clusterName,
-        version,
-        context: currentContext,
-        plugins,
-      },
-    ];
-  } catch (err) {
-    console.log(
-      `K8s: Not available - ${err instanceof Error ? err.message : String(err)}`,
-    );
-    return [];
-  }
-}
-
-export function getCoreApi(): k8s.CoreV1Api {
-  if (!coreApi) throw new Error("K8s client not initialized");
-  return coreApi;
-}
-
-export function getAppsApi(): k8s.AppsV1Api {
-  if (!appsApi) throw new Error("K8s client not initialized");
-  return appsApi;
-}
-
-export function getNetworkingApi(): k8s.NetworkingV1Api {
-  if (!networkingApi) throw new Error("K8s client not initialized");
-  return networkingApi;
-}
-
-export function getMetricsClient(): k8s.Metrics | null {
-  return metricsClient;
-}
-
-export function getKubeConfig(): k8s.KubeConfig | null {
-  return kubeConfig;
-}
-
-export function isK8sAvailable(): boolean {
-  return coreApi !== null;
-}
 
 async function discoverPlugins(kc: k8s.KubeConfig): Promise<string[]> {
   const plugins = new Set(ALWAYS_PLUGINS);
@@ -144,29 +75,275 @@ async function discoverPlugins(kc: k8s.KubeConfig): Promise<string[]> {
     }
 
     for (const [group, plugin] of Object.entries(CRD_PLUGIN_MAP)) {
-      if (groups.has(group)) {
-        plugins.add(plugin);
-      }
+      if (groups.has(group)) plugins.add(plugin);
     }
 
-    // Check for metrics-server availability
     try {
       const apisApi = kc.makeApiClient(k8s.ApisApi);
       const metricsCheck = await apisApi.getAPIVersions();
       const hasMetrics = (metricsCheck.groups ?? []).some(
         (g) => g.name === "metrics.k8s.io",
       );
-      if (hasMetrics) {
-        plugins.add("observability");
-      }
+      if (hasMetrics) plugins.add("observability");
     } catch {
       // metrics API not available
     }
   } catch (err) {
     console.log(
-      `K8s: CRD discovery failed, using default plugins - ${err instanceof Error ? err.message : String(err)}`,
+      `K8s: CRD discovery failed for cluster, using defaults - ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
   return Array.from(plugins);
+}
+
+// ---------------------------------------------------------------------------
+// Cluster registry (multi-cluster)
+// ---------------------------------------------------------------------------
+
+const clusterClients = new Map<string, ClusterClient>();
+let configWatcher: FSWatcher | null = null;
+let onClustersChanged: ((clusters: LiveCluster[]) => void) | null = null;
+
+function getConfigPath(): string {
+  return path.resolve(
+    typeof __dirname === "string" ? __dirname : process.cwd(),
+    "../../clusters.yaml",
+  );
+}
+
+function loadClustersYaml(): ClusterConfig[] {
+  const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) {
+    console.log(`K8s: No clusters.yaml found at ${configPath}`);
+    return [];
+  }
+
+  const content = fs.readFileSync(configPath, "utf-8");
+  const parsed = yaml.load(content) as ClustersYaml;
+  return parsed?.clusters ?? [];
+}
+
+function buildKubeConfigForCluster(cfg: ClusterConfig): k8s.KubeConfig {
+  const kc = new k8s.KubeConfig();
+
+  if (cfg.type === "kubeconfig") {
+    kc.loadFromDefault();
+    if (cfg.context) {
+      kc.setCurrentContext(cfg.context);
+    }
+  } else if (cfg.type === "token") {
+    const token = cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined;
+    if (!token) {
+      throw new Error(
+        `Token env var ${cfg.tokenEnv} is not set for cluster "${cfg.name}"`,
+      );
+    }
+
+    kc.loadFromOptions({
+      clusters: [
+        {
+          name: cfg.id,
+          server: cfg.server!,
+          skipTLSVerify: cfg.skipTLSVerify ?? false,
+        },
+      ],
+      users: [{ name: `${cfg.id}-user`, token }],
+      contexts: [
+        {
+          name: cfg.id,
+          cluster: cfg.id,
+          user: `${cfg.id}-user`,
+        },
+      ],
+      currentContext: cfg.id,
+    });
+  }
+
+  // Global TLS skip (e.g. Docker)
+  if (cfg.skipTLSVerify || process.env.K8S_TLS_INSECURE === "1") {
+    for (const cluster of kc.clusters) {
+      (cluster as { skipTLSVerify: boolean }).skipTLSVerify = true;
+    }
+  }
+
+  return kc;
+}
+
+async function connectCluster(
+  cfg: ClusterConfig,
+): Promise<ClusterClient | null> {
+  const label = `${cfg.name ?? cfg.id} (${cfg.type})`;
+  console.log(`K8s: ── ${label} ──`);
+
+  if (cfg.type === "token") {
+    const tokenVal = cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined;
+    if (!tokenVal) {
+      console.log(`K8s:   token:   ✗ ${cfg.tokenEnv} is NOT set`);
+      return null;
+    }
+    console.log(
+      `K8s:   token:   ✓ ${cfg.tokenEnv} (${tokenVal.slice(0, 12)}…)`,
+    );
+    console.log(`K8s:   server:  ${cfg.server}`);
+  } else {
+    console.log(`K8s:   context: ${cfg.context ?? "(default)"}`);
+  }
+
+  try {
+    const kc = buildKubeConfigForCluster(cfg);
+
+    // Verify connectivity
+    const versionApi = kc.makeApiClient(k8s.VersionApi);
+    const versionInfo = await versionApi.getCode();
+    const version = `${versionInfo.major}.${versionInfo.minor}`;
+    console.log(`K8s:   reach:   ✓ v${version}`);
+
+    const core = kc.makeApiClient(k8s.CoreV1Api);
+    const apps = kc.makeApiClient(k8s.AppsV1Api);
+    const networking = kc.makeApiClient(k8s.NetworkingV1Api);
+
+    let metrics: k8s.Metrics | null = null;
+    try {
+      metrics = new k8s.Metrics(kc);
+    } catch {
+      // metrics not available
+    }
+
+    const plugins = await discoverPlugins(kc);
+    const clusterName = cfg.name ?? kc.getCurrentCluster()?.name ?? cfg.id;
+
+    const live: LiveCluster = {
+      id: cfg.id,
+      name: clusterName,
+      version,
+      context: cfg.context ?? cfg.id,
+      plugins,
+    };
+
+    console.log(
+      `K8s:   plugins: ${plugins.join(", ")}`,
+    );
+
+    return { config: cfg, kc, core, apps, networking, metrics, live };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`K8s:   reach:   ✗ ${msg}`);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize all clusters from clusters.yaml.
+ * Starts a chokidar watcher on the config file for hot-reload.
+ */
+export async function initK8sClient(
+  onChange?: (clusters: LiveCluster[]) => void,
+): Promise<LiveCluster[]> {
+  onClustersChanged = onChange ?? null;
+
+  const configs = loadClustersYaml();
+  if (configs.length === 0) {
+    console.log("K8s: No clusters configured");
+    return [];
+  }
+
+  const results = await Promise.all(configs.map(connectCluster));
+  for (const client of results) {
+    if (client) clusterClients.set(client.live.id, client);
+  }
+
+  // Watch for config changes
+  startConfigWatcher();
+
+  return getLiveClusters();
+}
+
+function startConfigWatcher() {
+  const configPath = getConfigPath();
+  if (configWatcher) return;
+
+  configWatcher = chokidar.watch(configPath, { ignoreInitial: true });
+  configWatcher.on("change", async () => {
+    console.log("K8s: clusters.yaml changed — reloading...");
+    await reloadClusters();
+  });
+}
+
+async function reloadClusters() {
+  const configs = loadClustersYaml();
+  const currentIds = new Set(clusterClients.keys());
+  const newIds = new Set(configs.map((c) => c.id));
+
+  // Remove clusters no longer in config
+  for (const id of currentIds) {
+    if (!newIds.has(id)) {
+      console.log(`K8s: Removing cluster "${id}"`);
+      clusterClients.delete(id);
+    }
+  }
+
+  // Add or update clusters
+  for (const cfg of configs) {
+    if (!clusterClients.has(cfg.id)) {
+      const client = await connectCluster(cfg);
+      if (client) clusterClients.set(client.live.id, client);
+    }
+  }
+
+  if (onClustersChanged) {
+    onClustersChanged(getLiveClusters());
+  }
+}
+
+/** Get all connected LiveCluster descriptors */
+export function getLiveClusters(): LiveCluster[] {
+  return Array.from(clusterClients.values()).map((c) => c.live);
+}
+
+/** Get the ClusterClient for a specific cluster ID */
+export function getClusterClient(clusterId: string): ClusterClient | undefined {
+  return clusterClients.get(clusterId);
+}
+
+/** Get all ClusterClients */
+export function getAllClusterClients(): ClusterClient[] {
+  return Array.from(clusterClients.values());
+}
+
+// Convenience getters (use first connected cluster for backward compat)
+export function getCoreApi(): k8s.CoreV1Api {
+  const first = clusterClients.values().next().value;
+  if (!first) throw new Error("K8s client not initialized");
+  return first.core;
+}
+
+export function getAppsApi(): k8s.AppsV1Api {
+  const first = clusterClients.values().next().value;
+  if (!first) throw new Error("K8s client not initialized");
+  return first.apps;
+}
+
+export function getNetworkingApi(): k8s.NetworkingV1Api {
+  const first = clusterClients.values().next().value;
+  if (!first) throw new Error("K8s client not initialized");
+  return first.networking;
+}
+
+export function getMetricsClient(): k8s.Metrics | null {
+  const first = clusterClients.values().next().value;
+  return first?.metrics ?? null;
+}
+
+export function getKubeConfig(): k8s.KubeConfig | null {
+  const first = clusterClients.values().next().value;
+  return first?.kc ?? null;
+}
+
+export function isK8sAvailable(): boolean {
+  return clusterClients.size > 0;
 }

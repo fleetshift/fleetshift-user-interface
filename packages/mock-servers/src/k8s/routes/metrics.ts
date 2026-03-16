@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi, getMetricsClient } from "../client";
+import { getClusterClient } from "../client";
 import {
   requireCluster,
   k8sError,
@@ -15,7 +15,12 @@ export function metricsRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const [podResponse, nodeResponse] = await Promise.all([
         core.listPodForAllNamespaces(),
         core.listNode(),
@@ -26,7 +31,7 @@ export function metricsRoutes(clusterMap: ClusterMap): Router {
 
       const podCpuMap = new Map<string, number>();
       const podMemMap = new Map<string, number>();
-      const metrics = getMetricsClient();
+      const metrics = client.metrics;
       if (metrics) {
         try {
           const pm = await metrics.getPodMetrics();

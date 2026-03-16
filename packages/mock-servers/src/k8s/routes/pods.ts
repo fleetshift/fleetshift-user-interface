@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi, getMetricsClient, type LiveCluster } from "../client";
+import { getClusterClient, type LiveCluster } from "../client";
 import { transformPod } from "../transforms";
 import {
   requireCluster,
@@ -20,14 +20,19 @@ export function podRoutes(
     if (!clusterId) return;
     const nsFilter = req.query.namespace as string | undefined;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const podResponse = nsFilter
         ? await core.listNamespacedPod({ namespace: nsFilter })
         : await core.listPodForAllNamespaces();
       const pods = podResponse.items ?? [];
 
       const podMetrics = new Map<string, { cpu: number; memory: number }>();
-      const metrics = getMetricsClient();
+      const metrics = client.metrics;
       if (metrics) {
         try {
           const metricsResponse = nsFilter
@@ -63,11 +68,14 @@ export function podRoutes(
 
   router.get("/pods/aggregate", async (_req, res) => {
     try {
-      const core = getCoreApi();
-      const podResponse = await core.listPodForAllNamespaces();
-      const pods = podResponse.items ?? [];
-
+      const results = [];
       for (const cluster of liveClusters) {
+        const client = getClusterClient(cluster.id);
+        if (!client) continue;
+        const core = client.core;
+        const podResponse = await core.listPodForAllNamespaces();
+        const pods = podResponse.items ?? [];
+
         const total = pods.length;
         const running = pods.filter(
           (p) => p.status?.phase === "Running",
@@ -82,20 +90,17 @@ export function podRoutes(
           );
         }).length;
 
-        res.json([
-          {
-            cluster_id: cluster.id,
-            total,
-            running,
-            pending,
-            failing,
-            avg_cpu: 0,
-            avg_memory: 0,
-          },
-        ]);
-        return;
+        results.push({
+          cluster_id: cluster.id,
+          total,
+          running,
+          pending,
+          failing,
+          avg_cpu: 0,
+          avg_memory: 0,
+        });
       }
-      res.json([]);
+      res.json(results);
     } catch (err) {
       k8sError(res, err);
     }

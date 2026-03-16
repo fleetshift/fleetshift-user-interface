@@ -39,6 +39,7 @@ export async function jwtAuthMiddleware(
 ): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
+    console.warn(`Auth: ${req.method} ${req.path} — 401 (no Bearer token)`);
     res.status(401).json({ error: "Missing or invalid Authorization header" });
     return;
   }
@@ -55,6 +56,8 @@ export async function jwtAuthMiddleware(
     const username = kc.preferred_username ?? "unknown";
     const roles = kc.realm_access?.roles ?? [];
 
+    console.log(`Auth: ${req.method} ${req.path} — user=${username} roles=[${roles.join(",")}]`);
+
     req.user = { username, roles };
 
     // Auto-create user in DB if not present
@@ -68,10 +71,12 @@ export async function jwtAuthMiddleware(
       db.prepare(
         "INSERT INTO users (id, username, display_name, role, nav_layout, canvas_pages) VALUES (?, ?, ?, ?, ?, ?)",
       ).run(`user-${username}`, username, displayName, role, "[]", "[]");
+      console.log(`Auth: auto-created user "${username}" (${role})`);
     }
 
     next();
-  } catch {
+  } catch (err) {
+    console.warn(`Auth: ${req.method} ${req.path} — 401 (${err instanceof Error ? err.message : "unknown error"})`);
     res.status(401).json({ error: "Invalid or expired token" });
   }
 }

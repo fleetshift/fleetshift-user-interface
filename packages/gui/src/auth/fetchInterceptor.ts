@@ -5,6 +5,9 @@ const _originalFetch = window.fetch;
 
 const API_ORIGIN = "http://localhost:4000";
 
+/** Endpoints where a 401 means the session is truly expired and we must re-login. */
+const AUTH_ENDPOINTS = ["/api/v1/auth/", "/api/v1/users/"];
+
 export function setAccessToken(token: string | undefined) {
   _token = token;
 }
@@ -50,7 +53,13 @@ export function installFetchInterceptor() {
 
     return _originalFetch(input, { ...init, headers }).then((response) => {
       if (response.status === 401 && _onUnauthorized) {
-        _onUnauthorized();
+        const pathname = new URL(url, window.location.origin).pathname;
+        const isAuthEndpoint = AUTH_ENDPOINTS.some((prefix) =>
+          pathname.startsWith(prefix),
+        );
+        if (isAuthEndpoint) {
+          _onUnauthorized();
+        }
       }
       return response;
     });

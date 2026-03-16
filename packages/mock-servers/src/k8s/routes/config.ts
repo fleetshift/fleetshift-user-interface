@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi } from "../client";
+import { getClusterClient } from "../client";
 import { requireCluster, k8sError, type ClusterMap } from "../utils";
 
 export function configRoutes(clusterMap: ClusterMap): Router {
@@ -9,7 +9,12 @@ export function configRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const cmResponse = await core.listConfigMapForAllNamespaces();
       const result = (cmResponse.items ?? []).map((cm) => ({
         id: cm.metadata?.uid ?? `${clusterId}-cm-${cm.metadata?.name}`,
@@ -28,7 +33,12 @@ export function configRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const secretResponse = await core.listSecretForAllNamespaces();
       const result = (secretResponse.items ?? []).map((s) => ({
         id: s.metadata?.uid ?? `${clusterId}-secret-${s.metadata?.name}`,

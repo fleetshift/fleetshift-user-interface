@@ -1,6 +1,5 @@
 import { Router } from "express";
-import * as k8s from "@kubernetes/client-node";
-import { getCoreApi, getKubeConfig } from "../client";
+import { getClusterClient } from "../client";
 import { transformService } from "../transforms";
 import { requireCluster, k8sError, type ClusterMap } from "../utils";
 
@@ -11,7 +10,12 @@ export function serviceRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const svcResponse = await core.listServiceForAllNamespaces();
       const result = (svcResponse.items ?? []).map((svc) =>
         transformService(svc, clusterId),
@@ -26,12 +30,12 @@ export function serviceRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const kc = getKubeConfig();
-      if (!kc) {
-        res.json([]);
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
         return;
       }
-      const netApi = kc.makeApiClient(k8s.NetworkingV1Api);
+      const netApi = client.networking;
       const ingResponse = await netApi.listIngressForAllNamespaces();
       const result = (ingResponse.items ?? []).map((ing) => {
         const name = ing.metadata?.name ?? "unknown";

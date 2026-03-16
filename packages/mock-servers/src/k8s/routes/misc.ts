@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi } from "../client";
+import { getClusterClient, type LiveCluster } from "../client";
 import {
   requireCluster,
   k8sError,
@@ -7,7 +7,6 @@ import {
   parseMemoryString,
   type ClusterMap,
 } from "../utils";
-import type { LiveCluster } from "../client";
 
 export function miscRoutes(
   clusterMap: ClusterMap,
@@ -53,7 +52,12 @@ export function miscRoutes(
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const podResponse = await core.listPodForAllNamespaces();
 
       const CPU_RATE = 0.048;

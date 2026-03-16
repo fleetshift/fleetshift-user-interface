@@ -1,0 +1,4 @@
+{
+  "watch": ["src", ".env", "clusters.yaml"],
+  "ext": "ts,json,yaml,env"
+}

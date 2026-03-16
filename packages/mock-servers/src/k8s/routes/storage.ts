@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi } from "../client";
+import { getClusterClient } from "../client";
 import { transformPV, transformPVC } from "../transforms";
 import { requireCluster, k8sError, type ClusterMap } from "../utils";
 
@@ -10,7 +10,12 @@ export function storageRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const pvResponse = await core.listPersistentVolume();
       const result = (pvResponse.items ?? []).map((pv) =>
         transformPV(pv, clusterId),
@@ -25,7 +30,12 @@ export function storageRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const pvcResponse =
         await core.listPersistentVolumeClaimForAllNamespaces();
       const result = (pvcResponse.items ?? []).map((pvc) =>

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi } from "../client";
+import { getClusterClient } from "../client";
 import { transformEvent } from "../transforms";
 import { requireCluster, k8sError, type ClusterMap } from "../utils";
 
@@ -10,7 +10,12 @@ export function eventRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const eventResponse = await core.listEventForAllNamespaces();
       const events = (eventResponse.items ?? [])
         .map((e) => transformEvent(e, clusterId))

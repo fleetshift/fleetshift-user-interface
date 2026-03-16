@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCoreApi, getMetricsClient } from "../client";
+import { getClusterClient } from "../client";
 import { transformNode } from "../transforms";
 import {
   requireCluster,
@@ -16,12 +16,17 @@ export function nodeRoutes(clusterMap: ClusterMap): Router {
     const clusterId = requireCluster(req, res, clusterMap);
     if (!clusterId) return;
     try {
-      const core = getCoreApi();
+      const client = getClusterClient(req.params.id);
+      if (!client) {
+        res.status(404).json({ error: "Cluster not found" });
+        return;
+      }
+      const core = client.core;
       const nodeResponse = await core.listNode();
       const nodes = nodeResponse.items ?? [];
 
       const nodeMetrics = new Map<string, { cpu: number; memory: number }>();
-      const metrics = getMetricsClient();
+      const metrics = client.metrics;
       if (metrics) {
         try {
           const metricsResponse = await metrics.getNodeMetrics();
