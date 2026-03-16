@@ -3,14 +3,20 @@ import {
   Card,
   CardBody,
   CardTitle,
+  Flex,
+  FlexItem,
   Grid,
   GridItem,
-  Progress,
+  Icon,
   Spinner,
   Title,
-  Content,
 } from "@patternfly/react-core";
-import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
+import {
+  CpuIcon,
+  MemoryIcon,
+  CubesIcon,
+  ServerIcon,
+} from "@patternfly/react-icons";
 import { createSharedStore } from "@scalprum/core";
 import { useGetState, useRemoteHook } from "@scalprum/react-core";
 import { useScalprum } from "@scalprum/react-core";
@@ -102,15 +108,12 @@ function getStore(): MetricsStore {
               clusterId: string;
               items: PodMetricItem[];
             };
-            // Merge: replace only this cluster's pods, keep others
             const podMetrics = { ...state.podMetrics };
-            // Remove stale entries for this cluster
             for (const key of Object.keys(podMetrics)) {
               if (key.startsWith(`${clusterId}/`)) {
                 delete podMetrics[key];
               }
             }
-            // Add fresh entries
             for (const item of items) {
               let cpu = 0;
               let mem = 0;
@@ -195,7 +198,6 @@ function useMetricsStore() {
 
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("observability");
 
-    // Fetch initial metrics + node capacities via REST so the page isn't blank
     Promise.all(
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/metrics`)
@@ -206,7 +208,6 @@ function useMetricsStore() {
       for (const data of results) {
         if (!data) continue;
         const clusterId = data.clusterId as string;
-        // Seed pod metrics from the REST response
         if (data.pods) {
           const items: PodMetricItem[] = data.pods.map(
             (p: {
@@ -229,7 +230,6 @@ function useMetricsStore() {
           );
           s.updateState("POD_METRICS", { clusterId, items });
         }
-        // Seed node capacities
         if (data.maxCpu || data.maxMemory) {
           s.updateState("NODES_INIT", {
             clusterId,
@@ -274,36 +274,60 @@ function useMetricsStore() {
   return state;
 }
 
-const LoadingCard: React.FC<{
-  title: string;
-  children: React.ReactNode;
-  loading: boolean;
-}> = ({ title, children, loading }) => (
-  <Card isFullHeight>
-    <CardTitle>
-      <Title headingLevel="h3" size="md">
-        {title}
-      </Title>
-    </CardTitle>
-    <CardBody>
-      {loading ? (
-        <div
-          style={{ display: "flex", justifyContent: "center", padding: "1rem" }}
-        >
-          <Spinner size="lg" />
-        </div>
-      ) : (
-        children
-      )}
-    </CardBody>
-  </Card>
+interface ClusterStats {
+  clusterId: string;
+  cpuUsage: number;
+  cpuCapacity: number;
+  memoryUsage: number;
+  memoryCapacity: number;
+  podCount: number;
+  nodeCount: number;
+}
+
+const StatBox: React.FC<{
+  value: string;
+  label: string;
+  icon: React.ReactNode;
+}> = ({ value, label, icon }) => (
+  <div
+    style={{
+      textAlign: "center",
+      padding: "var(--pf-t--global--spacer--md)",
+    }}
+  >
+    <div
+      style={{
+        marginBottom: "var(--pf-t--global--spacer--xs)",
+        color: "var(--pf-t--global--text--color--subtle)",
+      }}
+    >
+      <Icon size="md">{icon}</Icon>
+    </div>
+    <div
+      style={{
+        fontSize: "var(--pf-t--global--font--size--2xl)",
+        fontWeight: "var(--pf-t--global--font--weight--heading--default)",
+        lineHeight: 1.2,
+      }}
+    >
+      {value}
+    </div>
+    <div
+      style={{
+        fontSize: "var(--pf-t--global--font--size--sm)",
+        color: "var(--pf-t--global--text--color--subtle)",
+        marginTop: "var(--pf-t--global--spacer--xs)",
+      }}
+    >
+      {label}
+    </div>
+  </div>
 );
 
 const MetricsDashboard: React.FC = () => {
   const state = useMetricsStore();
   const loading = state.loading;
 
-  // Use pod store from core-plugin via remote hook for accurate pod count
   const { hookResult: podStoreResult } = useRemoteHook<{
     pods: Array<{
       id: string;
@@ -322,133 +346,167 @@ const MetricsDashboard: React.FC = () => {
     [state.podMetrics],
   );
 
-  const podCount = podStoreResult?.pods.length ?? podList.length;
-  const totalCpu = useMemo(
-    () => podList.reduce((s, p) => s + p.cpu, 0),
-    [podList],
-  );
-  const totalMemory = useMemo(
-    () => podList.reduce((s, p) => s + p.memory, 0),
-    [podList],
-  );
-
   const nodeList = useMemo(
     () => Object.values(state.nodeMetrics),
     [state.nodeMetrics],
   );
 
-  const maxCpu =
-    useMemo(
-      () => nodeList.reduce((s, n) => s + n.cpuCapacity, 0),
-      [nodeList],
-    ) || 1;
-  const maxMemory =
-    useMemo(
-      () => nodeList.reduce((s, n) => s + n.memoryCapacity, 0),
-      [nodeList],
-    ) || 1;
+  // Group metrics by cluster
+  const clusterStats = useMemo(() => {
+    const statsMap: Record<string, ClusterStats> = {};
 
-  const topCpu = useMemo(
-    () => [...podList].sort((a, b) => b.cpu - a.cpu).slice(0, 5),
-    [podList],
-  );
+    // Aggregate pod metrics per cluster
+    for (const pod of podList) {
+      if (!statsMap[pod.cluster]) {
+        statsMap[pod.cluster] = {
+          clusterId: pod.cluster,
+          cpuUsage: 0,
+          cpuCapacity: 0,
+          memoryUsage: 0,
+          memoryCapacity: 0,
+          podCount: 0,
+          nodeCount: 0,
+        };
+      }
+      statsMap[pod.cluster].cpuUsage += pod.cpu;
+      statsMap[pod.cluster].memoryUsage += pod.memory;
+      statsMap[pod.cluster].podCount += 1;
+    }
 
-  const topMemory = useMemo(
-    () => [...podList].sort((a, b) => b.memory - a.memory).slice(0, 5),
-    [podList],
-  );
+    // Override pod counts from core-plugin store if available
+    if (podStoreResult?.pods) {
+      const podsByCluster: Record<string, number> = {};
+      for (const pod of podStoreResult.pods) {
+        const clusterId = (pod as Record<string, unknown>).cluster_id as
+          | string
+          | undefined;
+        if (clusterId) {
+          podsByCluster[clusterId] = (podsByCluster[clusterId] ?? 0) + 1;
+        }
+      }
+      for (const [clusterId, count] of Object.entries(podsByCluster)) {
+        if (statsMap[clusterId]) {
+          statsMap[clusterId].podCount = count;
+        }
+      }
+    }
 
-  const cpuPercent = Math.round((totalCpu / maxCpu) * 100);
-  const memPercent = Math.round((totalMemory / maxMemory) * 100);
+    // Aggregate node metrics per cluster
+    for (const node of nodeList) {
+      if (!statsMap[node.cluster]) {
+        statsMap[node.cluster] = {
+          clusterId: node.cluster,
+          cpuUsage: 0,
+          cpuCapacity: 0,
+          memoryUsage: 0,
+          memoryCapacity: 0,
+          podCount: 0,
+          nodeCount: 0,
+        };
+      }
+      statsMap[node.cluster].cpuCapacity += node.cpuCapacity;
+      statsMap[node.cluster].memoryCapacity += node.memoryCapacity;
+      statsMap[node.cluster].nodeCount += 1;
+    }
+
+    return Object.values(statsMap).sort((a, b) =>
+      a.clusterId.localeCompare(b.clusterId),
+    );
+  }, [podList, nodeList, podStoreResult]);
+
+  const clusterCount = clusterStats.length;
+  const isSingleCluster = clusterCount === 1;
+
+  if (loading && clusterStats.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          padding: "var(--pf-t--global--spacer--2xl)",
+        }}
+      >
+        <Spinner size="xl" />
+      </div>
+    );
+  }
 
   return (
-    <Grid hasGutter>
-      <GridItem md={4} sm={12}>
-        <LoadingCard title="CPU Usage" loading={loading}>
-          <Content component="p" style={{ marginBottom: "0.5rem" }}>
-            {totalCpu.toFixed(2)} / {maxCpu} cores
-          </Content>
-          <Progress
-            value={cpuPercent}
-            title="CPU usage"
-            aria-label="CPU usage"
-          />
-        </LoadingCard>
-      </GridItem>
+    <div>
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        <FlexItem>
+          <Title headingLevel="h1">Observability</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            {clusterCount} cluster{clusterCount !== 1 ? "s" : ""}
+          </span>
+        </FlexItem>
+      </Flex>
 
-      <GridItem md={4} sm={12}>
-        <LoadingCard title="Memory Usage" loading={loading}>
-          <Content component="p" style={{ marginBottom: "0.5rem" }}>
-            {Math.round(totalMemory)} / {Math.round(maxMemory)} Mi
-          </Content>
-          <Progress
-            value={memPercent}
-            title="Memory usage"
-            aria-label="Memory usage"
-          />
-        </LoadingCard>
-      </GridItem>
-
-      <GridItem md={4} sm={12}>
-        <LoadingCard title="Pod Count" loading={loading}>
-          <div style={{ fontSize: "2.5rem", fontWeight: 700, lineHeight: 1.2 }}>
-            {podCount}
-          </div>
-        </LoadingCard>
-      </GridItem>
-
-      <GridItem md={6} sm={12}>
-        <LoadingCard title="Top CPU Consumers" loading={loading}>
-          <Table aria-label="Top CPU consumers" variant="compact">
-            <Thead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Cluster</Th>
-                <Th>Namespace</Th>
-                <Th>CPU (millicores)</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {topCpu.map((p) => (
-                <Tr key={`${p.cluster}/${p.namespace}/${p.name}`}>
-                  <Td dataLabel="Name">{p.name}</Td>
-                  <Td dataLabel="Cluster">{p.cluster}</Td>
-                  <Td dataLabel="Namespace">{p.namespace}</Td>
-                  <Td dataLabel="CPU (millicores)">
-                    {Math.round(p.cpu * 1000)}
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </LoadingCard>
-      </GridItem>
-
-      <GridItem md={6} sm={12}>
-        <LoadingCard title="Top Memory Consumers" loading={loading}>
-          <Table aria-label="Top memory consumers" variant="compact">
-            <Thead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Cluster</Th>
-                <Th>Namespace</Th>
-                <Th>Memory (Mi)</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {topMemory.map((p) => (
-                <Tr key={`${p.cluster}/${p.namespace}/${p.name}`}>
-                  <Td dataLabel="Name">{p.name}</Td>
-                  <Td dataLabel="Cluster">{p.cluster}</Td>
-                  <Td dataLabel="Namespace">{p.namespace}</Td>
-                  <Td dataLabel="Memory (Mi)">{Math.round(p.memory)}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </LoadingCard>
-      </GridItem>
-    </Grid>
+      <Grid hasGutter>
+        {clusterStats.map((stats) => (
+          <GridItem md={isSingleCluster ? 12 : 6} sm={12} key={stats.clusterId}>
+            <Card isFullHeight>
+              <CardTitle>
+                <Title headingLevel="h3" size="md">
+                  {stats.clusterId}
+                </Title>
+              </CardTitle>
+              <CardBody>
+                <Grid hasGutter>
+                  <GridItem span={6}>
+                    <StatBox
+                      value={`${stats.cpuUsage.toFixed(1)}/${stats.cpuCapacity || "\u2014"}`}
+                      label="CPU (cores)"
+                      icon={
+                        <CpuIcon color="var(--pf-t--global--color--brand--default)" />
+                      }
+                    />
+                  </GridItem>
+                  <GridItem span={6}>
+                    <StatBox
+                      value={`${(stats.memoryUsage / 1024).toFixed(1)}/${stats.memoryCapacity ? (stats.memoryCapacity / 1024).toFixed(1) : "\u2014"}`}
+                      label="Memory (GB)"
+                      icon={
+                        <MemoryIcon color="var(--pf-t--global--color--status--info--default)" />
+                      }
+                    />
+                  </GridItem>
+                  <GridItem span={6}>
+                    <StatBox
+                      value={String(stats.podCount)}
+                      label="Pods"
+                      icon={
+                        <CubesIcon color="var(--pf-t--global--color--status--success--default)" />
+                      }
+                    />
+                  </GridItem>
+                  <GridItem span={6}>
+                    <StatBox
+                      value={String(stats.nodeCount)}
+                      label="Nodes"
+                      icon={
+                        <ServerIcon color="var(--pf-t--global--text--color--subtle)" />
+                      }
+                    />
+                  </GridItem>
+                </Grid>
+              </CardBody>
+            </Card>
+          </GridItem>
+        ))}
+      </Grid>
+    </div>
   );
 };
 

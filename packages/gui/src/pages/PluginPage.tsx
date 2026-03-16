@@ -1,4 +1,9 @@
-import { Spinner, EmptyState, EmptyStateBody } from "@patternfly/react-core";
+import {
+  Spinner,
+  EmptyState,
+  EmptyStateBody,
+  Bullseye,
+} from "@patternfly/react-core";
 import { CubesIcon } from "@patternfly/react-icons";
 import { ScalprumComponent, useScalprum } from "@scalprum/react-core";
 import { useScope } from "../contexts/ScopeContext";
@@ -38,7 +43,11 @@ export const PluginPage = ({ scope, module, pluginKey }: PluginPageProps) => {
       key={`${scope}:${module}:${clusterIds.join(",")}`}
       scope={scope}
       module={module}
-      fallback={<Spinner size="xl" />}
+      fallback={
+        <Bullseye>
+          <Spinner size="xl" />
+        </Bullseye>
+      }
       ErrorComponent={
         <EmptyState
           icon={CubesIcon}

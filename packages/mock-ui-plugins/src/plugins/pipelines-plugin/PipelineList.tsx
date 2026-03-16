@@ -3,15 +3,20 @@ import {
   Bullseye,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Label,
+  Pagination,
   SearchInput,
   Spinner,
+  Title,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase } from "./api";
+import { useApiBase, fetchJson } from "./api";
+import { formatRelativeTime, formatDuration } from "@fleetshift/common";
 
 interface Pipeline {
   id: string;
@@ -23,7 +28,9 @@ interface Pipeline {
   stages: string[];
 }
 
-function statusColor(status: string): "green" | "red" | "blue" | "orange" {
+const PER_PAGE = 20;
+
+function statusColor(status: string): "green" | "red" | "blue" | "grey" {
   switch (status) {
     case "Succeeded":
       return "green";
@@ -32,42 +39,10 @@ function statusColor(status: string): "green" | "red" | "blue" | "orange" {
     case "Running":
       return "blue";
     case "Pending":
-      return "orange";
+      return "grey";
     default:
-      return "blue";
+      return "grey";
   }
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  if (mins < 60) {
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-  }
-  const hours = Math.floor(mins / 60);
-  const remainingMins = mins % 60;
-  if (remainingMins > 0) {
-    return `${hours}h ${remainingMins}m`;
-  }
-  return `${hours}h`;
-}
-
-function formatRelativeTime(startedAt: string): string {
-  const raw = startedAt.includes("T")
-    ? startedAt
-    : startedAt.replace(" ", "T") + "Z";
-  const started = new Date(raw);
-  const now = Date.now();
-  const diffMs = now - started.getTime();
-  if (diffMs < 0) return "just now";
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 interface PipelineListProps {
@@ -79,6 +54,7 @@ const PipelineList: React.FC<PipelineListProps> = ({ clusterIds }) => {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [loading, setLoading] = useState(true);
   const [nameFilter, setNameFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (clusterIds.length === 0) {
@@ -90,9 +66,9 @@ const PipelineList: React.FC<PipelineListProps> = ({ clusterIds }) => {
     setLoading(true);
     Promise.all(
       clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/pipelines`)
-          .then((res) => (res.ok ? res.json() : []))
-          .catch(() => []),
+        fetchJson<Pipeline[]>(`${apiBase}/clusters/${id}/pipelines`).catch(
+          () => [] as Pipeline[],
+        ),
       ),
     ).then((results) => {
       setPipelines(results.flat());
@@ -109,17 +85,46 @@ const PipelineList: React.FC<PipelineListProps> = ({ clusterIds }) => {
     [pipelines, nameFilter],
   );
 
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE),
+    [filtered, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [nameFilter]);
+
   if (loading) {
     return (
-      <Bullseye>
+      <Bullseye style={{ padding: "var(--pf-t--global--spacer--2xl) 0" }}>
         <Spinner />
       </Bullseye>
     );
   }
 
   return (
-    <>
-      <Toolbar clearAllFilters={() => setNameFilter("")}>
+    <div>
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        <FlexItem>
+          <Title headingLevel="h1">Pipelines</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            {pipelines.length} runs
+          </span>
+        </FlexItem>
+      </Flex>
+
+      <Toolbar>
         <ToolbarContent>
           <ToolbarItem>
             <SearchInput
@@ -127,6 +132,15 @@ const PipelineList: React.FC<PipelineListProps> = ({ clusterIds }) => {
               value={nameFilter}
               onChange={(_event, value) => setNameFilter(value)}
               onClear={() => setNameFilter("")}
+            />
+          </ToolbarItem>
+          <ToolbarItem variant="pagination" align={{ default: "alignEnd" }}>
+            <Pagination
+              itemCount={filtered.length}
+              perPage={PER_PAGE}
+              page={page}
+              onSetPage={(_e, p) => setPage(p)}
+              isCompact
             />
           </ToolbarItem>
         </ToolbarContent>
@@ -147,36 +161,48 @@ const PipelineList: React.FC<PipelineListProps> = ({ clusterIds }) => {
               <Th>Name</Th>
               <Th>Cluster</Th>
               <Th>Status</Th>
-              <Th>Started</Th>
               <Th>Duration</Th>
-              <Th>Stages</Th>
+              <Th>Started</Th>
             </Tr>
           </Thead>
           <Tbody>
-            {filtered.map((pipeline) => (
+            {paginated.map((pipeline) => (
               <Tr key={pipeline.id}>
-                <Td dataLabel="Name">{pipeline.name}</Td>
+                <Td dataLabel="Name">
+                  <span
+                    style={{
+                      fontWeight:
+                        "var(--pf-t--global--font--weight--heading--default)",
+                    }}
+                  >
+                    {pipeline.name}
+                  </span>
+                </Td>
                 <Td dataLabel="Cluster">{pipeline.cluster_id}</Td>
                 <Td dataLabel="Status">
-                  <Label color={statusColor(pipeline.status)}>
+                  <Label color={statusColor(pipeline.status)} isCompact>
                     {pipeline.status}
                   </Label>
-                </Td>
-                <Td dataLabel="Started">
-                  {formatRelativeTime(pipeline.started_at)}
                 </Td>
                 <Td dataLabel="Duration">
                   {formatDuration(pipeline.duration_seconds)}
                 </Td>
-                <Td dataLabel="Stages">
-                  <Label>{pipeline.stages.length} stages</Label>
+                <Td dataLabel="Started">
+                  <span
+                    style={{
+                      fontSize: "var(--pf-t--global--font--size--sm)",
+                      color: "var(--pf-t--global--text--color--subtle)",
+                    }}
+                  >
+                    {formatRelativeTime(pipeline.started_at)}
+                  </span>
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       )}
-    </>
+    </div>
   );
 };
 

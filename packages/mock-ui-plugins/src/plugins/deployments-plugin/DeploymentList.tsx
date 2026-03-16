@@ -1,15 +1,16 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Bullseye,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Label,
-  MenuToggle,
+  Pagination,
   SearchInput,
-  Select,
-  SelectList,
-  SelectOption,
   Spinner,
+  Title,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -17,29 +18,26 @@ import {
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { useDeploymentStore } from "./deploymentStore";
 
+const PER_PAGE = 20;
+
 const DeploymentList: React.FC = () => {
   const { deployments, loading } = useDeploymentStore();
   const [nameFilter, setNameFilter] = useState("");
-  const [nsFilter, setNsFilter] = useState<string | null>(null);
-  const [nsSelectOpen, setNsSelectOpen] = useState(false);
-
-  const namespaces = useMemo(
-    () => [...new Set(deployments.map((d) => d.namespace))].sort(),
-    [deployments],
-  );
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(
     () =>
-      deployments.filter((dep) => {
-        if (
-          nameFilter &&
-          !dep.name.toLowerCase().includes(nameFilter.toLowerCase())
-        )
-          return false;
-        if (nsFilter && dep.namespace !== nsFilter) return false;
-        return true;
-      }),
-    [deployments, nameFilter, nsFilter],
+      deployments.filter((dep) =>
+        nameFilter
+          ? dep.name.toLowerCase().includes(nameFilter.toLowerCase())
+          : true,
+      ),
+    [deployments, nameFilter],
+  );
+
+  const paginatedItems = useMemo(
+    () => filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE),
+    [filtered, page],
   );
 
   if (loading) {
@@ -51,50 +49,51 @@ const DeploymentList: React.FC = () => {
   }
 
   return (
-    <>
-      <Toolbar
-        clearAllFilters={() => {
-          setNameFilter("");
-          setNsFilter(null);
-        }}
+    <div>
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
       >
+        <FlexItem>
+          <Title headingLevel="h1">Deployments</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            {deployments.length} total
+          </span>
+        </FlexItem>
+      </Flex>
+
+      <Toolbar clearAllFilters={() => setNameFilter("")}>
         <ToolbarContent>
           <ToolbarItem>
             <SearchInput
               placeholder="Filter by name"
               value={nameFilter}
-              onChange={(_event, value) => setNameFilter(value)}
-              onClear={() => setNameFilter("")}
+              onChange={(_event, value) => {
+                setNameFilter(value);
+                setPage(1);
+              }}
+              onClear={() => {
+                setNameFilter("");
+                setPage(1);
+              }}
             />
           </ToolbarItem>
-          <ToolbarItem>
-            <Select
-              isOpen={nsSelectOpen}
-              onOpenChange={setNsSelectOpen}
-              onSelect={(_event, value) => {
-                setNsFilter(value as string);
-                setNsSelectOpen(false);
-              }}
-              selected={nsFilter}
-              toggle={(toggleRef) => (
-                <MenuToggle
-                  ref={toggleRef}
-                  onClick={() => setNsSelectOpen((prev) => !prev)}
-                  isExpanded={nsSelectOpen}
-                  style={{ minWidth: "180px" }}
-                >
-                  {nsFilter ?? "All namespaces"}
-                </MenuToggle>
-              )}
-            >
-              <SelectList>
-                {namespaces.map((ns) => (
-                  <SelectOption key={ns} value={ns}>
-                    {ns}
-                  </SelectOption>
-                ))}
-              </SelectList>
-            </Select>
+          <ToolbarItem variant="pagination" align={{ default: "alignEnd" }}>
+            <Pagination
+              itemCount={filtered.length}
+              perPage={PER_PAGE}
+              page={page}
+              onSetPage={(_event, p) => setPage(p)}
+              isCompact
+            />
           </ToolbarItem>
         </ToolbarContent>
       </Toolbar>
@@ -103,52 +102,80 @@ const DeploymentList: React.FC = () => {
         <EmptyState titleText="No deployments found" headingLevel="h2">
           <EmptyStateBody>
             {deployments.length > 0
-              ? "No deployments match the current filters."
+              ? "No deployments match the current filter."
               : "There are no deployments available."}
           </EmptyStateBody>
         </EmptyState>
       ) : (
-        <Table aria-label="Deployments" variant="compact">
-          <Thead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Cluster</Th>
-              <Th>Namespace</Th>
-              <Th>Ready</Th>
-              <Th>Available</Th>
-              <Th>Strategy</Th>
-              <Th>Image</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {filtered.map((dep) => (
-              <Tr key={dep.id}>
-                <Td dataLabel="Name">{dep.name}</Td>
-                <Td dataLabel="Cluster">{dep.cluster_id}</Td>
-                <Td dataLabel="Namespace">{dep.namespace}</Td>
-                <Td dataLabel="Ready">
-                  <span
-                    style={{
-                      color:
-                        dep.ready === dep.replicas
-                          ? "var(--pf-t--global--color--status--success--default)"
-                          : "var(--pf-t--global--color--status--warning--default)",
-                    }}
-                  >
-                    {dep.ready}/{dep.replicas}
-                  </span>
-                </Td>
-                <Td dataLabel="Available">{dep.available}</Td>
-                <Td dataLabel="Strategy">
-                  <Label>{dep.strategy}</Label>
-                </Td>
-                <Td dataLabel="Image">{dep.image}</Td>
+        <>
+          <Table aria-label="Deployments" variant="compact">
+            <Thead>
+              <Tr>
+                <Th>Name</Th>
+                <Th>Namespace</Th>
+                <Th>Cluster</Th>
+                <Th>Ready</Th>
+                <Th>Strategy</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {paginatedItems.map((dep) => {
+                const allReady = dep.ready === dep.replicas && dep.replicas > 0;
+                return (
+                  <Tr key={dep.id}>
+                    <Td dataLabel="Name">
+                      <Link
+                        to={`/deployments/${dep.id}`}
+                        style={{
+                          fontWeight:
+                            "var(--pf-t--global--font--weight--heading--default)",
+                        }}
+                      >
+                        {dep.name}
+                      </Link>
+                    </Td>
+                    <Td dataLabel="Namespace">
+                      <span
+                        style={{
+                          fontSize: "var(--pf-t--global--font--size--sm)",
+                          color: "var(--pf-t--global--text--color--subtle)",
+                        }}
+                      >
+                        {dep.namespace}
+                      </span>
+                    </Td>
+                    <Td dataLabel="Cluster">{dep.cluster_id}</Td>
+                    <Td dataLabel="Ready">
+                      <Label color={allReady ? "green" : "orange"} isCompact>
+                        {dep.ready}/{dep.replicas}
+                      </Label>
+                    </Td>
+                    <Td dataLabel="Strategy">
+                      <Label color="blue" isCompact>
+                        {dep.strategy}
+                      </Label>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+          <Toolbar>
+            <ToolbarContent>
+              <ToolbarItem variant="pagination" align={{ default: "alignEnd" }}>
+                <Pagination
+                  itemCount={filtered.length}
+                  perPage={PER_PAGE}
+                  page={page}
+                  onSetPage={(_event, p) => setPage(p)}
+                  isCompact
+                />
+              </ToolbarItem>
+            </ToolbarContent>
+          </Toolbar>
+        </>
       )}
-    </>
+    </div>
   );
 };
 

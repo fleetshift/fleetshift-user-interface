@@ -1,5 +1,5 @@
 import { useScalprum } from "@scalprum/react-core";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface FleetShiftApi {
   fleetshift: {

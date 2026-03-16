@@ -129,6 +129,22 @@ const BUILTIN_PAGES: PluginPage[] = [
     module: "ClusterDetailPage",
     pluginKey: "core",
   },
+  {
+    id: "pod-detail",
+    title: "Pod Detail",
+    path: "pods/:podId",
+    scope: "core-plugin",
+    module: "PodDetailPage",
+    pluginKey: "core",
+  },
+  {
+    id: "deployment-detail",
+    title: "Deployment Detail",
+    path: "deployments/:deployId",
+    scope: "deployments-plugin",
+    module: "DeploymentDetailPage",
+    pluginKey: "deployments",
+  },
 ];
 
 function generatePluginPages(
@@ -190,7 +206,9 @@ function generateDefaultNavLayout(
       (p) =>
         p.id !== "dashboard" &&
         p.id !== "clusters" &&
-        p.id !== "cluster-detail",
+        p.id !== "cluster-detail" &&
+        p.id !== "pod-detail" &&
+        p.id !== "deployment-detail",
     )
     .map((p) => ({ type: "page" as const, pageId: p.id }));
 }

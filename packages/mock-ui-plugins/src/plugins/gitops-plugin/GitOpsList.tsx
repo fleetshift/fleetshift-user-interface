@@ -3,15 +3,20 @@ import {
   Bullseye,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Label,
+  Pagination,
   SearchInput,
   Spinner,
+  Title,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds, fetchJson } from "./api";
+import { useApiBase, fetchJson } from "./api";
+import { formatRelativeTime } from "@fleetshift/common";
 
 interface GitOpsApp {
   id: string;
@@ -24,47 +29,41 @@ interface GitOpsApp {
   last_synced: string;
 }
 
-function syncStatusColor(status: string): "green" | "orange" | "red" {
+const PER_PAGE = 20;
+
+function syncStatusColor(status: string): "green" | "orange" | "grey" {
   switch (status) {
     case "Synced":
       return "green";
     case "OutOfSync":
       return "orange";
     default:
-      return "red";
+      return "grey";
   }
 }
 
-function healthStatusColor(status: string): "green" | "orange" | "red" {
+function healthStatusColor(
+  status: string,
+): "green" | "red" | "orange" | "grey" {
   switch (status) {
     case "Healthy":
       return "green";
     case "Degraded":
+      return "red";
+    case "Missing":
       return "orange";
     default:
-      return "red";
+      return "grey";
   }
 }
 
-function formatRelativeTime(timestamp: string): string {
-  const raw = timestamp.includes("T")
-    ? timestamp
-    : timestamp.replace(" ", "T") + "Z";
-  const date = new Date(raw);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  if (diffMs < 0) return "just now";
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function truncateRepo(repo: string, maxLen = 50): string {
-  if (repo.length <= maxLen) return repo;
-  return repo.slice(0, maxLen) + "\u2026";
+function repoSummary(repo: string): string {
+  const lastSegment =
+    repo
+      .replace(/\.git$/, "")
+      .split("/")
+      .pop() ?? repo;
+  return lastSegment;
 }
 
 interface GitOpsListProps {
@@ -73,15 +72,13 @@ interface GitOpsListProps {
 
 const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
   const apiBase = useApiBase();
-  const reactiveClusterIds = useClusterIds();
-  const effectiveIds = clusterIds.length > 0 ? clusterIds : reactiveClusterIds;
-
   const [apps, setApps] = useState<GitOpsApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (effectiveIds.length === 0) {
+    if (clusterIds.length === 0) {
       setApps([]);
       setLoading(false);
       return;
@@ -89,7 +86,7 @@ const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
 
     setLoading(true);
     Promise.all(
-      effectiveIds.map((id) =>
+      clusterIds.map((id) =>
         fetchJson<GitOpsApp[]>(`${apiBase}/clusters/${id}/gitops`).catch(
           () => [] as GitOpsApp[],
         ),
@@ -98,7 +95,7 @@ const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
       setApps(results.flat());
       setLoading(false);
     });
-  }, [apiBase, effectiveIds]);
+  }, [apiBase, clusterIds]);
 
   const filtered = useMemo(
     () =>
@@ -109,17 +106,46 @@ const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
     [apps, filter],
   );
 
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE),
+    [filtered, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
   if (loading) {
     return (
-      <Bullseye>
+      <Bullseye style={{ padding: "var(--pf-t--global--spacer--2xl) 0" }}>
         <Spinner />
       </Bullseye>
     );
   }
 
   return (
-    <>
-      <Toolbar clearAllFilters={() => setFilter("")}>
+    <div>
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        <FlexItem>
+          <Title headingLevel="h1">GitOps</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            {apps.length} applications
+          </span>
+        </FlexItem>
+      </Flex>
+
+      <Toolbar>
         <ToolbarContent>
           <ToolbarItem>
             <SearchInput
@@ -127,6 +153,15 @@ const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
               value={filter}
               onChange={(_event, value) => setFilter(value)}
               onClear={() => setFilter("")}
+            />
+          </ToolbarItem>
+          <ToolbarItem variant="pagination" align={{ default: "alignEnd" }}>
+            <Pagination
+              itemCount={filtered.length}
+              perPage={PER_PAGE}
+              page={page}
+              onSetPage={(_e, p) => setPage(p)}
+              isCompact
             />
           </ToolbarItem>
         </ToolbarContent>
@@ -145,42 +180,64 @@ const GitOpsList: React.FC<GitOpsListProps> = ({ clusterIds }) => {
           <Thead>
             <Tr>
               <Th>Name</Th>
-              <Th>Cluster</Th>
               <Th>Repository</Th>
-              <Th>Path</Th>
               <Th>Sync Status</Th>
               <Th>Health</Th>
+              <Th>Cluster</Th>
               <Th>Last Synced</Th>
             </Tr>
           </Thead>
           <Tbody>
-            {filtered.map((app) => (
+            {paginated.map((app) => (
               <Tr key={app.id}>
-                <Td dataLabel="Name">{app.name}</Td>
-                <Td dataLabel="Cluster">{app.cluster_id}</Td>
-                <Td dataLabel="Repository">
-                  <code>{truncateRepo(app.repo)}</code>
+                <Td dataLabel="Name">
+                  <span
+                    style={{
+                      fontWeight:
+                        "var(--pf-t--global--font--weight--heading--default)",
+                    }}
+                  >
+                    {app.name}
+                  </span>
                 </Td>
-                <Td dataLabel="Path">{app.path}</Td>
+                <Td dataLabel="Repository">
+                  <span
+                    style={{
+                      fontSize: "var(--pf-t--global--font--size--sm)",
+                      color: "var(--pf-t--global--text--color--subtle)",
+                    }}
+                    title={app.repo}
+                  >
+                    {repoSummary(app.repo)}
+                  </span>
+                </Td>
                 <Td dataLabel="Sync Status">
-                  <Label color={syncStatusColor(app.sync_status)}>
+                  <Label color={syncStatusColor(app.sync_status)} isCompact>
                     {app.sync_status}
                   </Label>
                 </Td>
                 <Td dataLabel="Health">
-                  <Label color={healthStatusColor(app.health_status)}>
+                  <Label color={healthStatusColor(app.health_status)} isCompact>
                     {app.health_status}
                   </Label>
                 </Td>
+                <Td dataLabel="Cluster">{app.cluster_id}</Td>
                 <Td dataLabel="Last Synced">
-                  {formatRelativeTime(app.last_synced)}
+                  <span
+                    style={{
+                      fontSize: "var(--pf-t--global--font--size--sm)",
+                      color: "var(--pf-t--global--text--color--subtle)",
+                    }}
+                  >
+                    {formatRelativeTime(app.last_synced)}
+                  </span>
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
       )}
-    </>
+    </div>
   );
 };
 

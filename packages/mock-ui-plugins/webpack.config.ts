@@ -65,6 +65,14 @@ const CorePlugin = new DynamicRemotePlugin({
         component: { $codeRef: "NamespaceList.default" },
       },
     },
+    {
+      type: "fleetshift.deployment-detail-tab",
+      properties: {
+        label: "Pods",
+        priority: 50,
+        component: { $codeRef: "DeploymentPodsTab.default" },
+      },
+    },
   ],
   sharedModules,
   entryScriptFilename: "core-plugin.[contenthash].js",
@@ -79,7 +87,9 @@ const CorePlugin = new DynamicRemotePlugin({
       ClusterListPage: p("./src/plugins/core-plugin/ClusterListPage.tsx"),
       ClusterDetailPage: p("./src/plugins/core-plugin/ClusterDetailPage.tsx"),
       ClusterOverview: p("./src/plugins/core-plugin/ClusterOverview.tsx"),
+      DeploymentPodsTab: p("./src/plugins/core-plugin/DeploymentPodsTab.tsx"),
       PodList: p("./src/plugins/core-plugin/PodList.tsx"),
+      PodDetailPage: p("./src/plugins/core-plugin/PodDetailPage.tsx"),
       NamespaceList: p("./src/plugins/core-plugin/NamespaceList.tsx"),
       usePodStore: p("./src/plugins/core-plugin/podStore.ts"),
       useNamespaceStore: p("./src/plugins/core-plugin/namespaceStore.ts"),
@@ -147,6 +157,14 @@ const EventsPlugin = new DynamicRemotePlugin({
         component: { $codeRef: "EventList.default" },
       },
     },
+    {
+      type: "fleetshift.deployment-detail-tab",
+      properties: {
+        label: "Events",
+        priority: 100,
+        component: { $codeRef: "DeploymentEventsTab.default" },
+      },
+    },
   ],
   sharedModules,
   entryScriptFilename: "events-plugin.[contenthash].js",
@@ -158,6 +176,9 @@ const EventsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       EventList: p("./src/plugins/events-plugin/EventList.tsx"),
+      DeploymentEventsTab: p(
+        "./src/plugins/events-plugin/DeploymentEventsTab.tsx",
+      ),
       useEventStore: p("./src/plugins/events-plugin/eventStore.ts"),
     },
   },
@@ -260,6 +281,9 @@ const DeploymentsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       DeploymentList: p("./src/plugins/deployments-plugin/DeploymentList.tsx"),
+      DeploymentDetailPage: p(
+        "./src/plugins/deployments-plugin/DeploymentDetailPage.tsx",
+      ),
       useDeploymentStore: p(
         "./src/plugins/deployments-plugin/deploymentStore.ts",
       ),
@@ -276,6 +300,14 @@ const LogsPlugin = new DynamicRemotePlugin({
         component: { $codeRef: "LogViewer.default" },
       },
     },
+    {
+      type: "fleetshift.deployment-detail-tab",
+      properties: {
+        label: "Logs",
+        priority: 200,
+        component: { $codeRef: "DeploymentLogsTab.default" },
+      },
+    },
   ],
   sharedModules,
   entryScriptFilename: "logs-plugin.[contenthash].js",
@@ -287,6 +319,7 @@ const LogsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       LogViewer: p("./src/plugins/logs-plugin/LogViewer.tsx"),
+      DeploymentLogsTab: p("./src/plugins/logs-plugin/DeploymentLogsTab.tsx"),
       useLogStore: p("./src/plugins/logs-plugin/logStore.ts"),
     },
   },

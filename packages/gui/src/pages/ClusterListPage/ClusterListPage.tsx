@@ -106,7 +106,9 @@ export const ClusterListPage = () => {
                           <span className="cluster-card__stat-value">
                             {cluster.nodeCount ?? "—"}
                           </span>
-                          <span className="cluster-card__stat-label">Nodes</span>
+                          <span className="cluster-card__stat-label">
+                            Nodes
+                          </span>
                         </div>
                         <div className="cluster-card__stat">
                           <span className="cluster-card__stat-value">

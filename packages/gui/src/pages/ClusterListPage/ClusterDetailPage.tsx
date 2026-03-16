@@ -100,7 +100,9 @@ export const ClusterDetailPage = () => {
     {
       label: "Status",
       value: cluster.status,
-      icon: <CheckCircleIcon color="var(--pf-t--global--color--status--success--default)" />,
+      icon: (
+        <CheckCircleIcon color="var(--pf-t--global--color--status--success--default)" />
+      ),
     },
     {
       label: "Nodes",
@@ -158,10 +160,7 @@ export const ClusterDetailPage = () => {
                 gap={{ default: "gapSm" }}
                 className="cluster-detail__banner-labels"
               >
-                <Label
-                  color={isOpenShift ? "red" : "blue"}
-                  isCompact
-                >
+                <Label color={isOpenShift ? "red" : "blue"} isCompact>
                   {platformLabel}
                 </Label>
                 <Label color="green" icon={<CheckCircleIcon />} isCompact>
@@ -200,10 +199,7 @@ export const ClusterDetailPage = () => {
               </Title>
             </CardTitle>
             <CardBody>
-              <DescriptionList
-                columnModifier={{ lg: "2Col" }}
-                isHorizontal
-              >
+              <DescriptionList columnModifier={{ lg: "2Col" }} isHorizontal>
                 <DescriptionListGroup>
                   <DescriptionListTerm>Cluster ID</DescriptionListTerm>
                   <DescriptionListDescription>
@@ -241,11 +237,14 @@ export const ClusterDetailPage = () => {
                 <DescriptionListGroup>
                   <DescriptionListTerm>Created</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {new Date(cluster.created_at).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {new Date(cluster.created_at).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      },
+                    )}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
               </DescriptionList>

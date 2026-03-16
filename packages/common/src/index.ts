@@ -23,6 +23,19 @@ export type {
 } from "./types.js";
 
 export {
+  formatRelativeTime,
+  formatAge,
+  formatDuration,
+  parseCapacity,
+  formatCapacity,
+  formatMemoryGiB,
+  truncate,
+  accessModeLabel,
+} from "./format.js";
+
+export type { ParsedCapacity } from "./format.js";
+
+export {
   makeRequest,
   fetchClusters,
   fetchCluster,

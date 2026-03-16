@@ -1,7 +1,7 @@
 import { createSharedStore } from "@scalprum/core";
 import { useGetState } from "@scalprum/react-core";
 import { useScalprum } from "@scalprum/react-core";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export interface Alert {
   id: string;

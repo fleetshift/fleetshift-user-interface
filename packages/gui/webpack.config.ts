@@ -56,6 +56,7 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
         "@scalprum/core": { singleton: true },
         "@scalprum/react-core": { singleton: true },
         "@openshift/dynamic-plugin-sdk": { singleton: true },
+        "@fleetshift/common": { requiredVersion: "*" },
         ...pfSharedModules,
       },
     }),

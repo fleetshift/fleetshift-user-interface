@@ -12,6 +12,30 @@ export function isDashboardWidget(e: Extension): e is DashboardWidgetExtension {
   return e.type === "fleetshift.dashboard-widget";
 }
 
+// --- Deployment detail tab extension ---
+
+export interface DeploymentTabProps {
+  deploymentId: string;
+  deploymentName: string;
+  namespace: string;
+  clusterId: string;
+}
+
+export type DeploymentDetailTabExtension = Extension<
+  "fleetshift.deployment-detail-tab",
+  {
+    label: string;
+    priority: number;
+    component: CodeRef<ComponentType<DeploymentTabProps>>;
+  }
+>;
+
+export function isDeploymentDetailTab(
+  e: Extension,
+): e is DeploymentDetailTabExtension {
+  return e.type === "fleetshift.deployment-detail-tab";
+}
+
 /** Derive the plugin key from a plugin name, e.g. "core-plugin" → "core" */
 export function pluginKeyFromName(pluginName: string): string {
   return pluginName.replace(/-plugin$/, "");

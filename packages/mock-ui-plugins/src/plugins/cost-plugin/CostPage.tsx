@@ -1,15 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Bullseye,
+  Card,
+  CardBody,
   EmptyState,
   EmptyStateBody,
+  Flex,
+  FlexItem,
   Grid,
   GridItem,
+  Icon,
+  Pagination,
   Spinner,
+  Title,
 } from "@patternfly/react-core";
+import { CpuIcon, DollarSignIcon, MemoryIcon } from "@patternfly/react-icons";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { useApiBase, fetchJson } from "./api";
-import CostStatCard from "./CostStatCard";
 
 interface NamespaceCost {
   namespace: string;
@@ -19,12 +26,17 @@ interface NamespaceCost {
 }
 
 interface ClusterCostResponse {
+  clusterId: string;
+  totalCpuCores: number;
+  totalMemoryMB: number;
   estimatedMonthlyCost: number;
   namespaceBreakdown: NamespaceCost[];
 }
 
 interface ClusterCostData {
   clusterId: string;
+  totalCpuCores: number;
+  totalMemoryMB: number;
   estimatedMonthlyCost: number;
   namespaceBreakdown: NamespaceCost[];
 }
@@ -33,10 +45,14 @@ function formatCost(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+const PER_PAGE = 20;
+
 const CostPage: React.FC<{ clusterIds: string[] }> = ({ clusterIds }) => {
   const apiBase = useApiBase();
   const [data, setData] = useState<ClusterCostData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(PER_PAGE);
 
   useEffect(() => {
     if (clusterIds.length === 0) {
@@ -49,11 +65,19 @@ const CostPage: React.FC<{ clusterIds: string[] }> = ({ clusterIds }) => {
     Promise.all(
       clusterIds.map((id) =>
         fetchJson<ClusterCostResponse>(`${apiBase}/clusters/${id}/cost`)
-          .then((resp) => ({ clusterId: id, ...resp }))
+          .then((resp) => ({
+            clusterId: resp.clusterId ?? id,
+            totalCpuCores: resp.totalCpuCores ?? 0,
+            totalMemoryMB: resp.totalMemoryMB ?? 0,
+            estimatedMonthlyCost: resp.estimatedMonthlyCost ?? 0,
+            namespaceBreakdown: resp.namespaceBreakdown ?? [],
+          }))
           .catch(
             () =>
               ({
                 clusterId: id,
+                totalCpuCores: 0,
+                totalMemoryMB: 0,
                 estimatedMonthlyCost: 0,
                 namespaceBreakdown: [],
               }) as ClusterCostData,
@@ -70,11 +94,9 @@ const CostPage: React.FC<{ clusterIds: string[] }> = ({ clusterIds }) => {
     let memory = 0;
     let cost = 0;
     for (const cluster of data) {
+      cpu += cluster.totalCpuCores;
+      memory += cluster.totalMemoryMB;
       cost += cluster.estimatedMonthlyCost;
-      for (const ns of cluster.namespaceBreakdown) {
-        cpu += ns.cpuCores;
-        memory += ns.memoryMB;
-      }
     }
     return {
       cpu: Math.round(cpu * 100) / 100,
@@ -86,12 +108,22 @@ const CostPage: React.FC<{ clusterIds: string[] }> = ({ clusterIds }) => {
   const namespaceRows = useMemo(() => {
     const rows: (NamespaceCost & { clusterId: string })[] = [];
     for (const cluster of data) {
-      for (const ns of cluster.namespaceBreakdown) {
+      for (const ns of cluster.namespaceBreakdown ?? []) {
         rows.push({ ...ns, clusterId: cluster.clusterId });
       }
     }
     return rows;
   }, [data]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return namespaceRows.slice(start, start + perPage);
+  }, [namespaceRows, page, perPage]);
+
+  // Reset to page 1 when data changes
+  useEffect(() => {
+    setPage(1);
+  }, [namespaceRows.length]);
 
   if (loading) {
     return (
@@ -111,51 +143,163 @@ const CostPage: React.FC<{ clusterIds: string[] }> = ({ clusterIds }) => {
     );
   }
 
+  const statCards = [
+    {
+      label: "Total CPU",
+      value: `${totals.cpu}`,
+      icon: <CpuIcon />,
+    },
+    {
+      label: "Total Memory",
+      value: `${totals.memory} MB`,
+      icon: <MemoryIcon />,
+    },
+    {
+      label: "Est. Monthly Cost",
+      value: formatCost(totals.cost),
+      icon: (
+        <DollarSignIcon color="var(--pf-t--global--color--status--success--default)" />
+      ),
+    },
+  ];
+
   return (
-    <>
-      <Grid hasGutter>
-        <GridItem span={4}>
-          <CostStatCard title="Total CPU Cores" value={String(totals.cpu)} />
-        </GridItem>
-        <GridItem span={4}>
-          <CostStatCard
-            title="Total Memory (MB)"
-            value={String(totals.memory)}
-          />
-        </GridItem>
-        <GridItem span={4}>
-          <CostStatCard
-            title="Est. Monthly Cost"
-            value={formatCost(totals.cost)}
-          />
-        </GridItem>
+    <div>
+      {/* Page header */}
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        <FlexItem>
+          <Title headingLevel="h1">Cost</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            Est. {formatCost(totals.cost)} / month across {data.length}{" "}
+            {data.length === 1 ? "cluster" : "clusters"}
+          </span>
+        </FlexItem>
+      </Flex>
+
+      {/* Stat cards */}
+      <Grid
+        hasGutter
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        {statCards.map((stat) => (
+          <GridItem md={4} sm={12} key={stat.label}>
+            <Card isFullHeight>
+              <CardBody
+                style={{
+                  textAlign: "center",
+                  padding:
+                    "var(--pf-t--global--spacer--lg) var(--pf-t--global--spacer--md)",
+                }}
+              >
+                <div
+                  style={{
+                    marginBottom: "var(--pf-t--global--spacer--sm)",
+                    color: "var(--pf-t--global--text--color--subtle)",
+                  }}
+                >
+                  <Icon size="lg">{stat.icon}</Icon>
+                </div>
+                <div
+                  style={{
+                    fontSize: "var(--pf-t--global--font--size--2xl)",
+                    fontWeight:
+                      "var(--pf-t--global--font--weight--heading--default)",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {stat.value}
+                </div>
+                <div
+                  style={{
+                    fontSize: "var(--pf-t--global--font--size--sm)",
+                    color: "var(--pf-t--global--text--color--subtle)",
+                    marginTop: "var(--pf-t--global--spacer--xs)",
+                  }}
+                >
+                  {stat.label}
+                </div>
+              </CardBody>
+            </Card>
+          </GridItem>
+        ))}
       </Grid>
 
-      <Table aria-label="Namespace cost breakdown" variant="compact">
-        <Thead>
-          <Tr>
-            <Th>Namespace</Th>
-            <Th>Cluster</Th>
-            <Th>CPU Cores</Th>
-            <Th>Memory (MB)</Th>
-            <Th>Est. Monthly Cost</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {namespaceRows.map((row) => (
-            <Tr key={`${row.clusterId}-${row.namespace}`}>
-              <Td dataLabel="Namespace">{row.namespace}</Td>
-              <Td dataLabel="Cluster">{row.clusterId}</Td>
-              <Td dataLabel="CPU Cores">{row.cpuCores}</Td>
-              <Td dataLabel="Memory (MB)">{row.memoryMB}</Td>
-              <Td dataLabel="Est. Monthly Cost">
-                {formatCost(row.estimatedMonthlyCost)}
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </>
+      {/* Namespace breakdown table */}
+      <Card>
+        <CardBody>
+          <Title
+            headingLevel="h3"
+            size="md"
+            style={{ marginBottom: "var(--pf-t--global--spacer--md)" }}
+          >
+            Namespace Breakdown ({namespaceRows.length})
+          </Title>
+          <Table aria-label="Namespace cost breakdown" variant="compact">
+            <Thead>
+              <Tr>
+                <Th>Namespace</Th>
+                <Th>Cluster</Th>
+                <Th>CPU Cores</Th>
+                <Th>Memory (MB)</Th>
+                <Th>Est. Monthly Cost</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {paginatedRows.map((row) => (
+                <Tr key={`${row.clusterId}-${row.namespace}`}>
+                  <Td dataLabel="Namespace">
+                    <code
+                      style={{
+                        fontFamily: "var(--pf-t--global--font--family--mono)",
+                        fontSize: "var(--pf-t--global--font--size--sm)",
+                        background:
+                          "var(--pf-t--global--background--color--secondary--default)",
+                        padding: "2px 6px",
+                        borderRadius:
+                          "var(--pf-t--global--border--radius--small)",
+                      }}
+                    >
+                      {row.namespace}
+                    </code>
+                  </Td>
+                  <Td dataLabel="Cluster">{row.clusterId}</Td>
+                  <Td dataLabel="CPU Cores">{row.cpuCores}</Td>
+                  <Td dataLabel="Memory (MB)">{row.memoryMB}</Td>
+                  <Td dataLabel="Est. Monthly Cost">
+                    {formatCost(row.estimatedMonthlyCost)}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          {namespaceRows.length > PER_PAGE && (
+            <Pagination
+              itemCount={namespaceRows.length}
+              perPage={perPage}
+              page={page}
+              onSetPage={(_e, p) => setPage(p)}
+              onPerPageSelect={(_e, pp) => {
+                setPerPage(pp);
+                setPage(1);
+              }}
+              variant="bottom"
+              style={{ marginTop: "var(--pf-t--global--spacer--md)" }}
+            />
+          )}
+        </CardBody>
+      </Card>
+    </div>
   );
 };
 

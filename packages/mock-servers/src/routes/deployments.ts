@@ -11,6 +11,19 @@ router.get("/clusters/:id/deployments", (req, res) => {
   res.json(deployments);
 });
 
+router.get("/clusters/:id/deployments/:deployId", (req, res) => {
+  const deploy = db
+    .prepare("SELECT * FROM deployments WHERE id = ? AND cluster_id = ?")
+    .get(req.params.deployId, req.params.id);
+
+  if (!deploy) {
+    res.status(404).json({ error: "deployment not found" });
+    return;
+  }
+
+  res.json(deploy);
+});
+
 // Track in-flight scaling intervals to prevent overlapping per-deployment
 const scalingTimers = new Map<string, NodeJS.Timeout>();
 
