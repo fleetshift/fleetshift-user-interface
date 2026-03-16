@@ -108,7 +108,7 @@ type NodeStore = ReturnType<
 >;
 
 let store: NodeStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): NodeStore {
   if (!store) {
@@ -205,10 +205,10 @@ export function useNodeStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("nodes");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -239,6 +239,7 @@ export function useNodeStore(): {
     return () => {
       unsubNodes();
       unsubMetrics();
+      initializedFor = "";
     };
   }, [api, s]);
 

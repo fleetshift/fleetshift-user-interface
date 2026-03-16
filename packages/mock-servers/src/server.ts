@@ -45,10 +45,9 @@ async function start() {
     });
 
     if (discoveredClusters.length === 0) {
-      console.error(
-        "MODE=live but no Kubernetes cluster is reachable. Check clusters.yaml or switch to MODE=mock.",
+      console.log(
+        "K8s: No clusters connected yet. Add clusters via the UI at /clusters/add.",
       );
-      process.exit(1);
     }
 
     setLiveClusters(discoveredClusters);

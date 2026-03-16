@@ -199,6 +199,17 @@ db.exec(`
   );
 
   DROP TABLE IF EXISTS user_nav_prefs;
+
+  CREATE TABLE IF NOT EXISTS cluster_configs (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('kubeconfig', 'token')),
+    context TEXT,
+    server TEXT,
+    token_env TEXT,
+    token_value TEXT,
+    skip_tls_verify INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Migrate: add canvas_pages column if missing

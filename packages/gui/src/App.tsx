@@ -11,6 +11,7 @@ import { PluginRegistryProvider } from "./contexts/PluginRegistryContext";
 import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
 import { subscribe as eventBusSubscribe } from "./hooks/useInvalidationSocket";
 import { PluginPage } from "./pages/PluginPage";
+import { AddClusterPage } from "./pages/ClusterListPage";
 
 const API_BASE = "http://localhost:4000/api/v1";
 
@@ -147,6 +148,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        <Route path="/clusters/add" element={<AddClusterPage />} />
         {sortedPages.map((page) => (
           <Route
             key={page.id}

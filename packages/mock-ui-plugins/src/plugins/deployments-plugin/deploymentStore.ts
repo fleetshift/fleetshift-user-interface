@@ -65,7 +65,7 @@ type DeploymentStore = ReturnType<
 >;
 
 let store: DeploymentStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): DeploymentStore {
   if (!store) {
@@ -139,10 +139,10 @@ export function useDeploymentStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("deployments");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -172,6 +172,7 @@ export function useDeploymentStore(): {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

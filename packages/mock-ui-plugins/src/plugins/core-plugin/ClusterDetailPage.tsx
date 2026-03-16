@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
+  Button,
   Card,
   CardBody,
   CardTitle,
@@ -17,6 +18,10 @@ import {
   Icon,
   Label,
   LabelGroup,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   Spinner,
   Title,
 } from "@patternfly/react-core";
@@ -77,6 +82,8 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDisconnect, setShowDisconnect] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     if (!clusterId) return;
@@ -91,6 +98,17 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
         setLoading(false);
       });
   }, [apiBase, clusterId]);
+
+  const handleDisconnect = async () => {
+    if (!clusterId) return;
+    setDisconnecting(true);
+    try {
+      await fetch(`${apiBase}/clusters/${clusterId}`, { method: "DELETE" });
+      navigate("/clusters");
+    } catch {
+      setDisconnecting(false);
+    }
+  };
 
   if (loading) return <Spinner size="xl" />;
   if (error || !cluster) {
@@ -175,9 +193,46 @@ const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {
                 </Label>
               </Flex>
             </FlexItem>
+            <FlexItem align={{ default: "alignRight" }}>
+              <Button
+                variant="danger"
+                onClick={() => setShowDisconnect(true)}
+              >
+                Disconnect
+              </Button>
+            </FlexItem>
           </Flex>
         </CardBody>
       </Card>
+
+      <Modal
+        isOpen={showDisconnect}
+        onClose={() => setShowDisconnect(false)}
+        variant="small"
+      >
+        <ModalHeader
+          title="Disconnect cluster"
+          description={`Are you sure you want to disconnect "${cluster.name}"? This will remove it from FleetShift.`}
+        />
+        <ModalBody />
+        <ModalFooter>
+          <Button
+            variant="danger"
+            onClick={handleDisconnect}
+            isLoading={disconnecting}
+            isDisabled={disconnecting}
+          >
+            Disconnect
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => setShowDisconnect(false)}
+            isDisabled={disconnecting}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Stat cards */}
       <Grid

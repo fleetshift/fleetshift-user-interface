@@ -25,7 +25,7 @@ type AlertStore = ReturnType<
 >;
 
 let store: AlertStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 interface FleetShiftApi {
   fleetshift: {
@@ -82,10 +82,10 @@ export function useAlertStore(): { alerts: Alert[]; loading: boolean } {
   const state = useGetState(s);
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("alerts");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -108,6 +108,7 @@ export function useAlertStore(): { alerts: Alert[]; loading: boolean } {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

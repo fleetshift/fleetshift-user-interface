@@ -26,7 +26,7 @@ type LogStore = ReturnType<
 >;
 
 let store: LogStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 interface FleetShiftApi {
   fleetshift: {
@@ -75,10 +75,10 @@ export function useLogStore(): { lines: LogLine[]; loading: boolean } {
   const state = useGetState(s);
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("logs");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     // Fetch initial logs from ALL clusters via REST
     if (clusterIds.length > 0) {
@@ -110,6 +110,7 @@ export function useLogStore(): { lines: LogLine[]; loading: boolean } {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

@@ -1,5 +1,14 @@
 import { Router } from "express";
-import type { LiveCluster } from "../client";
+import type { LiveCluster, ClusterConfig } from "../client";
+import {
+  connectCluster,
+  registerClusterClient,
+  unregisterClusterClient,
+  addClusterToDb,
+  removeClusterFromDb,
+} from "../client";
+import { setLiveClusters } from "../../routes/users";
+import { broadcastToAuthenticated } from "../../ws";
 
 function clusterToJson(c: LiveCluster) {
   return {
@@ -13,6 +22,13 @@ function clusterToJson(c: LiveCluster) {
     nodeCount: c.nodeCount,
     created_at: new Date().toISOString().replace("T", " ").substring(0, 19),
   };
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export function clusterRoutes(liveClusters: LiveCluster[]): Router {
@@ -32,13 +48,109 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
     res.json(liveClusters.map(clusterToJson));
   });
 
+  router.post("/clusters", async (req, res) => {
+    const { name, type, context, server, token, skipTLSVerify } = req.body;
+
+    if (!name || !type) {
+      res.status(400).json({ error: "name and type are required" });
+      return;
+    }
+
+    const id = slugify(name);
+    if (clusterMap.has(id)) {
+      res.status(409).json({ error: `Cluster "${id}" already exists` });
+      return;
+    }
+
+    const cfg: ClusterConfig = {
+      id,
+      name,
+      type,
+    };
+
+    if (type === "kubeconfig") {
+      cfg.context = context || "minikube";
+    } else if (type === "token") {
+      if (!server || !token) {
+        res
+          .status(400)
+          .json({ error: "server and token are required for token auth" });
+        return;
+      }
+      cfg.server = server;
+      cfg.tokenValue = token;
+      cfg.skipTLSVerify = skipTLSVerify ?? true;
+    } else {
+      res.status(400).json({ error: `Invalid type: ${type}` });
+      return;
+    }
+
+    try {
+      const client = await connectCluster(cfg);
+      if (!client) {
+        res
+          .status(400)
+          .json({ error: "Failed to connect to cluster. Check credentials." });
+        return;
+      }
+
+      // Register in the runtime
+      registerClusterClient(client);
+
+      // Update the in-memory arrays used by route closures
+      liveClusters.push(client.live);
+      clusterMap.set(client.live.id, client.live);
+
+      // Persist to database
+      addClusterToDb(cfg);
+
+      // Update users.ts cluster list
+      setLiveClusters(liveClusters);
+
+      // Notify all connected clients (including the originator)
+      broadcastToAuthenticated({ resource: "clusters" });
+
+      res.status(201).json(clusterToJson(client.live));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ error: msg });
+    }
+  });
+
   router.get("/clusters/:id", (req, res) => {
-    const cluster = clusterMap.get(req.params.id);
+    const cluster =
+      clusterMap.get(req.params.id) ??
+      liveClusters.find((c) => c.id === req.params.id);
     if (!cluster) {
       res.status(404).json({ error: "Cluster not found" });
       return;
     }
     res.json(clusterToJson(cluster));
+  });
+
+  router.delete("/clusters/:id", (req, res) => {
+    const id = req.params.id;
+    const idx = liveClusters.findIndex((c) => c.id === id);
+    if (idx === -1) {
+      res.status(404).json({ error: "Cluster not found" });
+      return;
+    }
+
+    // Remove from runtime
+    liveClusters.splice(idx, 1);
+    clusterMap.delete(id);
+    unregisterClusterClient(id);
+
+    // Remove from database
+    removeClusterFromDb(id);
+
+    // Update users.ts cluster list
+    setLiveClusters(liveClusters);
+
+    // Notify all connected clients
+    broadcastToAuthenticated({ resource: "clusters" });
+
+    res.status(204).end();
   });
 
   return router;

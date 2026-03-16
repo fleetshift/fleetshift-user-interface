@@ -67,7 +67,7 @@ type IngressStore = ReturnType<
 >;
 
 let store: IngressStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): IngressStore {
   if (!store) {
@@ -144,10 +144,10 @@ export function useIngressStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("networking");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -182,6 +182,7 @@ export function useIngressStore(): {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

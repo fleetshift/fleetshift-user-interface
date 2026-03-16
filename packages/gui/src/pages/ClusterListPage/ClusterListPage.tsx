@@ -1,6 +1,10 @@
 import {
+  Button,
   Card,
   CardBody,
+  EmptyState,
+  EmptyStateBody,
+  EmptyStateFooter,
   Flex,
   FlexItem,
   Grid,
@@ -14,10 +18,11 @@ import {
 import {
   CheckCircleIcon,
   CubesIcon,
+  PlusCircleIcon,
   RedhatIcon,
   ServerIcon,
 } from "@patternfly/react-icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useClusters } from "../../contexts/ClusterContext";
 import "./ClusterListPage.scss";
 
@@ -26,6 +31,28 @@ export const ClusterListPage = () => {
   const navigate = useNavigate();
 
   if (loading) return <Spinner size="xl" />;
+
+  if (installed.length === 0) {
+    return (
+      <EmptyState
+        icon={PlusCircleIcon}
+        titleText="No clusters connected"
+        headingLevel="h1"
+      >
+        <EmptyStateBody>
+          Connect a Kubernetes or OpenShift cluster to get started.
+        </EmptyStateBody>
+        <EmptyStateFooter>
+          <Button
+            variant="primary"
+            component={(props) => <Link to="/clusters/add" {...props} />}
+          >
+            Add Cluster
+          </Button>
+        </EmptyStateFooter>
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="cluster-list">
@@ -41,6 +68,14 @@ export const ClusterListPage = () => {
           <span className="cluster-list__count">
             {installed.length} connected
           </span>
+        </FlexItem>
+        <FlexItem align={{ default: "alignRight" }}>
+          <Button
+            variant="primary"
+            component={(props) => <Link to="/clusters/add" {...props} />}
+          >
+            Add Cluster
+          </Button>
         </FlexItem>
       </Flex>
 

@@ -53,7 +53,7 @@ type NamespaceStore = ReturnType<
 >;
 
 let store: NamespaceStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): NamespaceStore {
   if (!store) {
@@ -112,10 +112,10 @@ export function useNamespaceStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("core");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -141,6 +141,7 @@ export function useNamespaceStore(): {
 
     return () => {
       unsubNamespaces();
+      initializedFor = "";
     };
   }, [api, s]);
 

@@ -55,7 +55,7 @@ type PVStore = ReturnType<
 >;
 
 let store: PVStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): PVStore {
   if (!store) {
@@ -126,10 +126,10 @@ export function usePVStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("storage");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -152,6 +152,7 @@ export function usePVStore(): {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

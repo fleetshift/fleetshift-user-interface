@@ -60,7 +60,7 @@ type PVCStore = ReturnType<
 >;
 
 let store: PVCStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function getStore(): PVCStore {
   if (!store) {
@@ -137,10 +137,10 @@ export function usePVCStore(): {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("storage");
+    const clusterKey = clusterIds.sort().join(",");
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -171,6 +171,7 @@ export function usePVCStore(): {
 
     return () => {
       unsub();
+      initializedFor = "";
     };
   }, [api, s]);
 

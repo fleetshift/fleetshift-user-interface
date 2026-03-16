@@ -76,7 +76,7 @@ type MetricsStore = ReturnType<
 >;
 
 let store: MetricsStore | null = null;
-let initialized = false;
+let initializedFor = "";
 
 function parseCpuString(cpu: string): number {
   if (cpu.endsWith("n")) return parseInt(cpu) / 1e9;
@@ -193,10 +193,12 @@ function useMetricsStore() {
   apiRef.current = api;
 
   useEffect(() => {
-    if (initialized) return;
-    initialized = true;
-
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("observability");
+    const clusterKey = clusterIds.sort().join(",");
+
+    // Skip if already initialized for the same set of clusters
+    if (initializedFor === clusterKey) return;
+    initializedFor = clusterKey;
 
     Promise.all(
       clusterIds.map((id) =>
@@ -268,6 +270,7 @@ function useMetricsStore() {
     return () => {
       unsubPod();
       unsubNode();
+      initializedFor = "";
     };
   }, [api, s]);
 

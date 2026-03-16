@@ -54,14 +54,16 @@ const Dashboard: React.FC<{ clusterIds: string[] }> = () => {
 
   if (clusters.length === 0) {
     return (
-      <EmptyState titleText="No clusters installed" headingLevel="h1">
+      <EmptyState titleText="No clusters connected" headingLevel="h1">
         <EmptyStateBody>
-          Install an OpenShift cluster to get started. Each cluster brings its
-          own plugins for managing workloads, monitoring, and more.
+          Connect a cluster to get started. Each cluster brings its own plugins
+          for managing workloads, monitoring, and more.
         </EmptyStateBody>
         <EmptyStateFooter>
-          <Button component={(props) => <Link to="/clusters" {...props} />}>
-            Browse Clusters
+          <Button
+            component={(props) => <Link to="/clusters/add" {...props} />}
+          >
+            Add Cluster
           </Button>
         </EmptyStateFooter>
       </EmptyState>

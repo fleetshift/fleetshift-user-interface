@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import type { LiveCluster } from "./client";
+import { getClusterClient } from "./client";
 
 export type ClusterMap = Map<string, LiveCluster>;
 
@@ -32,7 +33,9 @@ export function requireCluster(
   clusterMap: ClusterMap,
 ): string | null {
   const clusterId = req.params.id as string;
-  if (!clusterMap.has(clusterId)) {
+  // Check the frozen startup map first, then fall back to the live registry
+  // (dynamically added clusters won't be in the startup map)
+  if (!clusterMap.has(clusterId) && !getClusterClient(clusterId)) {
     res.status(404).json({ error: "Cluster not found" });
     return null;
   }

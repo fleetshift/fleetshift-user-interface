@@ -72,6 +72,43 @@ export async function updateUserPreferences(
   return data.navLayout;
 }
 
+// --- Clusters ---
+
+export interface CreateClusterRequest {
+  name: string;
+  type: "kubeconfig" | "token";
+  context?: string;
+  server?: string;
+  token?: string;
+  skipTLSVerify?: boolean;
+}
+
+export async function createCluster(
+  data: CreateClusterRequest,
+): Promise<InstalledCluster> {
+  const res = await fetch(`${API_BASE}/clusters`, {
+    method: "POST",
+    headers: mutationHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to create cluster (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function deleteCluster(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/clusters/${id}`, {
+    method: "DELETE",
+    headers: mutationHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to delete cluster (${res.status})`);
+  }
+}
+
 // --- Canvas Pages ---
 
 export async function fetchCanvasPages(userId: string): Promise<CanvasPage[]> {

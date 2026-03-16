@@ -3,6 +3,17 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
 import chokidar, { FSWatcher } from "chokidar";
+import type Database from "better-sqlite3";
+
+// Lazy DB import to avoid circular dependency at module load time
+let _db: ReturnType<typeof Database> | null = null;
+function getDb() {
+  if (!_db) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _db = require("../db").default;
+  }
+  return _db!;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +40,8 @@ export interface ClusterConfig {
   server?: string;
   /** For type: token — env var name holding the bearer token */
   tokenEnv?: string;
+  /** For type: token — raw token value (alternative to tokenEnv) */
+  tokenValue?: string;
   /** Skip TLS verification */
   skipTLSVerify?: boolean;
 }
@@ -148,10 +161,11 @@ function buildKubeConfigForCluster(cfg: ClusterConfig): k8s.KubeConfig {
       kc.setCurrentContext(cfg.context);
     }
   } else if (cfg.type === "token") {
-    const token = cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined;
+    const token =
+      cfg.tokenValue ?? (cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined);
     if (!token) {
       throw new Error(
-        `Token env var ${cfg.tokenEnv} is not set for cluster "${cfg.name}"`,
+        `Token not provided for cluster "${cfg.name}"`,
       );
     }
 
@@ -185,20 +199,23 @@ function buildKubeConfigForCluster(cfg: ClusterConfig): k8s.KubeConfig {
   return kc;
 }
 
-async function connectCluster(
+export async function connectCluster(
   cfg: ClusterConfig,
 ): Promise<ClusterClient | null> {
   const label = `${cfg.name ?? cfg.id} (${cfg.type})`;
   console.log(`K8s: ── ${label} ──`);
 
   if (cfg.type === "token") {
-    const tokenVal = cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined;
+    const tokenVal =
+      cfg.tokenValue ?? (cfg.tokenEnv ? process.env[cfg.tokenEnv] : undefined);
     if (!tokenVal) {
-      console.log(`K8s:   token:   ✗ ${cfg.tokenEnv} is NOT set`);
+      console.log(
+        `K8s:   token:   ✗ ${cfg.tokenEnv ? cfg.tokenEnv + " is NOT set" : "no token provided"}`,
+      );
       return null;
     }
     console.log(
-      `K8s:   token:   ✓ ${cfg.tokenEnv} (${tokenVal.slice(0, 12)}…)`,
+      `K8s:   token:   ✓ ${cfg.tokenEnv ?? "direct"} (${tokenVal.slice(0, 12)}…)`,
     );
     console.log(`K8s:   server:  ${cfg.server}`);
   } else {
@@ -282,7 +299,7 @@ async function connectCluster(
 // ---------------------------------------------------------------------------
 
 /**
- * Initialize all clusters from clusters.yaml.
+ * Initialize all clusters from clusters.yaml + database.
  * Starts a chokidar watcher on the config file for hot-reload.
  */
 export async function initK8sClient(
@@ -290,7 +307,16 @@ export async function initK8sClient(
 ): Promise<LiveCluster[]> {
   onClustersChanged = onChange ?? null;
 
-  const configs = loadClustersYaml();
+  const yamlConfigs = loadClustersYaml();
+  const dbConfigs = loadClusterConfigsFromDb();
+
+  // Merge: YAML first, then DB entries not already in YAML
+  const seenIds = new Set(yamlConfigs.map((c) => c.id));
+  const configs = [
+    ...yamlConfigs,
+    ...dbConfigs.filter((c) => !seenIds.has(c.id)),
+  ];
+
   if (configs.length === 0) {
     console.log("K8s: No clusters configured");
     return [];
@@ -390,4 +416,68 @@ export function getKubeConfig(): k8s.KubeConfig | null {
 
 export function isK8sAvailable(): boolean {
   return clusterClients.size > 0;
+}
+
+/** Register a newly connected cluster into the runtime registry */
+export function registerClusterClient(client: ClusterClient): void {
+  clusterClients.set(client.live.id, client);
+}
+
+/** Persist a cluster config to the database */
+export function addClusterToDb(cfg: ClusterConfig): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT OR REPLACE INTO cluster_configs (id, name, type, context, server, token_env, token_value, skip_tls_verify)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    cfg.id,
+    cfg.name,
+    cfg.type,
+    cfg.context ?? null,
+    cfg.server ?? null,
+    cfg.tokenEnv ?? null,
+    cfg.tokenValue ?? null,
+    cfg.skipTLSVerify ? 1 : 0,
+  );
+  console.log(`K8s: Saved cluster "${cfg.name}" to database`);
+}
+
+/** Remove a cluster config from the database */
+export function removeClusterFromDb(id: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM cluster_configs WHERE id = ?").run(id);
+  console.log(`K8s: Removed cluster "${id}" from database`);
+}
+
+/** Remove a cluster from the runtime registry */
+export function unregisterClusterClient(id: string): void {
+  clusterClients.delete(id);
+}
+
+/** Load cluster configs from the database */
+export function loadClusterConfigsFromDb(): ClusterConfig[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM cluster_configs")
+    .all() as Array<{
+    id: string;
+    name: string;
+    type: "kubeconfig" | "token";
+    context: string | null;
+    server: string | null;
+    token_env: string | null;
+    token_value: string | null;
+    skip_tls_verify: number;
+  }>;
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    type: r.type,
+    ...(r.context ? { context: r.context } : {}),
+    ...(r.server ? { server: r.server } : {}),
+    ...(r.token_env ? { tokenEnv: r.token_env } : {}),
+    ...(r.token_value ? { tokenValue: r.token_value } : {}),
+    skipTLSVerify: r.skip_tls_verify === 1,
+  }));
 }

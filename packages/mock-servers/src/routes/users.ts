@@ -83,7 +83,10 @@ function buildScalprumConfigServer(
   const config: Record<string, unknown> = {};
 
   for (const [name, entry] of Object.entries(registry.plugins)) {
-    if (clusters.some((c) => c.plugins.includes(entry.key))) {
+    // core-plugin is always included (Dashboard, Clusters pages work even with 0 clusters)
+    const isCore = entry.key === "core";
+    const isInstalled = clusters.some((c) => c.plugins.includes(entry.key));
+    if (isCore || isInstalled) {
       config[name] = {
         name: entry.name,
         pluginManifest: entry.pluginManifest,
