@@ -154,7 +154,8 @@ export function usePVCStore(): {
                   (pvc as PVC).namespace ??
                   extractNamespace(pvc.namespace_id ?? "", pvc.cluster_id),
               })),
-          ),
+          )
+          .catch(() => [] as PVC[]),
       ),
     ).then((results) => {
       const allPVCs = results.flat();

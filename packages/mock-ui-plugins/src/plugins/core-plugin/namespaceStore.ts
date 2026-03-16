@@ -121,7 +121,8 @@ export function useNamespaceStore(): {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/namespaces`)
           .then((res) => (res.ok ? res.json() : []))
-          .then((namespaces: Namespace[]) => namespaces),
+          .then((namespaces: Namespace[]) => namespaces)
+          .catch(() => [] as Namespace[]),
       ),
     ).then((results) => {
       for (const namespaces of results) {

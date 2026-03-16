@@ -165,7 +165,8 @@ export function useServiceStore(): {
                   (svc as Service).namespace ??
                   extractNamespace(svc.namespace_id ?? "", svc.cluster_id),
               })),
-          ),
+          )
+          .catch(() => [] as Service[]),
       ),
     ).then((results) => {
       const allServices = results.flat();

@@ -155,7 +155,8 @@ export function useDeploymentStore(): {
                 d.namespace ??
                 extractNamespace(d.namespace_id ?? "", d.cluster_id),
             })),
-          ),
+          )
+          .catch(() => [] as Deployment[]),
       ),
     ).then((results) => {
       const allDeployments: Deployment[] = results.flat();

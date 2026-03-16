@@ -89,9 +89,9 @@ export function useAlertStore(): { alerts: Alert[]; loading: boolean } {
 
     Promise.all(
       clusterIds.map((id) =>
-        fetch(`${api.fleetshift.apiBase}/clusters/${id}/alerts`).then((res) =>
-          res.ok ? res.json() : [],
-        ),
+        fetch(`${api.fleetshift.apiBase}/clusters/${id}/alerts`)
+          .then((res) => (res.ok ? res.json() : []))
+          .catch(() => [] as Alert[]),
       ),
     ).then((results) => {
       const allAlerts: Alert[] = results.flat();

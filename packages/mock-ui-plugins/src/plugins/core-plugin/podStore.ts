@@ -241,7 +241,8 @@ export function usePodStore(): {
                 p.namespace ??
                 extractNamespace(p.namespace_id ?? "", p.cluster_id),
             })),
-          ),
+          )
+          .catch(() => [] as Pod[]),
       ),
     ).then((results) => {
       const allPods = results.flat();

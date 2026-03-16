@@ -88,7 +88,8 @@ export function useLogStore(): { lines: LogLine[]; loading: boolean } {
             .then((res) => (res.ok ? res.json() : []))
             .then((data: Omit<LogLine, "cluster">[]) =>
               data.map((line) => ({ ...line, cluster: clusterId })),
-            ),
+            )
+            .catch(() => [] as LogLine[]),
         ),
       ).then((results) => {
         const allLines = results

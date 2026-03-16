@@ -142,7 +142,8 @@ export function useEventStore(): {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/events`)
           .then((res) => (res.ok ? res.json() : []))
-          .then((events: K8sEvent[]) => events),
+          .then((events: K8sEvent[]) => events)
+          .catch(() => [] as K8sEvent[]),
       ),
     ).then((results) => {
       const allEvents = results.flat();

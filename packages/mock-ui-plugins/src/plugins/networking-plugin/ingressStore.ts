@@ -165,7 +165,8 @@ export function useIngressStore(): {
                   (ing as Ingress).namespace ??
                   extractNamespace(ing.namespace_id ?? "", ing.cluster_id),
               })),
-          ),
+          )
+          .catch(() => [] as Ingress[]),
       ),
     ).then((results) => {
       const allIngresses = results.flat();

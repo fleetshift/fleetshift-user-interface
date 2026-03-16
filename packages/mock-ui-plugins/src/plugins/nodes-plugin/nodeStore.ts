@@ -214,7 +214,8 @@ export function useNodeStore(): {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/nodes`)
           .then((res) => (res.ok ? res.json() : []))
-          .then((nodes: Node[]) => nodes),
+          .then((nodes: Node[]) => nodes)
+          .catch(() => [] as Node[]),
       ),
     ).then((results) => {
       const allNodes = results.flat();

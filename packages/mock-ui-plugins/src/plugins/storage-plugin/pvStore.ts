@@ -135,7 +135,8 @@ export function usePVStore(): {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/pvs`)
           .then((res) => (res.ok ? res.json() : []))
-          .then((pvs: PV[]) => pvs),
+          .then((pvs: PV[]) => pvs)
+          .catch(() => [] as PV[]),
       ),
     ).then((results) => {
       const allPVs = results.flat();
