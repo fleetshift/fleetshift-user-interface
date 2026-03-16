@@ -90,10 +90,7 @@ interface FleetShiftApi {
   fleetshift: {
     apiBase: string;
     getClusterIdsForPlugin: (pluginKey: string) => string[];
-    on: (
-      topic: string,
-      callback: (event: any) => void,
-    ) => () => void;
+    on: (topic: string, callback: (event: any) => void) => () => void;
   };
 }
 
@@ -136,11 +133,7 @@ export function useNamespaceStore(): {
 
     const unsubNamespaces = api.fleetshift.on(
       "namespaces",
-      (event: {
-        verb: string;
-        cluster: string;
-        object: K8sV1Namespace;
-      }) => {
+      (event: { verb: string; cluster: string; object: K8sV1Namespace }) => {
         const ns = transformK8sNamespace(event.object, event.cluster);
         s.updateState(event.verb as (typeof EVENTS)[number], ns);
       },

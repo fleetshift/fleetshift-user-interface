@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import type { AppsConfig } from "@scalprum/core";
 import type { CanvasPage, NavLayoutEntry } from "../utils/extensions";
 import type { PluginEntry } from "./PluginRegistryContext";

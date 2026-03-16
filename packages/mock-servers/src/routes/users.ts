@@ -56,9 +56,10 @@ function getClusters(): ClusterInfo[] {
   if (liveClusters) return liveClusters;
 
   // In mock mode, read from SQLite
-  const rows = db
-    .prepare("SELECT id, plugins FROM clusters")
-    .all() as Array<{ id: string; plugins: string }>;
+  const rows = db.prepare("SELECT id, plugins FROM clusters").all() as Array<{
+    id: string;
+    plugins: string;
+  }>;
 
   return rows.map((r) => ({
     id: r.id,
@@ -202,6 +203,17 @@ router.get("/users/:id/config", (req, res) => {
 
 // POST /ws/ticket — issue a one-time ticket for WS authentication
 router.post("/ws/ticket", (req, res) => {
+  // When NO_AUTH=1, skip JWT checks and use a default user
+  if (process.env.NO_AUTH === "1") {
+    const fallback = db.prepare("SELECT id FROM users LIMIT 1").get() as
+      | { id: string }
+      | undefined;
+    const userId = fallback?.id ?? "user-ops";
+    const ticket = createWsTicket(userId);
+    res.json({ ticket });
+    return;
+  }
+
   // req.user is set by jwtAuthMiddleware (username from JWT)
   const tokenUser = req.user;
   if (!tokenUser) {

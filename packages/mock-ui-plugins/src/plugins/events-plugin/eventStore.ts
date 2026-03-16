@@ -50,7 +50,7 @@ function transformK8sEvent(raw: K8sRawEvent, clusterId: string): K8sEvent {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface EventStoreState {
   events: Record<string, K8sEvent>;
@@ -71,6 +71,18 @@ function getStore(): EventStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as K8sEvent[];
+            const itemsMap: Record<string, K8sEvent> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              events: { ...state.events, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const k8sEvent = payload as K8sEvent;
@@ -133,11 +145,8 @@ export function useEventStore(): {
           .then((events: K8sEvent[]) => events),
       ),
     ).then((results) => {
-      for (const events of results) {
-        for (const event of events) {
-          s.updateState("ADDED", event);
-        }
-      }
+      const allEvents = results.flat();
+      s.updateState("INIT", allEvents);
     });
 
     const unsub = api.fleetshift.on(

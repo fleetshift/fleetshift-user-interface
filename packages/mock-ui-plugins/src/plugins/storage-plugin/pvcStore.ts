@@ -48,7 +48,7 @@ function transformK8sPVC(raw: K8sV1PVC, clusterId: string): PVC {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface PVCStoreState {
   pvcs: Record<string, PVC>;
@@ -69,6 +69,18 @@ function getStore(): PVCStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as PVC[];
+            const itemsMap: Record<string, PVC> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              pvcs: { ...state.pvcs, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const pvc = payload as PVC;
@@ -135,28 +147,18 @@ export function usePVCStore(): {
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/pvcs`)
           .then((res) => (res.ok ? res.json() : []))
           .then(
-            (
-              pvcs: Array<
-                Omit<PVC, "namespace"> & { namespace_id?: string }
-              >,
-            ) =>
+            (pvcs: Array<Omit<PVC, "namespace"> & { namespace_id?: string }>) =>
               pvcs.map((pvc) => ({
                 ...pvc,
                 namespace:
                   (pvc as PVC).namespace ??
-                  extractNamespace(
-                    pvc.namespace_id ?? "",
-                    pvc.cluster_id,
-                  ),
+                  extractNamespace(pvc.namespace_id ?? "", pvc.cluster_id),
               })),
           ),
       ),
     ).then((results) => {
-      for (const pvcs of results) {
-        for (const pvc of pvcs) {
-          s.updateState("ADDED", pvc);
-        }
-      }
+      const allPVCs = results.flat();
+      s.updateState("INIT", allPVCs);
     });
 
     const unsub = api.fleetshift.on(

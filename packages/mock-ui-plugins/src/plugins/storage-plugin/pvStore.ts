@@ -43,7 +43,7 @@ function transformK8sPV(raw: K8sV1PV, clusterId: string): PV {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface PVStoreState {
   pvs: Record<string, PV>;
@@ -64,6 +64,18 @@ function getStore(): PVStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as PV[];
+            const itemsMap: Record<string, PV> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              pvs: { ...state.pvs, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const pv = payload as PV;
@@ -126,11 +138,8 @@ export function usePVStore(): {
           .then((pvs: PV[]) => pvs),
       ),
     ).then((results) => {
-      for (const pvs of results) {
-        for (const pv of pvs) {
-          s.updateState("ADDED", pv);
-        }
-      }
+      const allPVs = results.flat();
+      s.updateState("INIT", allPVs);
     });
 
     const unsub = api.fleetshift.on(

@@ -112,6 +112,7 @@ const DeploymentList: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Namespace</Th>
               <Th>Ready</Th>
               <Th>Available</Th>
@@ -123,6 +124,7 @@ const DeploymentList: React.FC = () => {
             {filtered.map((dep) => (
               <Tr key={dep.id}>
                 <Td dataLabel="Name">{dep.name}</Td>
+                <Td dataLabel="Cluster">{dep.cluster_id}</Td>
                 <Td dataLabel="Namespace">{dep.namespace}</Td>
                 <Td dataLabel="Ready">
                   <span

@@ -94,6 +94,7 @@ const PVTab: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Capacity</Th>
               <Th>Access Mode</Th>
               <Th>Status</Th>
@@ -104,6 +105,7 @@ const PVTab: React.FC = () => {
             {filtered.map((pv) => (
               <Tr key={pv.id}>
                 <Td dataLabel="Name">{pv.name}</Td>
+                <Td dataLabel="Cluster">{pv.cluster_id}</Td>
                 <Td dataLabel="Capacity">{pv.capacity}</Td>
                 <Td dataLabel="Access Mode">{pv.access_mode}</Td>
                 <Td dataLabel="Status">
@@ -172,6 +174,7 @@ const PVCTab: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Namespace</Th>
               <Th>Status</Th>
               <Th>Capacity</Th>
@@ -183,6 +186,7 @@ const PVCTab: React.FC = () => {
             {filtered.map((pvc) => (
               <Tr key={pvc.id}>
                 <Td dataLabel="Name">{pvc.name}</Td>
+                <Td dataLabel="Cluster">{pvc.cluster_id}</Td>
                 <Td dataLabel="Namespace">{pvc.namespace}</Td>
                 <Td dataLabel="Status">
                   <Label color={pvcStatusColor(pvc.status)}>{pvc.status}</Label>

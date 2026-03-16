@@ -126,6 +126,7 @@ const EventList: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Type</Th>
+              <Th>Cluster</Th>
               <Th>Reason</Th>
               <Th>Message</Th>
               <Th>Source</Th>
@@ -142,6 +143,7 @@ const EventList: React.FC = () => {
                   <Td dataLabel="Type">
                     <Label color={typeColor(event.type)}>{event.type}</Label>
                   </Td>
+                  <Td dataLabel="Cluster">{event.cluster_id}</Td>
                   <Td dataLabel="Reason">{event.reason}</Td>
                   <Td dataLabel="Message">
                     {needsTooltip ? (

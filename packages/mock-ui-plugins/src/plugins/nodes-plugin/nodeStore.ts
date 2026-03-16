@@ -77,7 +77,7 @@ function transformK8sNode(raw: K8sV1Node, clusterId: string): Node {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED", "METRICS"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED", "METRICS"] as const;
 
 interface NodeMetricItem {
   metadata: { name: string };
@@ -117,6 +117,18 @@ function getStore(): NodeStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as Node[];
+            const itemsMap: Record<string, Node> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              nodes: { ...state.nodes, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const node = payload as Node;
@@ -128,7 +140,10 @@ function getStore(): NodeStore {
                   memory_used: existing.memory_used,
                 }
               : node;
-            return { nodes: { ...state.nodes, [node.id]: merged }, loading: false };
+            return {
+              nodes: { ...state.nodes, [node.id]: merged },
+              loading: false,
+            };
           }
           case "DELETED": {
             const node = payload as Node;
@@ -145,7 +160,8 @@ function getStore(): NodeStore {
               if (key) {
                 nodes[key] = {
                   ...nodes[key],
-                  cpu_used: Math.round(parseCpuString(item.usage.cpu) * 1000) / 1000,
+                  cpu_used:
+                    Math.round(parseCpuString(item.usage.cpu) * 1000) / 1000,
                   memory_used: Math.round(parseMemoryString(item.usage.memory)),
                 };
               }
@@ -167,10 +183,7 @@ interface FleetShiftApi {
   fleetshift: {
     apiBase: string;
     getClusterIdsForPlugin: (pluginKey: string) => string[];
-    on: (
-      topic: string,
-      callback: (event: any) => void,
-    ) => () => void;
+    on: (topic: string, callback: (event: any) => void) => () => void;
   };
 }
 
@@ -204,11 +217,8 @@ export function useNodeStore(): {
           .then((nodes: Node[]) => nodes),
       ),
     ).then((results) => {
-      for (const nodes of results) {
-        for (const node of nodes) {
-          s.updateState("ADDED", node);
-        }
-      }
+      const allNodes = results.flat();
+      s.updateState("INIT", allNodes);
     });
 
     const unsubNodes = api.fleetshift.on(

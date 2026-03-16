@@ -96,6 +96,7 @@ const AlertList: React.FC = () => {
             <Tr>
               <Th>Severity</Th>
               <Th>Alert Name</Th>
+              <Th>Cluster</Th>
               <Th>State</Th>
               <Th>Message</Th>
               <Th>Fired At</Th>
@@ -110,6 +111,7 @@ const AlertList: React.FC = () => {
                   </Label>
                 </Td>
                 <Td dataLabel="Alert Name">{alert.name}</Td>
+                <Td dataLabel="Cluster">{alert.cluster_id}</Td>
                 <Td dataLabel="State">
                   <Label color="red">{alert.state}</Label>
                 </Td>

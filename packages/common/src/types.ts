@@ -4,6 +4,9 @@ export interface Cluster {
   status: string;
   version: string;
   plugins: string[];
+  platform?: "openshift" | "kubernetes";
+  server?: string;
+  nodeCount?: number;
   created_at: string;
 }
 

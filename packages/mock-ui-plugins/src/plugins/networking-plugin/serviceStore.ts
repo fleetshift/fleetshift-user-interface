@@ -55,7 +55,7 @@ function transformK8sService(raw: K8sV1Service, clusterId: string): Service {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface ServiceStoreState {
   services: Record<string, Service>;
@@ -76,6 +76,18 @@ function getStore(): ServiceStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as Service[];
+            const itemsMap: Record<string, Service> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              services: { ...state.services, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const svc = payload as Service;
@@ -151,19 +163,13 @@ export function useServiceStore(): {
                 ...svc,
                 namespace:
                   (svc as Service).namespace ??
-                  extractNamespace(
-                    svc.namespace_id ?? "",
-                    svc.cluster_id,
-                  ),
+                  extractNamespace(svc.namespace_id ?? "", svc.cluster_id),
               })),
           ),
       ),
     ).then((results) => {
-      for (const services of results) {
-        for (const svc of services) {
-          s.updateState("ADDED", svc);
-        }
-      }
+      const allServices = results.flat();
+      s.updateState("INIT", allServices);
     });
 
     const unsub = api.fleetshift.on(

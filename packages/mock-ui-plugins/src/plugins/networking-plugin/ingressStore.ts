@@ -55,7 +55,7 @@ function transformK8sIngress(raw: K8sV1Ingress, clusterId: string): Ingress {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface IngressStoreState {
   ingresses: Record<string, Ingress>;
@@ -76,6 +76,18 @@ function getStore(): IngressStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as Ingress[];
+            const itemsMap: Record<string, Ingress> = {};
+            for (const item of items) {
+              itemsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              ingresses: { ...state.ingresses, ...itemsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const ing = payload as Ingress;
@@ -151,19 +163,13 @@ export function useIngressStore(): {
                 ...ing,
                 namespace:
                   (ing as Ingress).namespace ??
-                  extractNamespace(
-                    ing.namespace_id ?? "",
-                    ing.cluster_id,
-                  ),
+                  extractNamespace(ing.namespace_id ?? "", ing.cluster_id),
               })),
           ),
       ),
     ).then((results) => {
-      for (const ingresses of results) {
-        for (const ing of ingresses) {
-          s.updateState("ADDED", ing);
-        }
-      }
+      const allIngresses = results.flat();
+      s.updateState("INIT", allIngresses);
     });
 
     const unsub = api.fleetshift.on(

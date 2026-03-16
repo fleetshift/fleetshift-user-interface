@@ -14,6 +14,9 @@ export interface LiveCluster {
   version: string;
   context: string;
   plugins: string[];
+  platform: "openshift" | "kubernetes";
+  server: string;
+  nodeCount: number;
 }
 
 export interface ClusterConfig {
@@ -213,17 +216,46 @@ async function connectCluster(
     const plugins = await discoverPlugins(kc);
     const clusterName = cfg.name ?? kc.getCurrentCluster()?.name ?? cfg.id;
 
+    // Detect OpenShift vs vanilla Kubernetes
+    let platform: "openshift" | "kubernetes" = "kubernetes";
+    try {
+      const apisApi = kc.makeApiClient(k8s.ApisApi);
+      const apiGroups = await apisApi.getAPIVersions();
+      const hasOpenShift = (apiGroups.groups ?? []).some(
+        (g) =>
+          g.name === "route.openshift.io" || g.name === "apps.openshift.io",
+      );
+      if (hasOpenShift) platform = "openshift";
+    } catch {
+      // fall back to kubernetes
+    }
+
+    // Get node count
+    let nodeCount = 0;
+    try {
+      const nodeList = await core.listNode();
+      nodeCount = (nodeList.items ?? []).length;
+    } catch {
+      // no permission to list nodes
+    }
+
+    const server = kc.getCurrentCluster()?.server ?? cfg.server ?? "";
+
     const live: LiveCluster = {
       id: cfg.id,
       name: clusterName,
       version,
       context: cfg.context ?? cfg.id,
       plugins,
+      platform,
+      server,
+      nodeCount,
     };
 
     console.log(
-      `K8s:   plugins: ${plugins.join(", ")}`,
+      `K8s:   platform: ${platform} (${nodeCount} node${nodeCount !== 1 ? "s" : ""})`,
     );
+    console.log(`K8s:   plugins: ${plugins.join(", ")}`);
 
     return { config: cfg, kc, core, apps, networking, metrics, live };
   } catch (err) {

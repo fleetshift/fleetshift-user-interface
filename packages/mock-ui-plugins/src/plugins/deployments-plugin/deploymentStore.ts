@@ -53,7 +53,7 @@ function transformK8sDeployment(
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED"] as const;
 
 interface DeploymentStoreState {
   deployments: Record<string, Deployment>;
@@ -74,6 +74,18 @@ function getStore(): DeploymentStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const items = payload as Deployment[];
+            const deploymentsMap: Record<string, Deployment> = {};
+            for (const item of items) {
+              deploymentsMap[item.id] = item;
+            }
+            return {
+              ...state,
+              deployments: { ...state.deployments, ...deploymentsMap },
+              loading: false,
+            };
+          }
           case "ADDED":
           case "MODIFIED": {
             const deployment = payload as Deployment;
@@ -105,10 +117,7 @@ interface FleetShiftApi {
   fleetshift: {
     apiBase: string;
     getClusterIdsForPlugin: (pluginKey: string) => string[];
-    on: (
-      topic: string,
-      callback: (event: any) => void,
-    ) => () => void;
+    on: (topic: string, callback: (event: any) => void) => () => void;
   };
 }
 
@@ -139,33 +148,23 @@ export function useDeploymentStore(): {
       clusterIds.map((id) =>
         fetch(`${api.fleetshift.apiBase}/clusters/${id}/deployments`)
           .then((res) => (res.ok ? res.json() : []))
-          .then(
-            (
-              deployments: Array<Deployment & { namespace_id?: string }>,
-            ) =>
-              deployments.map((d) => ({
-                ...d,
-                namespace:
-                  d.namespace ??
-                  extractNamespace(d.namespace_id ?? "", d.cluster_id),
-              })),
+          .then((deployments: Array<Deployment & { namespace_id?: string }>) =>
+            deployments.map((d) => ({
+              ...d,
+              namespace:
+                d.namespace ??
+                extractNamespace(d.namespace_id ?? "", d.cluster_id),
+            })),
           ),
       ),
     ).then((results) => {
-      for (const deployments of results) {
-        for (const deployment of deployments) {
-          s.updateState("ADDED", deployment);
-        }
-      }
+      const allDeployments: Deployment[] = results.flat();
+      s.updateState("INIT", allDeployments);
     });
 
     const unsub = api.fleetshift.on(
       "deployments",
-      (event: {
-        verb: string;
-        cluster: string;
-        object: K8sV1Deployment;
-      }) => {
+      (event: { verb: string; cluster: string; object: K8sV1Deployment }) => {
         const deployment = transformK8sDeployment(event.object, event.cluster);
         s.updateState(event.verb as (typeof EVENTS)[number], deployment);
       },

@@ -87,7 +87,7 @@ function transformK8sPod(raw: K8sV1Pod, clusterId: string): Pod {
 
 // --- Store ---
 
-const EVENTS = ["ADDED", "MODIFIED", "DELETED", "METRICS"] as const;
+const EVENTS = ["INIT", "ADDED", "MODIFIED", "DELETED", "METRICS"] as const;
 
 interface PodMetricContainer {
   name: string;
@@ -132,14 +132,29 @@ function getStore(): PodStore {
       events: EVENTS,
       onEventChange: (state, event, payload) => {
         switch (event) {
+          case "INIT": {
+            const pods = payload as Pod[];
+            const podsMap: Record<string, Pod> = {};
+            for (const pod of pods) {
+              podsMap[pod.id] = pod;
+            }
+            return { pods: { ...state.pods, ...podsMap }, loading: false };
+          }
           case "ADDED":
           case "MODIFIED": {
             const pod = payload as Pod;
             const existing = state.pods[pod.id];
             const merged = existing
-              ? { ...pod, cpu_usage: existing.cpu_usage, memory_usage: existing.memory_usage }
+              ? {
+                  ...pod,
+                  cpu_usage: existing.cpu_usage,
+                  memory_usage: existing.memory_usage,
+                }
               : pod;
-            return { pods: { ...state.pods, [pod.id]: merged }, loading: false };
+            return {
+              pods: { ...state.pods, [pod.id]: merged },
+              loading: false,
+            };
           }
           case "DELETED": {
             const pod = payload as Pod;
@@ -152,7 +167,10 @@ function getStore(): PodStore {
             for (const item of items) {
               const key = Object.keys(pods).find((k) => {
                 const p = pods[k];
-                return p.name === item.metadata.name && p.namespace === item.metadata.namespace;
+                return (
+                  p.name === item.metadata.name &&
+                  p.namespace === item.metadata.namespace
+                );
               });
               if (key) {
                 let cpu = 0;
@@ -226,11 +244,8 @@ export function usePodStore(): {
           ),
       ),
     ).then((results) => {
-      for (const pods of results) {
-        for (const pod of pods) {
-          s.updateState("ADDED", pod);
-        }
-      }
+      const allPods = results.flat();
+      s.updateState("INIT", allPods);
     });
 
     const unsubPods = api.fleetshift.on(

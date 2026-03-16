@@ -56,7 +56,9 @@ export async function jwtAuthMiddleware(
     const username = kc.preferred_username ?? "unknown";
     const roles = kc.realm_access?.roles ?? [];
 
-    console.log(`Auth: ${req.method} ${req.path} — user=${username} roles=[${roles.join(",")}]`);
+    console.log(
+      `Auth: ${req.method} ${req.path} — user=${username} roles=[${roles.join(",")}]`,
+    );
 
     req.user = { username, roles };
 
@@ -76,7 +78,9 @@ export async function jwtAuthMiddleware(
 
     next();
   } catch (err) {
-    console.warn(`Auth: ${req.method} ${req.path} — 401 (${err instanceof Error ? err.message : "unknown error"})`);
+    console.warn(
+      `Auth: ${req.method} ${req.path} — 401 (${err instanceof Error ? err.message : "unknown error"})`,
+    );
     res.status(401).json({ error: "Invalid or expired token" });
   }
 }

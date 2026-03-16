@@ -98,6 +98,7 @@ const NodeList: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Status</Th>
               <Th>Role</Th>
               <Th>CPU</Th>
@@ -109,6 +110,7 @@ const NodeList: React.FC = () => {
             {filtered.map((node) => (
               <Tr key={node.id}>
                 <Td dataLabel="Name">{node.name}</Td>
+                <Td dataLabel="Cluster">{node.cluster_id}</Td>
                 <Td dataLabel="Status">
                   <Label color={statusColor(node.status)}>{node.status}</Label>
                 </Td>

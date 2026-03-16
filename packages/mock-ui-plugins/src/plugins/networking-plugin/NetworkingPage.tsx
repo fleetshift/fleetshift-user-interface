@@ -81,6 +81,7 @@ const ServicesTab: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Namespace</Th>
               <Th>Type</Th>
               <Th>Cluster IP</Th>
@@ -91,6 +92,7 @@ const ServicesTab: React.FC = () => {
             {filtered.map((svc) => (
               <Tr key={svc.id}>
                 <Td dataLabel="Name">{svc.name}</Td>
+                <Td dataLabel="Cluster">{svc.cluster_id}</Td>
                 <Td dataLabel="Namespace">{svc.namespace}</Td>
                 <Td dataLabel="Type">
                   <Label>{svc.type}</Label>
@@ -155,6 +157,7 @@ const IngressesTab: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Namespace</Th>
               <Th>Host</Th>
               <Th>Path</Th>
@@ -166,6 +169,7 @@ const IngressesTab: React.FC = () => {
             {filtered.map((ing) => (
               <Tr key={ing.id}>
                 <Td dataLabel="Name">{ing.name}</Td>
+                <Td dataLabel="Cluster">{ing.cluster_id}</Td>
                 <Td dataLabel="Namespace">{ing.namespace}</Td>
                 <Td dataLabel="Host">{ing.host}</Td>
                 <Td dataLabel="Path">{ing.path}</Td>

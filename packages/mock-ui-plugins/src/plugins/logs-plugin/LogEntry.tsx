@@ -6,6 +6,7 @@ interface LogLine {
   namespace: string;
   level: string;
   message: string;
+  cluster: string;
 }
 
 export interface LogEntryProps {
@@ -24,6 +25,9 @@ export const LogEntry: React.FC<LogEntryProps> = ({ log }) => (
     <span>[{log.timestamp}] </span>
     <Label color={LEVEL_COLORS[log.level] ?? "grey"} isCompact>
       {log.level}
+    </Label>{" "}
+    <Label color="purple" isCompact>
+      {log.cluster}
     </Label>
     <span>
       {" "}

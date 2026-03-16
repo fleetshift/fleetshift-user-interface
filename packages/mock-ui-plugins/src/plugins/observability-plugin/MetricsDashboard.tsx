@@ -38,21 +38,28 @@ interface NodeMetricItem {
   usage: { cpu: string; memory: string };
 }
 
+interface PodMetricEntry {
+  name: string;
+  namespace: string;
+  cluster: string;
+  cpu: number;
+  memory: number;
+}
+
+interface NodeMetricEntry {
+  name: string;
+  cluster: string;
+  cpu: number;
+  memory: number;
+  cpuCapacity: number;
+  memoryCapacity: number;
+}
+
 interface MetricsState {
-  podMetrics: Record<
-    string,
-    { name: string; namespace: string; cpu: number; memory: number }
-  >;
-  nodeMetrics: Record<
-    string,
-    {
-      name: string;
-      cpu: number;
-      memory: number;
-      cpuCapacity: number;
-      memoryCapacity: number;
-    }
-  >;
+  /** Keyed by "clusterId/namespace/podName" */
+  podMetrics: Record<string, PodMetricEntry>;
+  /** Keyed by "clusterId/nodeName" */
+  nodeMetrics: Record<string, NodeMetricEntry>;
   loading: boolean;
 }
 
@@ -91,8 +98,19 @@ function getStore(): MetricsStore {
       onEventChange: (state, event, payload) => {
         switch (event) {
           case "POD_METRICS": {
-            const items = payload as PodMetricItem[];
-            const podMetrics: MetricsState["podMetrics"] = {};
+            const { clusterId, items } = payload as {
+              clusterId: string;
+              items: PodMetricItem[];
+            };
+            // Merge: replace only this cluster's pods, keep others
+            const podMetrics = { ...state.podMetrics };
+            // Remove stale entries for this cluster
+            for (const key of Object.keys(podMetrics)) {
+              if (key.startsWith(`${clusterId}/`)) {
+                delete podMetrics[key];
+              }
+            }
+            // Add fresh entries
             for (const item of items) {
               let cpu = 0;
               let mem = 0;
@@ -100,10 +118,11 @@ function getStore(): MetricsStore {
                 cpu += parseCpuString(c.usage.cpu);
                 mem += parseMemoryString(c.usage.memory);
               }
-              const key = `${item.metadata.namespace}/${item.metadata.name}`;
+              const key = `${clusterId}/${item.metadata.namespace}/${item.metadata.name}`;
               podMetrics[key] = {
                 name: item.metadata.name,
                 namespace: item.metadata.namespace,
+                cluster: clusterId,
                 cpu,
                 memory: mem,
               };
@@ -111,12 +130,17 @@ function getStore(): MetricsStore {
             return { ...state, podMetrics, loading: false };
           }
           case "NODE_METRICS": {
-            const items = payload as NodeMetricItem[];
+            const { clusterId, items } = payload as {
+              clusterId: string;
+              items: NodeMetricItem[];
+            };
             const nodeMetrics = { ...state.nodeMetrics };
             for (const item of items) {
-              const existing = nodeMetrics[item.metadata.name];
-              nodeMetrics[item.metadata.name] = {
+              const key = `${clusterId}/${item.metadata.name}`;
+              const existing = nodeMetrics[key];
+              nodeMetrics[key] = {
                 name: item.metadata.name,
+                cluster: clusterId,
                 cpu: parseCpuString(item.usage.cpu),
                 memory: parseMemoryString(item.usage.memory),
                 cpuCapacity: existing?.cpuCapacity ?? 0,
@@ -126,16 +150,21 @@ function getStore(): MetricsStore {
             return { ...state, nodeMetrics, loading: false };
           }
           case "NODES_INIT": {
-            const nodes = payload as Array<{
-              name: string;
-              cpu_capacity: number;
-              memory_capacity: number;
-            }>;
+            const { clusterId, nodes } = payload as {
+              clusterId: string;
+              nodes: Array<{
+                name: string;
+                cpu_capacity: number;
+                memory_capacity: number;
+              }>;
+            };
             const nodeMetrics = { ...state.nodeMetrics };
             for (const n of nodes) {
-              const existing = nodeMetrics[n.name];
-              nodeMetrics[n.name] = {
+              const key = `${clusterId}/${n.name}`;
+              const existing = nodeMetrics[key];
+              nodeMetrics[key] = {
                 name: n.name,
+                cluster: clusterId,
                 cpu: existing?.cpu ?? 0,
                 memory: existing?.memory ?? 0,
                 cpuCapacity: n.cpu_capacity,
@@ -169,17 +198,23 @@ function useMetricsStore() {
     // Fetch initial metrics + node capacities via REST so the page isn't blank
     Promise.all(
       clusterIds.map((id) =>
-        fetch(`${api.fleetshift.apiBase}/clusters/${id}/metrics`).then((res) =>
-          res.ok ? res.json() : null,
-        ),
+        fetch(`${api.fleetshift.apiBase}/clusters/${id}/metrics`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => (data ? { ...data, clusterId: id } : null)),
       ),
     ).then((results) => {
       for (const data of results) {
         if (!data) continue;
+        const clusterId = data.clusterId as string;
         // Seed pod metrics from the REST response
         if (data.pods) {
           const items: PodMetricItem[] = data.pods.map(
-            (p: { name: string; namespace: string; cpu: number; memory: number }) => ({
+            (p: {
+              name: string;
+              namespace: string;
+              cpu: number;
+              memory: number;
+            }) => ({
               metadata: { name: p.name, namespace: p.namespace },
               containers: [
                 {
@@ -192,32 +227,41 @@ function useMetricsStore() {
               ],
             }),
           );
-          s.updateState("POD_METRICS", items);
+          s.updateState("POD_METRICS", { clusterId, items });
         }
         // Seed node capacities
         if (data.maxCpu || data.maxMemory) {
-          s.updateState("NODES_INIT", [
-            {
-              name: "cluster-total",
-              cpu_capacity: data.maxCpu ?? 0,
-              memory_capacity: data.maxMemory ?? 0,
-            },
-          ]);
+          s.updateState("NODES_INIT", {
+            clusterId,
+            nodes: [
+              {
+                name: "cluster-total",
+                cpu_capacity: data.maxCpu ?? 0,
+                memory_capacity: data.maxMemory ?? 0,
+              },
+            ],
+          });
         }
       }
     });
 
     const unsubPod = api.fleetshift.on(
       "pod-metrics",
-      (event: { items: PodMetricItem[] }) => {
-        s.updateState("POD_METRICS", event.items);
+      (event: { cluster: string; items: PodMetricItem[] }) => {
+        s.updateState("POD_METRICS", {
+          clusterId: event.cluster,
+          items: event.items,
+        });
       },
     );
 
     const unsubNode = api.fleetshift.on(
       "node-metrics",
-      (event: { items: NodeMetricItem[] }) => {
-        s.updateState("NODE_METRICS", event.items);
+      (event: { cluster: string; items: NodeMetricItem[] }) => {
+        s.updateState("NODE_METRICS", {
+          clusterId: event.cluster,
+          items: event.items,
+        });
       },
     );
 
@@ -359,14 +403,16 @@ const MetricsDashboard: React.FC = () => {
             <Thead>
               <Tr>
                 <Th>Name</Th>
+                <Th>Cluster</Th>
                 <Th>Namespace</Th>
                 <Th>CPU (millicores)</Th>
               </Tr>
             </Thead>
             <Tbody>
               {topCpu.map((p) => (
-                <Tr key={`${p.namespace}/${p.name}`}>
+                <Tr key={`${p.cluster}/${p.namespace}/${p.name}`}>
                   <Td dataLabel="Name">{p.name}</Td>
+                  <Td dataLabel="Cluster">{p.cluster}</Td>
                   <Td dataLabel="Namespace">{p.namespace}</Td>
                   <Td dataLabel="CPU (millicores)">
                     {Math.round(p.cpu * 1000)}
@@ -384,14 +430,16 @@ const MetricsDashboard: React.FC = () => {
             <Thead>
               <Tr>
                 <Th>Name</Th>
+                <Th>Cluster</Th>
                 <Th>Namespace</Th>
                 <Th>Memory (Mi)</Th>
               </Tr>
             </Thead>
             <Tbody>
               {topMemory.map((p) => (
-                <Tr key={`${p.namespace}/${p.name}`}>
+                <Tr key={`${p.cluster}/${p.namespace}/${p.name}`}>
                   <Td dataLabel="Name">{p.name}</Td>
+                  <Td dataLabel="Cluster">{p.cluster}</Td>
                   <Td dataLabel="Namespace">{p.namespace}</Td>
                   <Td dataLabel="Memory (Mi)">{Math.round(p.memory)}</Td>
                 </Tr>

@@ -9,6 +9,7 @@ export interface LogLine {
   namespace: string;
   level: string;
   message: string;
+  cluster: string;
 }
 
 const MAX_LINES = 500;
@@ -20,7 +21,9 @@ interface LogStoreState {
   loading: boolean;
 }
 
-type LogStore = ReturnType<typeof createSharedStore<LogStoreState, typeof EVENTS>>;
+type LogStore = ReturnType<
+  typeof createSharedStore<LogStoreState, typeof EVENTS>
+>;
 
 let store: LogStore | null = null;
 let initialized = false;
@@ -77,27 +80,37 @@ export function useLogStore(): { lines: LogLine[]; loading: boolean } {
 
     const clusterIds = api.fleetshift.getClusterIdsForPlugin("logs");
 
-    // Fetch initial logs via REST (one-shot)
+    // Fetch initial logs from ALL clusters via REST
     if (clusterIds.length > 0) {
-      const clusterId = clusterIds[0];
-      fetch(`${api.fleetshift.apiBase}/clusters/${clusterId}/logs`)
-        .then((res) => (res.ok ? res.json() : []))
-        .then((data: LogLine[]) => {
-          if (data.length > 0) {
-            s.updateState("BULK", data);
-          }
-        });
+      Promise.all(
+        clusterIds.map((clusterId) =>
+          fetch(`${api.fleetshift.apiBase}/clusters/${clusterId}/logs`)
+            .then((res) => (res.ok ? res.json() : []))
+            .then((data: Omit<LogLine, "cluster">[]) =>
+              data.map((line) => ({ ...line, cluster: clusterId })),
+            ),
+        ),
+      ).then((results) => {
+        const allLines = results
+          .flat()
+          .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        if (allLines.length > 0) {
+          s.updateState("BULK", allLines);
+        }
+      });
     }
 
     // Subscribe to live log lines via WS
     const unsub = api.fleetshift.on(
       "logs",
-      (event: { line: LogLine }) => {
-        s.updateState("LOG_LINE", event.line);
+      (event: { line: Omit<LogLine, "cluster">; cluster: string }) => {
+        s.updateState("LOG_LINE", { ...event.line, cluster: event.cluster });
       },
     );
 
-    return () => { unsub(); };
+    return () => {
+      unsub();
+    };
   }, [api, s]);
 
   return {

@@ -1,6 +1,20 @@
 import { Router } from "express";
 import type { LiveCluster } from "../client";
 
+function clusterToJson(c: LiveCluster) {
+  return {
+    id: c.id,
+    name: c.name,
+    status: "ready",
+    version: c.version,
+    plugins: c.plugins,
+    platform: c.platform,
+    server: c.server,
+    nodeCount: c.nodeCount,
+    created_at: new Date().toISOString().replace("T", " ").substring(0, 19),
+  };
+}
+
 export function clusterRoutes(liveClusters: LiveCluster[]): Router {
   const router = Router();
   const clusterMap = new Map(liveClusters.map((c) => [c.id, c]));
@@ -8,27 +22,14 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
   router.get("/clusters/available", (_req, res) => {
     res.json(
       liveClusters.map((c) => ({
-        id: c.id,
-        name: c.name,
-        status: "ready",
-        version: c.version,
-        plugins: c.plugins,
+        ...clusterToJson(c),
         installed: true,
       })),
     );
   });
 
   router.get("/clusters", (_req, res) => {
-    res.json(
-      liveClusters.map((c) => ({
-        id: c.id,
-        name: c.name,
-        status: "ready",
-        version: c.version,
-        plugins: c.plugins,
-        created_at: new Date().toISOString().replace("T", " ").substring(0, 19),
-      })),
-    );
+    res.json(liveClusters.map(clusterToJson));
   });
 
   router.get("/clusters/:id", (req, res) => {
@@ -37,14 +38,7 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
       res.status(404).json({ error: "Cluster not found" });
       return;
     }
-    res.json({
-      id: cluster.id,
-      name: cluster.name,
-      status: "ready",
-      version: cluster.version,
-      plugins: cluster.plugins,
-      created_at: new Date().toISOString().replace("T", " ").substring(0, 19),
-    });
+    res.json(clusterToJson(cluster));
   });
 
   return router;

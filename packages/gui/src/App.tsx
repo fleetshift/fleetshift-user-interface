@@ -18,7 +18,7 @@ import type {
 } from "./utils/extensions";
 import { isPageInLayout } from "./utils/extensions";
 import { Dashboard } from "./pages/Dashboard";
-import { ClusterListPage } from "./pages/ClusterListPage";
+import { ClusterListPage, ClusterDetailPage } from "./pages/ClusterListPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { CanvasPageListPage } from "./pages/CanvasPageListPage";
 import { CanvasPage } from "./pages/CanvasPage";
@@ -146,9 +146,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
             if (manifest.name === "routing-plugin") {
               // For the routing plugin, we want to ensure the manifestLocation is absolute so it can be loaded from the public directory
               newManifest.loadScripts = manifest.loadScripts.map((script) =>
-                script.startsWith("http")
-                  ? script
-                  : `${assetsHost}/${script}`,
+                script.startsWith("http") ? script : `${assetsHost}/${script}`,
               );
             }
             return newManifest;
@@ -213,6 +211,7 @@ const AppRoutes = () => {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/clusters" element={<ClusterListPage />} />
+        <Route path="/clusters/:clusterId" element={<ClusterDetailPage />} />
         <Route path="/navigation" element={<MarketplacePage />} />
         <Route path="/pages" element={<CanvasPageListPage />} />
         <Route path="/pages/:pageId" element={<CanvasPage />} />
@@ -233,7 +232,10 @@ const AppConfigBridge = ({ children }: PropsWithChildren) => {
   const { pluginEntries, assetsHost, canvasPages, navLayout } = useAppConfig();
 
   return (
-    <PluginRegistryProvider pluginEntries={pluginEntries} assetsHost={assetsHost}>
+    <PluginRegistryProvider
+      pluginEntries={pluginEntries}
+      assetsHost={assetsHost}
+    >
       <ClusterProvider>
         <ScalprumShell>
           <ScopeProvider>

@@ -18,7 +18,9 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import { usePodStore } from "./podStore";
 
 function formatAge(createdAt: string): string {
-  const raw = createdAt.includes("T") ? createdAt : createdAt.replace(" ", "T") + "Z";
+  const raw = createdAt.includes("T")
+    ? createdAt
+    : createdAt.replace(" ", "T") + "Z";
   const created = new Date(raw);
   const now = Date.now();
   const diffMs = now - created.getTime();
@@ -149,6 +151,7 @@ const PodList: React.FC = () => {
           <Thead>
             <Tr>
               <Th>Name</Th>
+              <Th>Cluster</Th>
               <Th>Namespace</Th>
               <Th>Status</Th>
               <Th>Restarts</Th>
@@ -161,6 +164,7 @@ const PodList: React.FC = () => {
             {filtered.map((pod) => (
               <Tr key={pod.id}>
                 <Td dataLabel="Name">{pod.name}</Td>
+                <Td dataLabel="Cluster">{pod.cluster_id}</Td>
                 <Td dataLabel="Namespace">{pod.namespace}</Td>
                 <Td dataLabel="Status">
                   <Label color={statusColor(pod.status)}>{pod.status}</Label>
