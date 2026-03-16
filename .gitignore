@@ -8,6 +8,6 @@ reference
 test-results
 playwright-report
 getting-started
-k8s
 .env
 clusters.yaml
+k8s/*.yaml

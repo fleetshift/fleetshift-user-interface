@@ -6,6 +6,9 @@ import {
   unregisterClusterClient,
   addClusterToDb,
   removeClusterFromDb,
+  getClusterClient,
+  getDiscoveryDetails,
+  listConsolePlugins,
 } from "../client";
 import { setLiveClusters } from "../../routes/users";
 import { broadcastToAuthenticated } from "../../ws";
@@ -126,6 +129,36 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
       return;
     }
     res.json(clusterToJson(cluster));
+  });
+
+  router.get("/clusters/:id/console-plugins", async (req, res) => {
+    const client = getClusterClient(req.params.id);
+    if (!client) {
+      res.status(404).json({ error: "Cluster not found" });
+      return;
+    }
+    try {
+      const plugins = await listConsolePlugins(client.kc);
+      res.json(plugins);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  router.get("/clusters/:id/discovery", async (req, res) => {
+    const client = getClusterClient(req.params.id);
+    if (!client) {
+      res.status(404).json({ error: "Cluster not found" });
+      return;
+    }
+    try {
+      const details = await getDiscoveryDetails(client.kc);
+      res.json(details);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
   });
 
   router.delete("/clusters/:id", (req, res) => {
