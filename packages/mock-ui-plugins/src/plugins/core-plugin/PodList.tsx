@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -15,28 +15,11 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface Pod {
-  id: string;
-  namespace_id: string;
-  cluster_id: string;
-  name: string;
-  status: string;
-  restarts: number;
-  cpu_usage: number;
-  memory_usage: number;
-  created_at: string;
-}
-
-function extractNamespace(namespaceId: string, clusterId: string): string {
-  return namespaceId.startsWith(clusterId + "-")
-    ? namespaceId.slice(clusterId.length + 1)
-    : namespaceId;
-}
+import { usePodStore } from "./podStore";
 
 function formatAge(createdAt: string): string {
-  const created = new Date(createdAt.replace(" ", "T") + "Z");
+  const raw = createdAt.includes("T") ? createdAt : createdAt.replace(" ", "T") + "Z";
+  const created = new Date(raw);
   const now = Date.now();
   const diffMs = now - created.getTime();
   if (diffMs < 0) return "just now";
@@ -71,63 +54,8 @@ function statusColor(
   }
 }
 
-function usePods() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [pods, setPods] = useState<(Pod & { namespace: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setPods([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/pods`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Pod[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        const all = results.flat().map((pod) => ({
-          ...pod,
-          namespace: extractNamespace(pod.namespace_id, pod.cluster_id),
-        }));
-        setPods(all);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { pods, loading, error };
-}
-
 const PodList: React.FC = () => {
-  const { pods, loading, error } = usePods();
+  const { pods, loading } = usePodStore();
   const [nameFilter, setNameFilter] = useState("");
   const [nsFilter, setNsFilter] = useState<string | null>(null);
   const [nsSelectOpen, setNsSelectOpen] = useState(false);
@@ -156,14 +84,6 @@ const PodList: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading pods" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

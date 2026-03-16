@@ -19,13 +19,64 @@ let wss: WebSocketServer;
 // Map sessionId → session info for origin exclusion + user scoping
 const sessions = new Map<string, Session>();
 
+// --- Ticket-based WS auth ---
+// ticket → { userId, expiresAt }
+interface Ticket {
+  userId: string;
+  expiresAt: number;
+}
+
+const pendingTickets = new Map<string, Ticket>();
+const TICKET_TTL_MS = 30_000; // 30 seconds to use the ticket
+
+/**
+ * Create a one-time ticket for WS authentication.
+ * Called from an authenticated HTTP endpoint.
+ */
+export function createWsTicket(userId: string): string {
+  const ticket = crypto.randomUUID();
+  pendingTickets.set(ticket, {
+    userId,
+    expiresAt: Date.now() + TICKET_TTL_MS,
+  });
+  return ticket;
+}
+
+/**
+ * Validate and consume a ticket. Returns the userId or null.
+ */
+function consumeTicket(ticket: string): string | null {
+  const entry = pendingTickets.get(ticket);
+  if (!entry) return null;
+
+  // Always delete — one-time use
+  pendingTickets.delete(ticket);
+
+  if (Date.now() > entry.expiresAt) return null;
+  return entry.userId;
+}
+
+// Periodically clean expired tickets
+setInterval(() => {
+  const now = Date.now();
+  for (const [ticket, entry] of pendingTickets) {
+    if (now > entry.expiresAt) pendingTickets.delete(ticket);
+  }
+}, 60_000);
+
 export function attachWebSocket(server: Server) {
   wss = new WebSocketServer({ server, path: "/ws" });
 
   wss.on("connection", (ws, req: IncomingMessage) => {
-    // Extract userId from query string: ws://…/ws?userId=xxx
     const url = new URL(req.url ?? "/", "http://localhost");
-    const userId = url.searchParams.get("userId");
+    const ticket = url.searchParams.get("ticket");
+
+    // Authenticate via ticket
+    const userId = ticket ? consumeTicket(ticket) : null;
+    if (!userId) {
+      ws.close(4401, "Unauthorized");
+      return;
+    }
 
     // Assign a unique session ID and send it to the client
     const sessionId = crypto.randomUUID();
@@ -60,6 +111,20 @@ export function broadcast(
     // User-scoped: only send to sockets belonging to that user
     if (opts?.userId && session.userId !== opts.userId) continue;
     if (session.ws.readyState === WebSocket.OPEN) {
+      session.ws.send(msg);
+    }
+  }
+}
+
+/**
+ * Send a message to all authenticated sessions (those with a userId).
+ * Used for K8s informer/metrics events.
+ */
+export function broadcastToAuthenticated(message: unknown) {
+  if (!wss) return;
+  const msg = JSON.stringify(message);
+  for (const [, session] of sessions) {
+    if (session.userId && session.ws.readyState === WebSocket.OPEN) {
       session.ws.send(msg);
     }
   }

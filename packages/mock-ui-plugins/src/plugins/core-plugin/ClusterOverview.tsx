@@ -7,7 +7,6 @@ import {
   GridItem,
   Spinner,
   Title,
-  Content,
   Icon,
 } from "@patternfly/react-core";
 import {
@@ -15,33 +14,9 @@ import {
   ProjectDiagramIcon,
   ServerIcon,
 } from "@patternfly/react-icons";
-import { useApiBase, useClusterIds, useFetch } from "./api";
-
-interface PodAggregate {
-  cluster_id: string;
-  total: number;
-  running: number;
-  pending: number;
-  failing: number;
-  avg_cpu: number;
-  avg_memory: number;
-}
-
-interface NodeItem {
-  id: string;
-  name: string;
-  status: string;
-  role: string;
-  cpu_capacity: number;
-  memory_capacity: number;
-  cpu_used: number;
-  memory_used: number;
-}
-
-interface NamespaceItem {
-  id: string;
-  [key: string]: unknown;
-}
+import { useRemoteHook } from "@scalprum/react-core";
+import { usePodStore } from "./podStore";
+import { useNamespaceStore } from "./namespaceStore";
 
 interface StatCardProps {
   title: string;
@@ -80,36 +55,43 @@ const StatCard: React.FC<StatCardProps> = ({
 );
 
 const ClusterOverview: React.FC = () => {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const clusterId = clusterIds[0] ?? null;
+  const { pods, loading: podsLoading } = usePodStore();
+  const { namespaces, loading: nsLoading } = useNamespaceStore();
 
-  const podsUrl = clusterId ? `${apiBase}/pods/aggregate` : null;
-  const namespacesUrl = clusterId
-    ? `${apiBase}/clusters/${clusterId}/namespaces`
-    : null;
-  const nodesUrl = clusterId ? `${apiBase}/clusters/${clusterId}/nodes` : null;
+  // Use node store from nodes-plugin via remote hook
+  const { hookResult: nodeStoreResult, loading: nodesRemoteLoading } =
+    useRemoteHook<{
+      nodes: Array<{ id: string; name: string; status: string }>;
+      loading: boolean;
+    }>({
+      scope: "nodes-plugin",
+      module: "useNodeStore",
+    });
 
-  const { data: podAggregates, loading: podsLoading } =
-    useFetch<PodAggregate[]>(podsUrl);
-  const { data: namespaces, loading: nsLoading } =
-    useFetch<NamespaceItem[]>(namespacesUrl);
-  const { data: nodes, loading: nodesLoading } = useFetch<NodeItem[]>(nodesUrl);
+  const nodes = nodeStoreResult?.nodes ?? [];
+  const nodesLoading = nodesRemoteLoading || (nodeStoreResult?.loading ?? true);
 
-  const podData = useMemo(() => {
-    if (!podAggregates || !clusterId) return null;
-    return podAggregates.find((a) => a.cluster_id === clusterId) ?? null;
-  }, [podAggregates, clusterId]);
+  const podStats = useMemo(() => {
+    const running = pods.filter((p) => p.status === "Running").length;
+    const pending = pods.filter(
+      (p) => p.status === "Pending" || p.status === "ContainerCreating",
+    ).length;
+    const failing = pods.filter((p) =>
+      [
+        "CrashLoopBackOff",
+        "ImagePullBackOff",
+        "ErrImagePull",
+        "Error",
+        "Failed",
+      ].includes(p.status),
+    ).length;
+    return { total: pods.length, running, pending, failing };
+  }, [pods]);
 
   const nodeStats = useMemo(() => {
-    if (!nodes) return null;
     const ready = nodes.filter((n) => n.status === "Ready").length;
     return { total: nodes.length, ready, notReady: nodes.length - ready };
   }, [nodes]);
-
-  if (!clusterId) {
-    return <Content component="p">No clusters available.</Content>;
-  }
 
   const countStyle: React.CSSProperties = {
     fontSize: "2.5rem",
@@ -126,14 +108,14 @@ const ClusterOverview: React.FC = () => {
     <Grid hasGutter>
       <GridItem md={4} sm={12}>
         <StatCard title="Pods" icon={CubesIcon} loading={podsLoading}>
-          <div style={countStyle}>{podData?.total ?? 0}</div>
+          <div style={countStyle}>{podStats.total}</div>
           <div style={breakdownStyle}>
             <span
               style={{
                 color: "var(--pf-t--global--color--status--success--default)",
               }}
             >
-              {podData?.running ?? 0} running
+              {podStats.running} running
             </span>
             {" / "}
             <span
@@ -141,7 +123,7 @@ const ClusterOverview: React.FC = () => {
                 color: "var(--pf-t--global--color--status--warning--default)",
               }}
             >
-              {podData?.pending ?? 0} pending
+              {podStats.pending} pending
             </span>
             {" / "}
             <span
@@ -149,7 +131,7 @@ const ClusterOverview: React.FC = () => {
                 color: "var(--pf-t--global--color--status--danger--default)",
               }}
             >
-              {podData?.failing ?? 0} failing
+              {podStats.failing} failing
             </span>
           </div>
         </StatCard>
@@ -161,7 +143,7 @@ const ClusterOverview: React.FC = () => {
           icon={ProjectDiagramIcon}
           loading={nsLoading}
         >
-          <div style={countStyle}>{namespaces?.length ?? 0}</div>
+          <div style={countStyle}>{namespaces.length}</div>
           <div style={breakdownStyle}>
             <span
               style={{
@@ -176,14 +158,14 @@ const ClusterOverview: React.FC = () => {
 
       <GridItem md={4} sm={12}>
         <StatCard title="Nodes" icon={ServerIcon} loading={nodesLoading}>
-          <div style={countStyle}>{nodeStats?.total ?? 0}</div>
+          <div style={countStyle}>{nodeStats.total}</div>
           <div style={breakdownStyle}>
             <span
               style={{
                 color: "var(--pf-t--global--color--status--success--default)",
               }}
             >
-              {nodeStats?.ready ?? 0} ready
+              {nodeStats.ready} ready
             </span>
             {" / "}
             <span
@@ -191,7 +173,7 @@ const ClusterOverview: React.FC = () => {
                 color: "var(--pf-t--global--color--status--danger--default)",
               }}
             >
-              {nodeStats?.notReady ?? 0} not ready
+              {nodeStats.notReady} not ready
             </span>
           </div>
         </StatCard>

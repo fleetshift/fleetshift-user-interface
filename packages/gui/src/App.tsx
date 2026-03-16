@@ -11,6 +11,7 @@ import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
 import { PluginRegistryProvider } from "./contexts/PluginRegistryContext";
 import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
 import { useUserPreferences } from "./contexts/UserPreferencesContext";
+import { subscribe as eventBusSubscribe } from "./hooks/useInvalidationSocket";
 import type {
   CanvasPage as CanvasPageDef,
   NavLayoutEntry,
@@ -127,6 +128,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
             scopeListenersRef.current.delete(fn);
           };
         },
+        on: eventBusSubscribe,
       },
     }),
     [],

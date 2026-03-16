@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -14,39 +14,13 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface Service {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  type: string;
-  cluster_ip: string;
-  ports: string;
-}
-
-interface Ingress {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  host: string;
-  path: string;
-  service_name: string;
-  tls: number;
-}
+import { useServiceStore } from "./serviceStore";
+import { useIngressStore } from "./ingressStore";
 
 interface PortEntry {
   port: number;
   targetPort: number;
   protocol: string;
-}
-
-function extractNamespace(namespaceId: string, clusterId: string): string {
-  return namespaceId.startsWith(clusterId + "-")
-    ? namespaceId.slice(clusterId.length + 1)
-    : namespaceId;
 }
 
 function formatPorts(portsJson: string): string {
@@ -58,122 +32,8 @@ function formatPorts(portsJson: string): string {
   }
 }
 
-function useServices() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [services, setServices] = useState<(Service & { namespace: string })[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setServices([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/services`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Service[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        const all = results.flat().map((svc) => ({
-          ...svc,
-          namespace: extractNamespace(svc.namespace_id, svc.cluster_id),
-        }));
-        setServices(all);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { services, loading, error };
-}
-
-function useIngresses() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [ingresses, setIngresses] = useState<
-    (Ingress & { namespace: string })[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setIngresses([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/ingresses`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Ingress[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        const all = results.flat().map((ing) => ({
-          ...ing,
-          namespace: extractNamespace(ing.namespace_id, ing.cluster_id),
-        }));
-        setIngresses(all);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { ingresses, loading, error };
-}
-
 const ServicesTab: React.FC = () => {
-  const { services, loading, error } = useServices();
+  const { services, loading } = useServiceStore();
   const [filter, setFilter] = useState("");
 
   const filtered = useMemo(
@@ -190,14 +50,6 @@ const ServicesTab: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading services" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 
@@ -255,7 +107,7 @@ const ServicesTab: React.FC = () => {
 };
 
 const IngressesTab: React.FC = () => {
-  const { ingresses, loading, error } = useIngresses();
+  const { ingresses, loading } = useIngressStore();
   const [filter, setFilter] = useState("");
 
   const filtered = useMemo(
@@ -272,14 +124,6 @@ const IngressesTab: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading ingresses" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

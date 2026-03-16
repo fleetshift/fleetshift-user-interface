@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from "../db";
-import { broadcast } from "../ws";
+import { broadcast, createWsTicket } from "../ws";
 import { getPluginRegistry } from "../pluginRegistry";
 
 const router = Router();
@@ -77,6 +77,7 @@ function buildScalprumConfigServer(
       config[name] = {
         name: entry.name,
         pluginManifest: entry.pluginManifest,
+        manifestLocation: `${registry.assetsHost}/${entry.name}-manifest.json`,
         assetsHost: registry.assetsHost,
       };
     }
@@ -197,6 +198,29 @@ router.get("/users/:id/config", (req, res) => {
     pluginEntries,
     assetsHost: registry.assetsHost,
   });
+});
+
+// POST /ws/ticket — issue a one-time ticket for WS authentication
+router.post("/ws/ticket", (req, res) => {
+  // req.user is set by jwtAuthMiddleware (username from JWT)
+  const tokenUser = req.user;
+  if (!tokenUser) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  // Look up the DB user ID from the JWT username
+  const user = db
+    .prepare("SELECT id FROM users WHERE username = ?")
+    .get(tokenUser.username) as { id: string } | undefined;
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const ticket = createWsTicket(user.id);
+  res.json({ ticket });
 });
 
 // POST /auth/login — login by username

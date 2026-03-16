@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -14,23 +14,15 @@ import {
   Tooltip,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface K8sEvent {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  type: string;
-  reason: string;
-  message: string;
-  source: string;
-  created_at: string;
-}
+import { useEventStore } from "./eventStore";
 
 type TypeFilter = "All" | "Normal" | "Warning";
 
 function formatAge(createdAt: string): string {
-  const created = new Date(createdAt.replace(" ", "T") + "Z");
+  const raw = createdAt.includes("T")
+    ? createdAt
+    : createdAt.replace(" ", "T") + "Z";
+  const created = new Date(raw);
   const now = Date.now();
   const diffMs = now - created.getTime();
   if (diffMs < 0) return "just now";
@@ -51,69 +43,8 @@ function truncateMessage(message: string, maxLen: number): string {
   return message.slice(0, maxLen) + "...";
 }
 
-function useEvents() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [events, setEvents] = useState<K8sEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/events`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<K8sEvent[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        const all = results.flat();
-        all.sort((a, b) => {
-          const dateA = new Date(
-            a.created_at.replace(" ", "T") + "Z",
-          ).getTime();
-          const dateB = new Date(
-            b.created_at.replace(" ", "T") + "Z",
-          ).getTime();
-          return dateB - dateA;
-        });
-        setEvents(all);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { events, loading, error };
-}
-
 const EventList: React.FC = () => {
-  const { events, loading, error } = useEvents();
+  const { events, loading } = useEventStore();
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("All");
 
@@ -140,14 +71,6 @@ const EventList: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading events" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -12,20 +12,11 @@ import {
 } from "@patternfly/react-core";
 import { CheckCircleIcon } from "@patternfly/react-icons";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface Alert {
-  id: string;
-  cluster_id: string;
-  name: string;
-  severity: string;
-  state: string;
-  message: string;
-  fired_at: string;
-}
+import { useAlertStore } from "./alertStore";
 
 function formatRelativeTime(firedAt: string): string {
-  const fired = new Date(firedAt.replace(" ", "T") + "Z");
+  const raw = firedAt.includes("T") ? firedAt : firedAt.replace(" ", "T") + "Z";
+  const fired = new Date(raw);
   const now = Date.now();
   const diffMs = now - fired.getTime();
   if (diffMs < 0) return "just now";
@@ -41,59 +32,8 @@ function severityColor(severity: string): "red" | "orange" {
   return severity === "critical" ? "red" : "orange";
 }
 
-function useAlerts() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setAlerts([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/alerts`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Alert[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        setAlerts(results.flat());
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { alerts, loading, error };
-}
-
 const AlertList: React.FC = () => {
-  const { alerts, loading, error } = useAlerts();
+  const { alerts, loading } = useAlertStore();
   const [filter, setFilter] = useState("");
 
   const filtered = useMemo(
@@ -114,14 +54,6 @@ const AlertList: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading alerts" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

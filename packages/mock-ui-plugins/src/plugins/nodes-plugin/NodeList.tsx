@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -11,20 +11,7 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface Node {
-  id: string;
-  cluster_id: string;
-  name: string;
-  status: string;
-  role: string;
-  cpu_capacity: number;
-  memory_capacity: number;
-  cpu_used: number;
-  memory_used: number;
-  kubelet_version: string;
-}
+import { useNodeStore } from "./nodeStore";
 
 function statusColor(status: string): "green" | "red" | "grey" {
   switch (status) {
@@ -58,59 +45,8 @@ function formatMemory(used: number, capacity: number): string {
   return `${used}/${capacity} Mi`;
 }
 
-function useNodes() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setNodes([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/nodes`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Node[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        setNodes(results.flat());
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { nodes, loading, error };
-}
-
 const NodeList: React.FC = () => {
-  const { nodes, loading, error } = useNodes();
+  const { nodes, loading } = useNodeStore();
   const [nameFilter, setNameFilter] = useState("");
 
   const filtered = useMemo(
@@ -131,14 +67,6 @@ const NodeList: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading nodes" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

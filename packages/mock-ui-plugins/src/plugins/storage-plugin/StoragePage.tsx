@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -14,28 +14,8 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface PV {
-  id: string;
-  cluster_id: string;
-  name: string;
-  capacity: string;
-  access_mode: string;
-  status: string;
-  storage_class: string;
-}
-
-interface PVC {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  status: string;
-  capacity: string;
-  storage_class: string;
-  pv_name: string | null;
-}
+import { usePVStore } from "./pvStore";
+import { usePVCStore } from "./pvcStore";
 
 function pvStatusColor(status: string): "green" | "orange" | "red" | "grey" {
   switch (status) {
@@ -64,65 +44,8 @@ function pvcStatusColor(status: string): "green" | "orange" | "red" | "grey" {
   }
 }
 
-function extractNamespace(namespaceId: string, clusterId: string): string {
-  return namespaceId.startsWith(clusterId + "-")
-    ? namespaceId.slice(clusterId.length + 1)
-    : namespaceId;
-}
-
-function useFetchAll<T>(endpoint: string) {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/${endpoint}`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<T[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        setData(results.flat());
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds, endpoint]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { data, loading, error };
-}
-
 const PVTab: React.FC = () => {
-  const { data: pvs, loading, error } = useFetchAll<PV>("pvs");
+  const { pvs, loading } = usePVStore();
   const [nameFilter, setNameFilter] = useState("");
 
   const filtered = useMemo(
@@ -140,17 +63,6 @@ const PVTab: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        titleText="Error loading persistent volumes"
-        headingLevel="h2"
-      >
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 
@@ -208,7 +120,7 @@ const PVTab: React.FC = () => {
 };
 
 const PVCTab: React.FC = () => {
-  const { data: pvcs, loading, error } = useFetchAll<PVC>("pvcs");
+  const { pvcs, loading } = usePVCStore();
   const [nameFilter, setNameFilter] = useState("");
 
   const filtered = useMemo(
@@ -226,17 +138,6 @@ const PVCTab: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        titleText="Error loading persistent volume claims"
-        headingLevel="h2"
-      >
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 
@@ -282,15 +183,13 @@ const PVCTab: React.FC = () => {
             {filtered.map((pvc) => (
               <Tr key={pvc.id}>
                 <Td dataLabel="Name">{pvc.name}</Td>
-                <Td dataLabel="Namespace">
-                  {extractNamespace(pvc.namespace_id, pvc.cluster_id)}
-                </Td>
+                <Td dataLabel="Namespace">{pvc.namespace}</Td>
                 <Td dataLabel="Status">
                   <Label color={pvcStatusColor(pvc.status)}>{pvc.status}</Label>
                 </Td>
                 <Td dataLabel="Capacity">{pvc.capacity}</Td>
                 <Td dataLabel="Storage Class">{pvc.storage_class}</Td>
-                <Td dataLabel="Volume">{pvc.pv_name ?? "—"}</Td>
+                <Td dataLabel="Volume">{pvc.pv_name ?? "\u2014"}</Td>
               </Tr>
             ))}
           </Tbody>

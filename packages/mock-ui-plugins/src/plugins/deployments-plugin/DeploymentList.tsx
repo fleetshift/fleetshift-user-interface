@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Bullseye,
   EmptyState,
@@ -15,87 +15,10 @@ import {
   ToolbarItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
-import { useApiBase, useClusterIds } from "./api";
-
-interface Deployment {
-  id: string;
-  cluster_id: string;
-  namespace_id: string;
-  name: string;
-  replicas: number;
-  available: number;
-  ready: number;
-  strategy: string;
-  image: string;
-}
-
-interface DeploymentRow extends Deployment {
-  namespace: string;
-}
-
-function extractNamespace(namespaceId: string, clusterId: string): string {
-  return namespaceId.startsWith(clusterId + "-")
-    ? namespaceId.slice(clusterId.length + 1)
-    : namespaceId;
-}
-
-function useDeployments() {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [deployments, setDeployments] = useState<DeploymentRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController>();
-
-  const fetchAll = useCallback(() => {
-    if (clusterIds.length === 0) {
-      setDeployments([]);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(null);
-
-    Promise.all(
-      clusterIds.map((id) =>
-        fetch(`${apiBase}/clusters/${id}/deployments`, {
-          signal: controller.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-          return res.json() as Promise<Deployment[]>;
-        }),
-      ),
-    )
-      .then((results) => {
-        const all = results.flat().map((dep) => ({
-          ...dep,
-          namespace: extractNamespace(dep.namespace_id, dep.cluster_id),
-        }));
-        setDeployments(all);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-  }, [apiBase, clusterIds]);
-
-  useEffect(() => {
-    fetchAll();
-    return () => abortRef.current?.abort();
-  }, [fetchAll]);
-
-  return { deployments, loading, error };
-}
+import { useDeploymentStore } from "./deploymentStore";
 
 const DeploymentList: React.FC = () => {
-  const { deployments, loading, error } = useDeployments();
+  const { deployments, loading } = useDeploymentStore();
   const [nameFilter, setNameFilter] = useState("");
   const [nsFilter, setNsFilter] = useState<string | null>(null);
   const [nsSelectOpen, setNsSelectOpen] = useState(false);
@@ -124,14 +47,6 @@ const DeploymentList: React.FC = () => {
       <Bullseye>
         <Spinner />
       </Bullseye>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState titleText="Error loading deployments" headingLevel="h2">
-        <EmptyStateBody>{error}</EmptyStateBody>
-      </EmptyState>
     );
   }
 

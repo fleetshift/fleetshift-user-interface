@@ -78,6 +78,8 @@ const CorePlugin = new DynamicRemotePlugin({
       ClusterOverview: p("./src/plugins/core-plugin/ClusterOverview.tsx"),
       PodList: p("./src/plugins/core-plugin/PodList.tsx"),
       NamespaceList: p("./src/plugins/core-plugin/NamespaceList.tsx"),
+      usePodStore: p("./src/plugins/core-plugin/podStore.ts"),
+      useNamespaceStore: p("./src/plugins/core-plugin/namespaceStore.ts"),
     },
   },
 });
@@ -102,6 +104,7 @@ const NodesPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       NodeList: p("./src/plugins/nodes-plugin/NodeList.tsx"),
+      useNodeStore: p("./src/plugins/nodes-plugin/nodeStore.ts"),
     },
   },
 });
@@ -126,6 +129,8 @@ const StoragePlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       StoragePage: p("./src/plugins/storage-plugin/StoragePage.tsx"),
+      usePVStore: p("./src/plugins/storage-plugin/pvStore.ts"),
+      usePVCStore: p("./src/plugins/storage-plugin/pvcStore.ts"),
     },
   },
 });
@@ -150,6 +155,7 @@ const EventsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       EventList: p("./src/plugins/events-plugin/EventList.tsx"),
+      useEventStore: p("./src/plugins/events-plugin/eventStore.ts"),
     },
   },
 });
@@ -174,6 +180,7 @@ const AlertsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       AlertList: p("./src/plugins/alerts-plugin/AlertList.tsx"),
+      useAlertStore: p("./src/plugins/alerts-plugin/alertStore.ts"),
     },
   },
 });
@@ -224,6 +231,8 @@ const NetworkingPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       NetworkingPage: p("./src/plugins/networking-plugin/NetworkingPage.tsx"),
+      useServiceStore: p("./src/plugins/networking-plugin/serviceStore.ts"),
+      useIngressStore: p("./src/plugins/networking-plugin/ingressStore.ts"),
     },
   },
 });
@@ -248,6 +257,9 @@ const DeploymentsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       DeploymentList: p("./src/plugins/deployments-plugin/DeploymentList.tsx"),
+      useDeploymentStore: p(
+        "./src/plugins/deployments-plugin/deploymentStore.ts",
+      ),
     },
   },
 });
@@ -272,6 +284,7 @@ const LogsPlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       LogViewer: p("./src/plugins/logs-plugin/LogViewer.tsx"),
+      useLogStore: p("./src/plugins/logs-plugin/logStore.ts"),
     },
   },
 });

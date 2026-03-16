@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -13,70 +13,42 @@ import {
   ToolbarItem,
   ToggleGroup,
   ToggleGroupItem,
-  Button,
+  Switch,
 } from "@patternfly/react-core";
-import { SyncAltIcon } from "@patternfly/react-icons";
-import { useApiBase, useClusterIds } from "./api";
+import { useLogStore } from "./logStore";
 import { LogEntry } from "./LogEntry";
-
-interface LogLine {
-  timestamp: string;
-  pod: string;
-  namespace: string;
-  level: string;
-  message: string;
-}
 
 type LevelFilter = "All" | "INFO" | "WARN" | "ERROR" | "DEBUG";
 
 const LEVELS: LevelFilter[] = ["All", "INFO", "WARN", "ERROR", "DEBUG"];
 
 const LogViewer: React.FC = () => {
-  const apiBase = useApiBase();
-  const clusterIds = useClusterIds();
-  const [logs, setLogs] = useState<LogLine[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { lines, loading } = useLogStore();
   const [searchText, setSearchText] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("All");
+  const [autoScroll, setAutoScroll] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const fetchLogs = useCallback(async () => {
-    if (clusterIds.length === 0) {
-      setLogs([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const clusterId = clusterIds[0];
-      const response = await fetch(`${apiBase}/clusters/${clusterId}/logs`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch logs: ${response.statusText}`);
-      }
-      const data: LogLine[] = await response.json();
-      setLogs(data);
-    } catch {
-      setLogs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiBase, clusterIds]);
+  const filteredLogs = useMemo(
+    () =>
+      lines.filter((log) => {
+        if (levelFilter !== "All" && log.level !== levelFilter) return false;
+        if (
+          searchText &&
+          !log.message.toLowerCase().includes(searchText.toLowerCase())
+        )
+          return false;
+        return true;
+      }),
+    [lines, levelFilter, searchText],
+  );
 
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  const filteredLogs = logs.filter((log) => {
-    if (levelFilter !== "All" && log.level !== levelFilter) {
-      return false;
+    if (autoScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-    if (
-      searchText &&
-      !log.message.toLowerCase().includes(searchText.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  }, [filteredLogs.length, autoScroll]);
 
   return (
     <Card>
@@ -106,17 +78,17 @@ const LogViewer: React.FC = () => {
               </ToggleGroup>
             </ToolbarItem>
             <ToolbarItem>
-              <Button
-                variant="plain"
-                aria-label="Refresh logs"
-                onClick={fetchLogs}
-                icon={<SyncAltIcon />}
+              <Switch
+                id="auto-scroll"
+                label="Auto-scroll"
+                isChecked={autoScroll}
+                onChange={(_event, checked) => setAutoScroll(checked)}
               />
             </ToolbarItem>
           </ToolbarContent>
         </Toolbar>
 
-        {loading ? (
+        {loading && lines.length === 0 ? (
           <Spinner aria-label="Loading logs" />
         ) : filteredLogs.length === 0 ? (
           <EmptyState
@@ -125,13 +97,14 @@ const LogViewer: React.FC = () => {
             variant={EmptyStateVariant.sm}
           >
             <EmptyStateBody>
-              {logs.length === 0
-                ? "No log data was returned from the cluster."
+              {lines.length === 0
+                ? "Waiting for log data from the cluster..."
                 : "No logs match the current filters."}
             </EmptyStateBody>
           </EmptyState>
         ) : (
           <div
+            ref={scrollRef}
             style={{
               overflow: "auto",
               maxHeight: 600,

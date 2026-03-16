@@ -2,6 +2,7 @@ import * as k8s from "@kubernetes/client-node";
 
 let coreApi: k8s.CoreV1Api | null = null;
 let appsApi: k8s.AppsV1Api | null = null;
+let networkingApi: k8s.NetworkingV1Api | null = null;
 let metricsClient: k8s.Metrics | null = null;
 let kubeConfig: k8s.KubeConfig | null = null;
 
@@ -57,6 +58,7 @@ export async function initK8sClient(): Promise<LiveCluster[]> {
 
     const core = kc.makeApiClient(k8s.CoreV1Api);
     const apps = kc.makeApiClient(k8s.AppsV1Api);
+    const networking = kc.makeApiClient(k8s.NetworkingV1Api);
 
     // Verify connectivity
     const versionApi = kc.makeApiClient(k8s.VersionApi);
@@ -65,6 +67,7 @@ export async function initK8sClient(): Promise<LiveCluster[]> {
 
     coreApi = core;
     appsApi = apps;
+    networkingApi = networking;
     kubeConfig = kc;
 
     try {
@@ -108,6 +111,11 @@ export function getCoreApi(): k8s.CoreV1Api {
 export function getAppsApi(): k8s.AppsV1Api {
   if (!appsApi) throw new Error("K8s client not initialized");
   return appsApi;
+}
+
+export function getNetworkingApi(): k8s.NetworkingV1Api {
+  if (!networkingApi) throw new Error("K8s client not initialized");
+  return networkingApi;
 }
 
 export function getMetricsClient(): k8s.Metrics | null {
