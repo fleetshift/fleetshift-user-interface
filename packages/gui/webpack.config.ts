@@ -40,7 +40,7 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
         use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/,
+        test: /\.(png|jpe?g|gif|svg|ico)$/,
         type: "asset/resource",
       },
     ],
@@ -68,6 +68,7 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
     }),
     new HtmlWebpackPlugin({
       template: "./src/index.html",
+      favicon: "./src/assets/masthead.ico",
     }),
   ],
   devServer: {
