@@ -21,6 +21,7 @@ const sharedModules = {
   react: { singleton: true, requiredVersion: "*" },
   "@fleetshift/common": {
     requiredVersion: "*",
+    version: "*",
   },
   "react-dom": { singleton: true, requiredVersion: "*" },
   "@scalprum/core": { singleton: true, requiredVersion: "*" },
@@ -421,30 +422,6 @@ const RoutesPlugin = new DynamicRemotePlugin({
   },
 });
 
-const CostPlugin = new DynamicRemotePlugin({
-  extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        label: "Cost",
-        component: { $codeRef: "CostPage.default" },
-      },
-    },
-  ],
-  sharedModules,
-  entryScriptFilename: "cost-plugin.[contenthash].js",
-  pluginManifestFilename: "cost-plugin-manifest.json",
-  // @ts-ignore
-  moduleFederationSettings: mfOverride,
-  pluginMetadata: {
-    name: "cost-plugin",
-    version: "1.0.0",
-    exposedModules: {
-      CostPage: p("./src/plugins/cost-plugin/CostPage.tsx"),
-    },
-  },
-});
-
 const UpgradesPlugin = new DynamicRemotePlugin({
   extensions: [
     {
@@ -552,7 +529,6 @@ const config: Configuration = {
     ConfigPlugin,
     GitOpsPlugin,
     RoutesPlugin,
-    CostPlugin,
     UpgradesPlugin,
     ClowderPlugin,
     RoutingPlugin,
@@ -622,7 +598,7 @@ const config: Configuration = {
           label: "Routes",
           persona: "dev",
         },
-        { name: "cost-plugin", key: "cost", label: "Cost", persona: "ops" },
+
         {
           name: "upgrades-plugin",
           key: "upgrades",

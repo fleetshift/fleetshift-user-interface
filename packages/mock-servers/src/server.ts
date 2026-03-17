@@ -71,7 +71,7 @@ async function start() {
         "storage",
         "alerts",
         "upgrades",
-        "cost",
+
         "events",
         "logs",
         "deployments",

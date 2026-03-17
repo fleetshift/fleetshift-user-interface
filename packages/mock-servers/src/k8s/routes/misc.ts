@@ -1,12 +1,6 @@
 import { Router } from "express";
-import { getClusterClient, type LiveCluster } from "../client";
-import {
-  requireCluster,
-  k8sError,
-  parseCpuString,
-  parseMemoryString,
-  type ClusterMap,
-} from "../utils";
+import type { LiveCluster } from "../client";
+import type { ClusterMap } from "../utils";
 
 export function miscRoutes(
   clusterMap: ClusterMap,
@@ -45,59 +39,6 @@ export function miscRoutes(
       upToDate: true,
       availableUpdates: [],
     });
-  });
-
-  // Cost estimation
-  router.get("/clusters/:id/cost", async (req, res) => {
-    const clusterId = requireCluster(req, res, clusterMap);
-    if (!clusterId) return;
-    try {
-      const client = getClusterClient(req.params.id);
-      if (!client) {
-        res.status(404).json({ error: "Cluster not found" });
-        return;
-      }
-      const core = client.core;
-      const podResponse = await core.listPodForAllNamespaces();
-
-      const CPU_RATE = 0.048;
-      const MEM_RATE = 0.006;
-      const HOURS_PER_MONTH = 730;
-
-      const nsCosts = new Map<string, { cpu: number; memory: number }>();
-
-      for (const pod of podResponse.items ?? []) {
-        const ns = pod.metadata?.namespace ?? "default";
-        const entry = nsCosts.get(ns) ?? { cpu: 0, memory: 0 };
-        for (const container of pod.spec?.containers ?? []) {
-          const requests = container.resources?.requests ?? {};
-          entry.cpu += parseCpuString(requests.cpu);
-          entry.memory += parseMemoryString(requests.memory) / 1024;
-        }
-        nsCosts.set(ns, entry);
-      }
-
-      let totalCost = 0;
-      const namespaces = Array.from(nsCosts.entries()).map(([ns, usage]) => {
-        const cost =
-          usage.cpu * CPU_RATE * HOURS_PER_MONTH +
-          usage.memory * MEM_RATE * HOURS_PER_MONTH;
-        totalCost += cost;
-        return {
-          namespace: ns,
-          cpuCores: Math.round(usage.cpu * 100) / 100,
-          memoryMB: Math.round(usage.memory * 1024),
-          estimatedMonthlyCost: Math.round(cost * 100) / 100,
-        };
-      });
-
-      res.json({
-        totalEstimatedMonthlyCost: Math.round(totalCost * 100) / 100,
-        namespaces,
-      });
-    } catch (err) {
-      k8sError(res, err);
-    }
   });
 
   return router;

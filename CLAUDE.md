@@ -12,7 +12,7 @@ npm workspaces monorepo with five packages under `packages/`:
 
 - **`@fleetshift/gui`** — React 18 SPA bundled with webpack. Uses React Router DOM v6, supports TS/CSS/SCSS.
 - **`@fleetshift/cli`** — CLI tool (scaffolding only, no source yet).
-- **`@fleetshift/mock-servers`** — Express + better-sqlite3 mock API server (port 4000). Provides REST endpoints for clusters, pods, namespaces, metrics, nodes, services, ingresses, storage, alerts, deployments, pipelines, config, gitops, events, routes, cost, upgrades, and user auth/preferences. DB auto-seeds users and schema on startup. Run with `npm run dev --workspace=packages/mock-servers`.
+- **`@fleetshift/mock-servers`** — Express + better-sqlite3 mock API server (port 4000). Provides REST endpoints for clusters, pods, namespaces, metrics, nodes, services, ingresses, storage, alerts, deployments, pipelines, config, gitops, events, routes, upgrades, and user auth/preferences. DB auto-seeds users and schema on startup. Run with `npm run dev --workspace=packages/mock-servers`.
 - **`@fleetshift/mock-ui-plugins`** — Mock Scalprum plugins built with webpack and `@openshift/dynamic-plugin-sdk-webpack`. Uses `ts-loader` (not swc) for TypeScript. Plugins live under `src/plugins/<plugin-name>/` and are registered as `DynamicRemotePlugin` instances in `webpack.config.ts`.
 - **`@fleetshift/build-utils`** — Shared build utilities consumed by webpack configs. `main` points to `src/index.ts` (no build step needed via tsconfig paths). Exports:
   - `getDynamicModules(root, nodeModulesRoot)` — scans PF packages for dynamic module paths to use as MF shared entries
@@ -104,7 +104,7 @@ Two personas: **Ops** (manages clusters/infrastructure) and **Dev** (manages app
 - **`UserPreferencesContext`** (`contexts/UserPreferencesContext.tsx`) — per-user list of enabled extension paths, synced with the server (`PUT /api/v1/users/:id/preferences`). Nav only shows extensions the user has enabled.
 - **Marketplace page** (`/marketplace`) — shows all available extensions (only from plugins at least one cluster has enabled) with toggles to show/hide each one in the nav. Grouped by Ops/Dev.
 - Default preferences:
-  - Ops: pods, ns, metrics, nodes, networking, storage, upgrades, alerts, cost
+  - Ops: pods, ns, metrics, nodes, networking, storage, upgrades, alerts
   - Dev: pods, ns, deployments, logs, pipelines, config, gitops, events, routes
 
 ## Plugin Architecture
@@ -115,7 +115,7 @@ Plugins are registered in `packages/mock-ui-plugins/webpack.config.ts` as `Dynam
 - `fleetshift.nav-item` — `{ label, path, component: CodeRef<ComponentType<{ clusterIds: string[] }>> }`
 - `fleetshift.dashboard-widget` — `{ component: CodeRef<ComponentType<{ clusterIds: string[] }>> }`
 
-**Current plugins** (15 total):
+**Current plugins** (14 total):
 
 | Plugin | Key | Nav Label | Persona |
 |--------|-----|-----------|---------|
@@ -126,7 +126,7 @@ Plugins are registered in `packages/mock-ui-plugins/webpack.config.ts` as `Dynam
 | storage-plugin | storage | Storage | Ops |
 | upgrades-plugin | upgrades | Upgrades | Ops |
 | alerts-plugin | alerts | Alerts | Ops |
-| cost-plugin | cost | Cost | Ops |
+
 | deployments-plugin | deployments | Deployments | Dev |
 | logs-plugin | logs | Logs | Dev |
 | pipelines-plugin | pipelines | Pipelines | Dev |

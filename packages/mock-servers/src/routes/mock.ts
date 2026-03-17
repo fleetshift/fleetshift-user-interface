@@ -8,7 +8,7 @@ import serviceRoutes from "./services";
 import storageRoutes from "./storage";
 import upgradeRoutes from "./upgrades";
 import alertRoutes from "./alerts";
-import costRoutes from "./cost";
+
 import deploymentRoutes from "./deployments";
 import logRoutes from "./logs";
 import pipelineRoutes from "./pipelines";
@@ -28,7 +28,7 @@ router.use(serviceRoutes);
 router.use(storageRoutes);
 router.use(upgradeRoutes);
 router.use(alertRoutes);
-router.use(costRoutes);
+
 router.use(deploymentRoutes);
 router.use(logRoutes);
 router.use(pipelineRoutes);

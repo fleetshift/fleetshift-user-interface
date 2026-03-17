@@ -2,6 +2,21 @@ import * as k8s from "@kubernetes/client-node";
 import type { ClusterConfig, ClusterClient, LiveCluster } from "./types";
 import { discoverPlugins } from "./discovery";
 
+export type ProgressStep =
+  | "config"
+  | "connect"
+  | "clients"
+  | "plugins"
+  | "platform"
+  | "nodes"
+  | "register";
+
+export type ProgressCallback = (
+  step: ProgressStep,
+  status: "running" | "done" | "error",
+  detail?: string,
+) => void;
+
 function buildKubeConfigForCluster(cfg: ClusterConfig): k8s.KubeConfig {
   const kc = new k8s.KubeConfig();
 
@@ -49,6 +64,7 @@ function buildKubeConfigForCluster(cfg: ClusterConfig): k8s.KubeConfig {
 
 export async function connectCluster(
   cfg: ClusterConfig,
+  onProgress?: ProgressCallback,
 ): Promise<ClusterClient | null> {
   const label = `${cfg.name ?? cfg.id} (${cfg.type})`;
   console.log(`K8s: ── ${label} ──`);
@@ -70,15 +86,22 @@ export async function connectCluster(
     console.log(`K8s:   context: ${cfg.context ?? "(default)"}`);
   }
 
+  const progress = onProgress ?? (() => {});
+
   try {
+    progress("config", "running");
     const kc = buildKubeConfigForCluster(cfg);
+    progress("config", "done");
 
     // Verify connectivity
+    progress("connect", "running");
     const versionApi = kc.makeApiClient(k8s.VersionApi);
     const versionInfo = await versionApi.getCode();
     const version = `${versionInfo.major}.${versionInfo.minor}`;
     console.log(`K8s:   reach:   ✓ v${version}`);
+    progress("connect", "done", `v${version}`);
 
+    progress("clients", "running");
     const core = kc.makeApiClient(k8s.CoreV1Api);
     const apps = kc.makeApiClient(k8s.AppsV1Api);
     const networking = kc.makeApiClient(k8s.NetworkingV1Api);
@@ -89,11 +112,15 @@ export async function connectCluster(
     } catch {
       // metrics not available
     }
+    progress("clients", "done");
 
+    progress("plugins", "running");
     const plugins = await discoverPlugins(kc);
     const clusterName = cfg.name ?? kc.getCurrentCluster()?.name ?? cfg.id;
+    progress("plugins", "done", `${plugins.length} plugins`);
 
     // Detect OpenShift vs vanilla Kubernetes
+    progress("platform", "running");
     let platform: "openshift" | "kubernetes" = "kubernetes";
     try {
       const apisApi = kc.makeApiClient(k8s.ApisApi);
@@ -106,8 +133,10 @@ export async function connectCluster(
     } catch {
       // fall back to kubernetes
     }
+    progress("platform", "done", platform);
 
     // Get node count
+    progress("nodes", "running");
     let nodeCount = 0;
     try {
       const nodeList = await core.listNode();
@@ -115,7 +144,9 @@ export async function connectCluster(
     } catch {
       // no permission to list nodes
     }
+    progress("nodes", "done", `${nodeCount} node${nodeCount !== 1 ? "s" : ""}`);
 
+    progress("register", "running");
     const server = kc.getCurrentCluster()?.server ?? cfg.server ?? "";
 
     const live: LiveCluster = {
@@ -133,6 +164,7 @@ export async function connectCluster(
       `K8s:   platform: ${platform} (${nodeCount} node${nodeCount !== 1 ? "s" : ""})`,
     );
     console.log(`K8s:   plugins: ${plugins.join(", ")}`);
+    progress("register", "done");
 
     return { config: cfg, kc, core, apps, networking, metrics, live };
   } catch (err) {

@@ -103,6 +103,12 @@ async function ensureConnection(userId: string) {
       return;
     }
 
+    // Cluster connection progress events
+    if (msg.type === "cluster-progress") {
+      emit("cluster-progress", msg);
+      return;
+    }
+
     // Custom derived events — topic is the resource (e.g. "alerts", "logs")
     if (msg.type === "alerts" || msg.type === "logs") {
       emit(msg.resource, msg);

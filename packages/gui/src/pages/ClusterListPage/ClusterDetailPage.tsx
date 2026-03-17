@@ -39,7 +39,7 @@ const PLUGIN_KEY_MAP: Record<string, string> = {
   storage: "Storage",
   upgrades: "Upgrades",
   alerts: "Alerts",
-  cost: "Cost",
+
   deployments: "Deployments",
   logs: "Logs",
   pipelines: "Pipelines",

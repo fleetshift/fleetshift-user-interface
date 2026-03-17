@@ -76,7 +76,7 @@ const OPS_PLUGINS = new Set([
   "storage",
   "upgrades",
   "alerts",
-  "cost",
+
 ]);
 
 const ClusterDetailPage: React.FC<{ clusterIds: string[] }> = () => {

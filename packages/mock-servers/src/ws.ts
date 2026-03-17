@@ -117,6 +117,17 @@ export function broadcast(
 }
 
 /**
+ * Send a message to a specific session by its session ID.
+ * Used for targeted progress events during cluster connection.
+ */
+export function sendToSession(sessionId: string, message: unknown) {
+  const session = sessions.get(sessionId);
+  if (session && session.ws.readyState === WebSocket.OPEN) {
+    session.ws.send(JSON.stringify(message));
+  }
+}
+
+/**
  * Send a message to all authenticated sessions (those with a userId).
  * Used for K8s informer/metrics events.
  */

@@ -58,7 +58,7 @@ export async function initK8sClient(
     return [];
   }
 
-  const results = await Promise.all(configs.map(connectCluster));
+  const results = await Promise.all(configs.map((cfg) => connectCluster(cfg)));
   for (const client of results) {
     if (client) clusterClients.set(client.live.id, client);
   }

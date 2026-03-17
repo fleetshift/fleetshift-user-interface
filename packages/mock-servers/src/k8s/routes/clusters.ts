@@ -11,7 +11,7 @@ import {
   listConsolePlugins,
 } from "../client";
 import { setLiveClusters } from "../../routes/users";
-import { broadcastToAuthenticated } from "../../ws";
+import { broadcastToAuthenticated, sendToSession } from "../../ws";
 
 function clusterToJson(c: LiveCluster) {
   return {
@@ -89,7 +89,19 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
     }
 
     try {
-      const client = await connectCluster(cfg);
+      const originSession = req.headers["x-session-id"] as string | undefined;
+      const onProgress = originSession
+        ? (step: string, status: string, detail?: string) => {
+            sendToSession(originSession, {
+              type: "cluster-progress",
+              step,
+              status,
+              detail,
+            });
+          }
+        : undefined;
+
+      const client = await connectCluster(cfg, onProgress);
       if (!client) {
         res
           .status(400)

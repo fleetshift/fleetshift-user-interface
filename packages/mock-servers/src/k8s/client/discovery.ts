@@ -20,7 +20,7 @@ export const ALWAYS_PLUGINS = [
   "deployments",
   "logs",
   "config",
-  "cost",
+
   "upgrades",
 ];
 

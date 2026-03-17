@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Breadcrumb,
@@ -18,8 +18,6 @@ import {
   TextInput,
   Checkbox,
   Button,
-  Alert,
-  AlertActionCloseButton,
   Stack,
   StackItem,
   Icon,
@@ -31,9 +29,11 @@ import {
   RedhatIcon,
   CheckCircleIcon,
 } from "@patternfly/react-icons";
-import { createCluster } from "../../utils/api";
-
-type ClusterType = "kubeconfig" | "token" | null;
+import { createCluster } from "../../../utils/api";
+import { subscribe } from "../../../hooks/useInvalidationSocket";
+import { ConnectProgressModal } from "./ConnectProgressModal";
+import type { ClusterType, StepKey, StepStatus, StepState } from "./types";
+import { INITIAL_STEPS } from "./types";
 
 export const AddClusterPage = () => {
   const navigate = useNavigate();
@@ -45,9 +45,11 @@ export const AddClusterPage = () => {
   const [token, setToken] = useState("");
   const [skipTLS, setSkipTLS] = useState(true);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
+  const [steps, setSteps] = useState<StepState[]>(INITIAL_STEPS);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [clusterId, setClusterId] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const isValid =
     clusterType &&
@@ -56,11 +58,42 @@ export const AddClusterPage = () => {
       ? context.trim()
       : server.trim() && token.trim());
 
-  const handleSubmit = async () => {
-    if (!isValid || !clusterType) return;
+  // Subscribe to WS progress events
+  useEffect(() => {
+    if (!showProgress) return;
 
-    setSubmitting(true);
-    setError(null);
+    return subscribe(
+      "cluster-progress",
+      (msg: { step: StepKey; status: string; detail?: string }) => {
+        setSteps((prev) =>
+          prev.map((s) =>
+            s.key === msg.step
+              ? {
+                  ...s,
+                  status: msg.status as StepStatus,
+                  detail: msg.detail ?? s.detail,
+                }
+              : s,
+          ),
+        );
+      },
+    );
+  }, [showProgress]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!isValid || !clusterType || submittingRef.current) return;
+
+    submittingRef.current = true;
+    setSteps(
+      INITIAL_STEPS.map((s) => ({
+        ...s,
+        status: "pending",
+        detail: undefined,
+      })),
+    );
+    setConnectError(null);
+    setClusterId(null);
+    setShowProgress(true);
 
     try {
       const result = await createCluster(
@@ -75,14 +108,31 @@ export const AddClusterPage = () => {
             },
       );
 
-      setSuccess(true);
-      setTimeout(() => navigate(`/clusters/${result.id}`), 1500);
+      setClusterId(result.id);
+      // Mark all steps done (in case some WS events were missed)
+      setSteps((prev) => prev.map((s) => ({ ...s, status: "done" })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      const message = err instanceof Error ? err.message : "Connection failed";
+      setConnectError(message);
+      // Mark currently running step as error, leave rest as pending
+      setSteps((prev) =>
+        prev.map((s) =>
+          s.status === "running" ? { ...s, status: "error" } : s,
+        ),
+      );
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false;
     }
-  };
+  }, [isValid, clusterType, name, context, server, token, skipTLS]);
+
+  const handleRetry = useCallback(() => {
+    handleSubmit();
+  }, [handleSubmit]);
+
+  const handleCancel = useCallback(() => {
+    setShowProgress(false);
+    setConnectError(null);
+  }, []);
 
   return (
     <Stack hasGutter>
@@ -108,28 +158,6 @@ export const AddClusterPage = () => {
         </Content>
       </StackItem>
 
-      {error && (
-        <StackItem>
-          <Alert
-            variant="danger"
-            title="Connection failed"
-            actionClose={
-              <AlertActionCloseButton onClose={() => setError(null)} />
-            }
-          >
-            {error}
-          </Alert>
-        </StackItem>
-      )}
-
-      {success && (
-        <StackItem>
-          <Alert variant="success" title={`Successfully connected to ${name}`}>
-            Redirecting to cluster details…
-          </Alert>
-        </StackItem>
-      )}
-
       <StackItem>
         <Grid hasGutter md={6}>
           <GridItem>
@@ -144,8 +172,7 @@ export const AddClusterPage = () => {
                   selectableActionAriaLabel: "Select Minikube cluster type",
                   name: "cluster-type",
                   variant: "single",
-                  onChange: () =>
-                    !submitting && !success && setClusterType("kubeconfig"),
+                  onChange: () => !showProgress && setClusterType("kubeconfig"),
                 }}
               >
                 <Icon size="xl">
@@ -171,8 +198,7 @@ export const AddClusterPage = () => {
                   selectableActionAriaLabel: "Select OpenShift cluster type",
                   name: "cluster-type",
                   variant: "single",
-                  onChange: () =>
-                    !submitting && !success && setClusterType("token"),
+                  onChange: () => !showProgress && setClusterType("token"),
                 }}
               >
                 <Icon size="xl">
@@ -205,7 +231,7 @@ export const AddClusterPage = () => {
                 placeholder={
                   clusterType === "kubeconfig" ? "My Local Dev" : "HCC Stage"
                 }
-                isDisabled={submitting || success}
+                isDisabled={showProgress}
                 isRequired
               />
             </FormGroup>
@@ -221,8 +247,9 @@ export const AddClusterPage = () => {
                   value={context}
                   onChange={(_e, val) => setContext(val)}
                   placeholder="minikube"
-                  isDisabled={submitting || success}
+                  isDisabled={showProgress}
                   isRequired
+                  autoComplete="off"
                 />
               </FormGroup>
             )}
@@ -235,12 +262,14 @@ export const AddClusterPage = () => {
                   fieldId="cluster-server"
                 >
                   <TextInput
+                    name="cluster-server"
                     id="cluster-server"
                     value={server}
                     onChange={(_e, val) => setServer(val)}
                     placeholder="https://api.cluster.example.com:443"
-                    isDisabled={submitting || success}
+                    isDisabled={showProgress}
                     isRequired
+                    autoComplete="off"
                   />
                 </FormGroup>
                 <FormGroup
@@ -250,11 +279,13 @@ export const AddClusterPage = () => {
                 >
                   <TextInput
                     id="cluster-token"
+                    name="cluster-token"
                     type="password"
                     value={token}
                     onChange={(_e, val) => setToken(val)}
-                    isDisabled={submitting || success}
+                    isDisabled={showProgress}
                     isRequired
+                    autoComplete="new-password"
                   />
                 </FormGroup>
                 <FormGroup fieldId="cluster-tls">
@@ -263,7 +294,7 @@ export const AddClusterPage = () => {
                     label="Skip TLS verification"
                     isChecked={skipTLS}
                     onChange={(_e, checked) => setSkipTLS(checked)}
-                    isDisabled={submitting || success}
+                    isDisabled={showProgress}
                   />
                   <HelperText>
                     <HelperTextItem variant="warning">
@@ -278,20 +309,15 @@ export const AddClusterPage = () => {
               <Button
                 variant="primary"
                 onClick={handleSubmit}
-                isDisabled={!isValid || submitting || success}
-                isLoading={submitting}
-                icon={success ? <CheckCircleIcon /> : undefined}
+                isDisabled={!isValid || showProgress}
+                icon={<CheckCircleIcon />}
               >
-                {submitting
-                  ? "Connecting…"
-                  : success
-                    ? "Connected"
-                    : "Connect Cluster"}
+                Connect Cluster
               </Button>
               <Button
                 variant="link"
                 onClick={() => navigate("/clusters")}
-                isDisabled={success}
+                isDisabled={showProgress}
               >
                 Cancel
               </Button>
@@ -299,6 +325,16 @@ export const AddClusterPage = () => {
           </Form>
         </StackItem>
       )}
+
+      <ConnectProgressModal
+        isOpen={showProgress}
+        clusterName={name}
+        steps={steps}
+        connectError={connectError}
+        clusterId={clusterId}
+        onRetry={handleRetry}
+        onCancel={handleCancel}
+      />
     </Stack>
   );
 };
