@@ -32,6 +32,10 @@ export type K8sWsEvent = K8sEvent | K8sMetricsEvent | K8sAlertEvent;
 export type K8sEventHandler = (event: K8sWsEvent) => void;
 
 const informers: Array<k8s.Informer<k8s.KubernetesObject>> = [];
+const clusterInformers = new Map<
+  string,
+  Array<k8s.Informer<k8s.KubernetesObject>>
+>();
 const metricsIntervals = new Map<string, ReturnType<typeof setInterval>>();
 const alertsIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
@@ -91,6 +95,15 @@ function createInformer(
   });
 
   informers.push(informer);
+
+  // Track per-cluster
+  let clusterList = clusterInformers.get(clusterId);
+  if (!clusterList) {
+    clusterList = [];
+    clusterInformers.set(clusterId, clusterList);
+  }
+  clusterList.push(informer);
+
   return informer;
 }
 
@@ -104,6 +117,11 @@ export async function startInformers(
 ) {
   await Promise.allSettled(
     clusters.map(async (cluster) => {
+      // Stop any existing informers for this cluster to prevent duplicates
+      if (clusterInformers.has(cluster.id)) {
+        stopClusterInformers(cluster.id);
+      }
+
       const client = getClusterClient(cluster.id);
       if (!client) {
         console.error(
@@ -362,11 +380,41 @@ async function startClusterInformers(
   }
 }
 
+/**
+ * Stop all informers, metrics polling, and alerts polling for a specific cluster.
+ */
+export function stopClusterInformers(clusterId: string) {
+  const clusterList = clusterInformers.get(clusterId);
+  if (clusterList) {
+    for (const inf of clusterList) {
+      inf.stop();
+      const idx = informers.indexOf(inf);
+      if (idx !== -1) informers.splice(idx, 1);
+    }
+    clusterInformers.delete(clusterId);
+  }
+
+  const metricsInterval = metricsIntervals.get(clusterId);
+  if (metricsInterval) {
+    clearInterval(metricsInterval);
+    metricsIntervals.delete(clusterId);
+  }
+
+  const alertsInterval = alertsIntervals.get(clusterId);
+  if (alertsInterval) {
+    clearInterval(alertsInterval);
+    alertsIntervals.delete(clusterId);
+  }
+
+  console.log(`[${clusterId}] informers stopped`);
+}
+
 export function stopInformers() {
   for (const inf of informers) {
     inf.stop();
   }
   informers.length = 0;
+  clusterInformers.clear();
 
   for (const interval of metricsIntervals.values()) {
     clearInterval(interval);

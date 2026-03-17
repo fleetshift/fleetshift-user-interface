@@ -58,10 +58,9 @@ export const AddClusterPage = () => {
       ? context.trim()
       : server.trim() && token.trim());
 
-  // Subscribe to WS progress events
+  // Subscribe to WS progress events — always active so we never miss
+  // events due to React effect timing
   useEffect(() => {
-    if (!showProgress) return;
-
     return subscribe(
       "cluster-progress",
       (msg: { step: StepKey; status: string; detail?: string }) => {
@@ -78,7 +77,7 @@ export const AddClusterPage = () => {
         );
       },
     );
-  }, [showProgress]);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!isValid || !clusterType || submittingRef.current) return;

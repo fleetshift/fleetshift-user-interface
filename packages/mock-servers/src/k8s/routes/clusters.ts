@@ -10,6 +10,8 @@ import {
   getDiscoveryDetails,
   listConsolePlugins,
 } from "../client";
+import { startInformers, stopClusterInformers } from "../informers";
+import { startLogStreaming, handlePodEvent } from "../logStreamer";
 import { setLiveClusters } from "../../routes/users";
 import { broadcastToAuthenticated, sendToSession } from "../../ws";
 
@@ -122,6 +124,17 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
       // Update users.ts cluster list
       setLiveClusters(liveClusters);
 
+      // Start informers and log streaming for the new cluster
+      startInformers([client.live], (event) => {
+        broadcastToAuthenticated(event);
+        if (event.type === "k8s" && event.resource === "pods") {
+          handlePodEvent(event.verb, event.object);
+        }
+      });
+      startLogStreaming(client.live.id, (logEvent) => {
+        broadcastToAuthenticated(logEvent);
+      });
+
       // Notify all connected clients (including the originator)
       broadcastToAuthenticated({ resource: "clusters" });
 
@@ -200,6 +213,9 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
         return;
       }
 
+      // Stop old informers before replacing the client
+      stopClusterInformers(id);
+
       // Replace in runtime
       unregisterClusterClient(id);
       registerClusterClient(client);
@@ -216,6 +232,17 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
 
       // Update users.ts cluster list
       setLiveClusters(liveClusters);
+
+      // Restart informers with new client
+      startInformers([client.live], (event) => {
+        broadcastToAuthenticated(event);
+        if (event.type === "k8s" && event.resource === "pods") {
+          handlePodEvent(event.verb, event.object);
+        }
+      });
+      startLogStreaming(client.live.id, (logEvent) => {
+        broadcastToAuthenticated(logEvent);
+      });
 
       // Notify
       broadcastToAuthenticated({ resource: "clusters" });
@@ -234,6 +261,9 @@ export function clusterRoutes(liveClusters: LiveCluster[]): Router {
       res.status(404).json({ error: "Cluster not found" });
       return;
     }
+
+    // Stop informers for this cluster
+    stopClusterInformers(id);
 
     // Remove from runtime
     liveClusters.splice(idx, 1);
