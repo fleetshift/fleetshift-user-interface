@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import path from "path";
 import {
-  ModuleFederationPlugin,
+  ModuleFederationPlugin as BaseMFPlugin,
   ContainerPlugin,
 } from "@module-federation/enhanced";
 import { DynamicRemotePlugin } from "@openshift/dynamic-plugin-sdk-webpack";
@@ -34,6 +34,13 @@ const sharedModules = {
   "react-router-dom": { singleton: true, requiredVersion: "*" },
   ...pfSharedModules,
 };
+
+// Wrap MF plugin to disable federated type generation (dts-plugin crashes in Docker)
+class ModuleFederationPlugin extends BaseMFPlugin {
+  constructor(options: ConstructorParameters<typeof BaseMFPlugin>[0]) {
+    super({ ...options, dts: false });
+  }
+}
 
 // @ts-ignore — @module-federation/enhanced types differ from SDK expectations
 const mfOverride = {
@@ -484,6 +491,50 @@ const ClowderPlugin = new DynamicRemotePlugin({
   },
 });
 
+const ManagementPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.module",
+      properties: {
+        label: "Auth Methods",
+        component: { $codeRef: "AuthMethodsPage.default" },
+      },
+    },
+    {
+      type: "fleetshift.module",
+      properties: {
+        label: "Targets",
+        component: { $codeRef: "TargetsPage.default" },
+      },
+    },
+    {
+      type: "fleetshift.module",
+      properties: {
+        label: "Orchestration",
+        component: { $codeRef: "DeploymentsPage.default" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "management-plugin.[contenthash].js",
+  pluginManifestFilename: "management-plugin-manifest.json",
+  // @ts-ignore
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "management-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      AuthMethodsPage: p("./src/plugins/management-plugin/AuthMethodsPage.tsx"),
+      TargetsPage: p("./src/plugins/management-plugin/TargetsPage.tsx"),
+      DeploymentsPage: p("./src/plugins/management-plugin/DeploymentsPage.tsx"),
+      DeploymentDetailPage: p(
+        "./src/plugins/management-plugin/DeploymentDetailPage.tsx",
+      ),
+      authState: p("./src/plugins/management-plugin/authState.ts"),
+    },
+  },
+});
+
 const RoutingPlugin = new DynamicRemotePlugin({
   extensions: [],
   sharedModules,
@@ -531,6 +582,7 @@ const config: Configuration = {
     RoutesPlugin,
     UpgradesPlugin,
     ClowderPlugin,
+    ManagementPlugin,
     RoutingPlugin,
     new PluginRegistryPlugin({
       assetsHost: "http://localhost:8001",
@@ -609,6 +661,12 @@ const config: Configuration = {
           name: "clowder-plugin",
           key: "clowder",
           label: "Clowder",
+          persona: "ops",
+        },
+        {
+          name: "management-plugin",
+          key: "management",
+          label: "Management",
           persona: "ops",
         },
         {

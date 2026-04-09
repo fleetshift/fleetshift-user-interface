@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import db from "./db";
 import { seedCluster, AVAILABLE_CLUSTERS } from "./seed";
 import { jwtAuthMiddleware, keycloakLoginHandler } from "./middleware/auth";
@@ -25,7 +26,11 @@ const PORT = 4000;
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Parse JSON for all routes except the management proxy (proxy needs the raw body stream)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/v1/management")) return next();
+  express.json()(req, res, next);
+});
 
 // Log every incoming request
 app.use((req, _res, next) => {
@@ -33,8 +38,32 @@ app.use((req, _res, next) => {
   next();
 });
 
+const MANAGEMENT_API =
+  process.env.MANAGEMENT_API_TARGET ?? "http://localhost:8085";
+
 async function start() {
   let discoveredClusters: LiveCluster[] = [];
+
+  // Proxy management plane requests to the Go backend (fleetshift-poc)
+  app.use(
+    "/api/v1/management",
+    createProxyMiddleware({
+      target: MANAGEMENT_API,
+      changeOrigin: true,
+      pathRewrite: { "^/": "/v1/" },
+      on: {
+        error: (err, _req, res) => {
+          console.error("Management API proxy error:", err.message);
+          if ("writeHead" in res) {
+            (res as express.Response).status(502).json({
+              error: `Management plane unreachable at ${MANAGEMENT_API}`,
+            });
+          }
+        },
+      },
+    }),
+  );
+
   app.use("/api/v1", jwtAuthMiddleware);
   app.post("/api/v1/auth/login", keycloakLoginHandler);
 

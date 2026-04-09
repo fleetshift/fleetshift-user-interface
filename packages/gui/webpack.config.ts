@@ -1,11 +1,16 @@
 import path from "path";
 import * as mf from "@module-federation/enhanced";
-const { ModuleFederationPlugin } = mf;
+const { ModuleFederationPlugin: BaseMFPlugin } = mf;
+// Disable federated type generation (dts-plugin crashes in Docker containers)
+class ModuleFederationPlugin extends BaseMFPlugin {
+  constructor(options: ConstructorParameters<typeof BaseMFPlugin>[0]) {
+    super({ ...options, dts: false });
+  }
+}
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import * as buildUtils from "@fleetshift/build-utils";
 const { getDynamicModules, createTsLoaderRule } = buildUtils;
-import webpack from "webpack";
 import type { Configuration } from "webpack";
 import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
 
@@ -61,11 +66,6 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
       },
     }),
     new MiniCssExtractPlugin(),
-    new webpack.DefinePlugin({
-      "process.env.KEYCLOAK_URL": JSON.stringify(
-        process.env.KEYCLOAK_URL ?? "http://localhost:8080",
-      ),
-    }),
     new HtmlWebpackPlugin({
       template: "./src/index.html",
       favicon: "./src/assets/masthead.ico",

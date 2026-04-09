@@ -1,6 +1,6 @@
 import { test as setup } from "@playwright/test";
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8180";
 
 setup("authenticate via Keycloak", async ({ page }) => {
   // Navigate to the app — Keycloak will redirect to its login page

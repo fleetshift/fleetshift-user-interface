@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from "jose";
 import db from "../db";
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8180";
 const JWKS_URL = `${KEYCLOAK_URL}/realms/fleetshift/protocol/openid-connect/certs`;
 
 interface TokenUser {
@@ -20,13 +20,10 @@ declare global {
   }
 }
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-
+// Always create a fresh JWKS reference — jose handles caching internally
+// but we avoid stale keys across Keycloak restarts.
 function getJWKS() {
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(JWKS_URL));
-  }
-  return jwks;
+  return createRemoteJWKSet(new URL(JWKS_URL));
 }
 
 interface KeycloakJWTPayload extends JWTPayload {
@@ -50,7 +47,7 @@ export async function jwtAuthMiddleware(
   const token = authHeader.slice(7);
 
   try {
-    // Skip issuer validation — the token may be issued by localhost:8080
+    // Skip issuer validation — the token may be issued by localhost:8180
     // (browser) while the server reaches Keycloak via the Docker hostname.
     // The JWKS signature check is sufficient.
     const { payload } = await jwtVerify(token, getJWKS());

@@ -84,9 +84,9 @@ function buildScalprumConfigServer(
 
   for (const [name, entry] of Object.entries(registry.plugins)) {
     // core-plugin is always included (Dashboard, Clusters pages work even with 0 clusters)
-    const isCore = entry.key === "core";
+    const isAlwaysOn = entry.key === "core" || entry.key === "management";
     const isInstalled = clusters.some((c) => c.plugins.includes(entry.key));
-    if (isCore || isInstalled) {
+    if (isAlwaysOn || isInstalled) {
       config[name] = {
         name: entry.name,
         pluginManifest: entry.pluginManifest,
@@ -148,6 +148,14 @@ const BUILTIN_PAGES: PluginPage[] = [
     module: "DeploymentDetailPage",
     pluginKey: "deployments",
   },
+  {
+    id: "orchestration-detail",
+    title: "Orchestration Detail",
+    path: "orchestration/:deploymentId",
+    scope: "management-plugin",
+    module: "DeploymentDetailPage",
+    pluginKey: "management",
+  },
 ];
 
 function generatePluginPages(
@@ -157,8 +165,9 @@ function generatePluginPages(
   const pages: PluginPage[] = [...BUILTIN_PAGES];
 
   for (const [, entry] of Object.entries(registry.plugins)) {
+    const isAlwaysOn = entry.key === "management";
     const isInstalled = clusters.some((c) => c.plugins.includes(entry.key));
-    if (!isInstalled) continue;
+    if (!isAlwaysOn && !isInstalled) continue;
 
     const manifest = entry.pluginManifest;
     if (!manifest?.extensions) continue;
@@ -211,7 +220,8 @@ function generateDefaultNavLayout(
         p.id !== "clusters" &&
         p.id !== "cluster-detail" &&
         p.id !== "pod-detail" &&
-        p.id !== "deployment-detail",
+        p.id !== "deployment-detail" &&
+        p.id !== "orchestration-detail",
     )
     .map((p) => ({ type: "page" as const, pageId: p.id }));
 }
@@ -237,7 +247,10 @@ router.get("/users/:id/config", (req, res) => {
   const scalprumConfig = buildScalprumConfigServer(registry, clusters);
   const pluginPages = generatePluginPages(registry, clusters);
 
-  let navLayout = JSON.parse(user.nav_layout);
+  let navLayout = JSON.parse(user.nav_layout) as Array<{
+    type: string;
+    pageId: string;
+  }>;
 
   // Auto-generate default nav layout for users with empty config
   if (navLayout.length === 0) {
@@ -246,6 +259,18 @@ router.get("/users/:id/config", (req, res) => {
       JSON.stringify(navLayout),
       user.id,
     );
+  } else {
+    // Merge in newly discovered plugin pages not already in nav layout
+    const existingIds = new Set(navLayout.map((n) => n.pageId));
+    const allDefault = generateDefaultNavLayout(pluginPages);
+    const newEntries = allDefault.filter((e) => !existingIds.has(e.pageId));
+    if (newEntries.length > 0) {
+      navLayout = [...navLayout, ...newEntries];
+      db.prepare("UPDATE users SET nav_layout = ? WHERE id = ?").run(
+        JSON.stringify(navLayout),
+        user.id,
+      );
+    }
   }
 
   const pluginEntries = Object.values(registry.plugins);

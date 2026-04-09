@@ -4,7 +4,7 @@ import open from "open";
 import { generateCodeVerifier, generateCodeChallenge } from "./pkce.js";
 import { saveTokens, StoredTokens } from "./tokenStore.js";
 
-const DEFAULT_KEYCLOAK_URL = "http://localhost:8080";
+const DEFAULT_KEYCLOAK_URL = "http://localhost:8180";
 const REDIRECT_PORT = 8888;
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
 const CLIENT_ID = "fleetshift-cli";

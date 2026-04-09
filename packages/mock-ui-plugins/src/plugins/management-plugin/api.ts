@@ -1,0 +1,156 @@
+const MGMT_BASE = "/api/v1/management";
+
+export async function mgmtFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${MGMT_BASE}${path}`, init);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const msg =
+      (body as Record<string, string>).message ||
+      (body as Record<string, string>).error ||
+      `Management API error (${res.status})`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export interface OIDCConfig {
+  issuerUrl: string;
+  audience: string;
+  keyEnrollmentAudience?: string;
+  authorizationEndpoint?: string;
+  tokenEndpoint?: string;
+  jwksUri?: string;
+}
+
+export interface AuthMethod {
+  name: string;
+  type: "TYPE_UNSPECIFIED" | "TYPE_OIDC";
+  oidcConfig?: OIDCConfig;
+}
+
+export interface CreateAuthMethodRequest {
+  authMethodId: string;
+  authMethod: {
+    type: "TYPE_OIDC";
+    oidcConfig: {
+      issuerUrl: string;
+      audience: string;
+      keyEnrollmentAudience?: string;
+    };
+  };
+}
+
+export function createAuthMethod(
+  req: CreateAuthMethodRequest,
+): Promise<AuthMethod> {
+  const params = new URLSearchParams();
+  params.set("auth_method_id", req.authMethodId);
+  return mgmtFetch(`/authMethods?${params}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req.authMethod),
+  });
+}
+
+export function getAuthMethod(name: string): Promise<AuthMethod> {
+  return mgmtFetch(`/authMethods/${encodeURIComponent(name)}`);
+}
+
+// --- Deployments ---
+
+export type DeploymentState =
+  | "STATE_UNSPECIFIED"
+  | "STATE_CREATING"
+  | "STATE_ACTIVE"
+  | "STATE_DELETING"
+  | "STATE_FAILED"
+  | "STATE_PAUSED_AUTH";
+
+export interface Manifest {
+  resourceType: string;
+  raw: string;
+}
+
+export interface ManifestStrategy {
+  type: "TYPE_UNSPECIFIED" | "TYPE_INLINE";
+  manifests?: Manifest[];
+}
+
+export interface TargetSelector {
+  matchLabels: Record<string, string>;
+}
+
+export interface PlacementStrategy {
+  type: "TYPE_UNSPECIFIED" | "TYPE_STATIC" | "TYPE_ALL" | "TYPE_SELECTOR";
+  targetIds?: string[];
+  targetSelector?: TargetSelector;
+}
+
+export interface RolloutStrategy {
+  type: "TYPE_UNSPECIFIED" | "TYPE_IMMEDIATE";
+}
+
+export interface MgmtDeployment {
+  name: string;
+  uid: string;
+  manifestStrategy: ManifestStrategy;
+  placementStrategy: PlacementStrategy;
+  rolloutStrategy?: RolloutStrategy;
+  resolvedTargetIds: string[];
+  state: DeploymentState;
+  reconciling: boolean;
+  createTime: string;
+  updateTime: string;
+  etag: string;
+}
+
+export interface ListDeploymentsResponse {
+  deployments: MgmtDeployment[];
+  nextPageToken: string;
+}
+
+export function listDeployments(): Promise<ListDeploymentsResponse> {
+  return mgmtFetch("/deployments");
+}
+
+export function getDeployment(name: string): Promise<MgmtDeployment> {
+  return mgmtFetch(`/deployments/${encodeURIComponent(name)}`);
+}
+
+export interface CreateDeploymentRequest {
+  deploymentId: string;
+  deployment: {
+    manifestStrategy: ManifestStrategy;
+    placementStrategy: PlacementStrategy;
+    rolloutStrategy?: RolloutStrategy;
+  };
+}
+
+export function createDeployment(
+  req: CreateDeploymentRequest,
+): Promise<MgmtDeployment> {
+  const params = new URLSearchParams();
+  params.set("deployment_id", req.deploymentId);
+  return mgmtFetch(`/deployments?${params}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req.deployment),
+  });
+}
+
+export function deleteDeployment(name: string): Promise<MgmtDeployment> {
+  return mgmtFetch(`/deployments/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+}
+
+export function resumeDeployment(name: string): Promise<MgmtDeployment> {
+  return mgmtFetch(`/deployments/${encodeURIComponent(name)}:resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}
