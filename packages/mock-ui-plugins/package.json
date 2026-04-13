@@ -6,7 +6,8 @@
   "scripts": {
     "build": "webpack",
     "watch": "nodemon --watch webpack.config.ts --ext ts --exec 'webpack --watch'",
-    "serve": "webpack && concurrently \"nodemon --watch webpack.config.ts --ext ts --exec 'webpack --watch'\" \"http-server dist -p 8001 -c-1 --cors=*\""
+    "serve": "webpack && concurrently \"nodemon --watch webpack.config.ts --ext ts --exec 'webpack --watch'\" \"http-server dist -p 8001 -c-1 --cors=*\"",
+    "serve:dist": "http-server dist -p 8001 -c-1 --cors=*"
   },
   "dependencies": {
     "@fleetshift/common": "*",

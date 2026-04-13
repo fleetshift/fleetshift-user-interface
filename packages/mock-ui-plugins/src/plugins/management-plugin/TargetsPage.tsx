@@ -1,0 +1,294 @@
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Alert,
+  Bullseye,
+  Button,
+  DescriptionList,
+  DescriptionListGroup,
+  DescriptionListTerm,
+  DescriptionListDescription,
+  EmptyState,
+  EmptyStateBody,
+  Flex,
+  FlexItem,
+  Label,
+  LabelGroup,
+  SearchInput,
+  Spinner,
+  Title,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+  Tooltip,
+} from "@patternfly/react-core";
+import { SyncAltIcon } from "@patternfly/react-icons";
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  ExpandableRowContent,
+} from "@patternfly/react-table";
+import { listDeployments } from "./api";
+import AuthBanner from "./AuthBanner";
+
+interface TargetInfo {
+  id: string;
+  type: string;
+  deployments: string[];
+}
+
+export default function TargetsPage() {
+  const [targets, setTargets] = useState<TargetInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [nameFilter, setNameFilter] = useState("");
+
+  const fetchTargets = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await listDeployments();
+      const deployments = resp.deployments ?? [];
+
+      const targetMap = new Map<string, string[]>();
+      targetMap.set("kind-local", []);
+
+      for (const dep of deployments) {
+        for (const tid of dep.resolvedTargetIds ?? []) {
+          const existing = targetMap.get(tid) ?? [];
+          existing.push(dep.name);
+          targetMap.set(tid, existing);
+        }
+      }
+
+      setTargets(
+        Array.from(targetMap.entries()).map(([id, deps]) => ({
+          id,
+          type: id.startsWith("kind") ? "kind" : "kubernetes",
+          deployments: deps,
+        })),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch targets",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTargets();
+  }, [fetchTargets]);
+
+  const filtered = useMemo(
+    () =>
+      targets.filter((t) =>
+        nameFilter
+          ? t.id.toLowerCase().includes(nameFilter.toLowerCase())
+          : true,
+      ),
+    [targets, nameFilter],
+  );
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  if (loading) {
+    return (
+      <Bullseye>
+        <Spinner />
+      </Bullseye>
+    );
+  }
+
+  return (
+    <div>
+      <Flex
+        alignItems={{ default: "alignItemsBaseline" }}
+        gap={{ default: "gapSm" }}
+        style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
+      >
+        <FlexItem>
+          <Title headingLevel="h1">Targets</Title>
+        </FlexItem>
+        <FlexItem>
+          <span
+            style={{
+              fontSize: "var(--pf-t--global--font--size--sm)",
+              color: "var(--pf-t--global--text--color--subtle)",
+            }}
+          >
+            {targets.length} registered
+          </span>
+        </FlexItem>
+      </Flex>
+
+      <AuthBanner />
+
+      {error && (
+        <Alert
+          variant="warning"
+          title={error}
+          isInline
+          style={{ marginBottom: "var(--pf-t--global--spacer--md)" }}
+        />
+      )}
+
+      {targets.length === 0 ? (
+        <EmptyState titleText="No targets found" headingLevel="h2">
+          <EmptyStateBody>
+            Targets are registered automatically when the management plane
+            starts.
+          </EmptyStateBody>
+          <Button variant="primary" onClick={fetchTargets}>
+            Refresh
+          </Button>
+        </EmptyState>
+      ) : (
+        <>
+        <Toolbar clearAllFilters={() => setNameFilter("")}>
+          <ToolbarContent>
+            <ToolbarItem>
+              <SearchInput
+                placeholder="Filter by target ID"
+                value={nameFilter}
+                onChange={(_event, value) => setNameFilter(value)}
+                onClear={() => setNameFilter("")}
+              />
+            </ToolbarItem>
+            <ToolbarItem>
+              <Tooltip content="Refresh targets">
+                <Button
+                  variant="plain"
+                  aria-label="Refresh targets"
+                  onClick={fetchTargets}
+                >
+                  <SyncAltIcon />
+                </Button>
+              </Tooltip>
+            </ToolbarItem>
+          </ToolbarContent>
+        </Toolbar>
+
+        {filtered.length === 0 ? (
+          <EmptyState titleText="No matching targets" headingLevel="h2">
+            <EmptyStateBody>
+              No targets match the current filter. Try adjusting or clearing
+              the filter.
+            </EmptyStateBody>
+            <Button variant="link" onClick={() => setNameFilter("")}>
+              Clear filter
+            </Button>
+          </EmptyState>
+        ) : (
+        <Table aria-label="Registered targets" variant="compact" hasAnimations>
+          <Thead>
+            <Tr>
+              <Th screenReaderText="Row expansion" />
+              <Th>Target ID</Th>
+              <Th>Type</Th>
+              <Th>Deployments</Th>
+            </Tr>
+          </Thead>
+          {filtered.map((t, rowIndex) => (
+            <Tbody key={t.id} isExpanded={expandedId === t.id}>
+              <Tr>
+                <Td
+                  expand={{
+                    rowIndex,
+                    isExpanded: expandedId === t.id,
+                    onToggle: () => toggleExpand(t.id),
+                  }}
+                />
+                <Td dataLabel="Target ID">
+                  <span
+                    style={{
+                      fontWeight:
+                        "var(--pf-t--global--font--weight--heading--default)",
+                    }}
+                  >
+                    {t.id}
+                  </span>
+                </Td>
+                <Td dataLabel="Type">
+                  <Label color="blue" isCompact>
+                    {t.type}
+                  </Label>
+                </Td>
+                <Td dataLabel="Deployments">
+                  {t.deployments.length > 0 ? (
+                    <LabelGroup>
+                      {t.deployments.map((d) => (
+                        <Label key={d} color="green" isCompact>
+                          {d.replace("deployments/", "")}
+                        </Label>
+                      ))}
+                    </LabelGroup>
+                  ) : (
+                    <span
+                      style={{
+                        color: "var(--pf-t--global--text--color--subtle)",
+                      }}
+                    >
+                      None
+                    </span>
+                  )}
+                </Td>
+              </Tr>
+              <Tr isExpanded={expandedId === t.id}>
+                <Td />
+                <Td colSpan={3}>
+                  <ExpandableRowContent>
+                    <DescriptionList isHorizontal isCompact>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>Target ID</DescriptionListTerm>
+                        <DescriptionListDescription>
+                          <span
+                            style={{
+                              fontFamily:
+                                "var(--pf-t--global--font--family--mono)",
+                            }}
+                          >
+                            {t.id}
+                          </span>
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>
+                          Accepted Resource Types
+                        </DescriptionListTerm>
+                        <DescriptionListDescription>
+                          <Label color="grey" isCompact>
+                            {t.id === "kind-local"
+                              ? "api.kind.cluster"
+                              : "kubernetes/*"}
+                          </Label>
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>
+                          Active Deployments
+                        </DescriptionListTerm>
+                        <DescriptionListDescription>
+                          {t.deployments.length}
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                    </DescriptionList>
+                  </ExpandableRowContent>
+                </Td>
+              </Tr>
+            </Tbody>
+          ))}
+        </Table>
+        )}
+        </>
+      )}
+    </div>
+  );
+}

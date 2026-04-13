@@ -143,16 +143,23 @@ const AppNav = () => {
     return map;
   }, [pluginPages]);
 
-  // Build ordered nav items from the user's nav layout
-  const navItems = useMemo(() => {
-    const items: PluginPage[] = [];
+  // Build ordered nav items from the user's nav layout, split by section
+  const { clusterItems, controlPlaneItems } = useMemo(() => {
+    const cluster: PluginPage[] = [];
+    const controlPlane: PluginPage[] = [];
     for (const entry of navLayout) {
       if (entry.type === "page") {
         const page = pageMap.get(entry.pageId);
-        if (page) items.push(page);
+        if (page) {
+          if (page.pluginKey === "management") {
+            controlPlane.push(page);
+          } else {
+            cluster.push(page);
+          }
+        }
       }
     }
-    return items;
+    return { clusterItems: cluster, controlPlaneItems: controlPlane };
   }, [navLayout, pageMap]);
 
   return (
@@ -171,10 +178,43 @@ const AppNav = () => {
           <Link to="/clusters">Clusters</Link>
         </NavItem>
 
-        {navItems.length > 0 && <Divider component="li" />}
+        {clusterItems.length > 0 && <Divider component="li" />}
 
-        {/* Plugin nav items from server layout */}
-        {navItems.map((page) => {
+        {/* Cluster-scoped plugin nav items */}
+        {clusterItems.map((page) => {
+          const fullPath = `/${page.path}`;
+          return (
+            <NavItem
+              key={page.id}
+              isActive={
+                location.pathname === fullPath ||
+                location.pathname.startsWith(fullPath + "/")
+              }
+            >
+              <Link to={fullPath}>{page.title}</Link>
+            </NavItem>
+          );
+        })}
+
+        {/* Control Plane section */}
+        <Divider component="li" />
+        <li
+          className="pf-v6-c-nav__item"
+          style={{
+            fontSize: "var(--pf-t--global--font--size--xs)",
+            color: "var(--pf-t--global--text--color--subtle)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            padding:
+              "var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md)",
+            fontWeight:
+              "var(--pf-t--global--font--weight--heading--default)",
+            cursor: "default",
+          }}
+        >
+          Control Plane
+        </li>
+        {controlPlaneItems.map((page) => {
           const fullPath = `/${page.path}`;
           return (
             <NavItem

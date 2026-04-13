@@ -1,4 +1,4 @@
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8080";
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? "http://localhost:8180";
 const TOKEN_ENDPOINT = `${KEYCLOAK_URL}/realms/fleetshift/protocol/openid-connect/token`;
 
 export async function getTestToken(
