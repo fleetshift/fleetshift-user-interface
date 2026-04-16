@@ -101,25 +101,28 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
   const [deleting, setDeleting] = useState(false);
   const [resuming, setResuming] = useState(false);
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!deploymentId) return;
-    if (!silent) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const data = await getDeployment(deploymentId);
-      setDeployment(data);
-    } catch (err) {
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (!deploymentId) return;
       if (!silent) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch deployment",
-        );
+        setLoading(true);
+        setError(null);
       }
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [deploymentId]);
+      try {
+        const data = await getDeployment(deploymentId);
+        setDeployment(data);
+      } catch (err) {
+        if (!silent) {
+          setError(
+            err instanceof Error ? err.message : "Failed to fetch deployment",
+          );
+        }
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [deploymentId],
+  );
 
   useEffect(() => {
     fetchData();
@@ -150,7 +153,7 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
     if (!deploymentId) return;
     setResuming(true);
     try {
-      await resumeDeployment(deploymentId);
+      await resumeDeployment({ name: deploymentId });
       await fetchData();
     } catch {
       // ignore
@@ -165,8 +168,10 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
   }
 
   const name = shortName(deployment.name);
-  const stateInfo = STATE_LABELS[deployment.state] ?? STATE_LABELS.STATE_UNSPECIFIED;
-  const stateIcon = STATE_ICONS[deployment.state] ?? STATE_ICONS.STATE_UNSPECIFIED;
+  const stateInfo =
+    STATE_LABELS[deployment.state] ?? STATE_LABELS.STATE_UNSPECIFIED;
+  const stateIcon =
+    STATE_ICONS[deployment.state] ?? STATE_ICONS.STATE_UNSPECIFIED;
   const canResume =
     deployment.state === "STATE_PAUSED_AUTH" ||
     deployment.state === "STATE_FAILED";
@@ -540,7 +545,11 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
           <CardBody>
             {manifests.map((m, i) => (
               <div key={i}>
-                <Label color="grey" isCompact style={{ marginBottom: "var(--pf-t--global--spacer--sm)" }}>
+                <Label
+                  color="grey"
+                  isCompact
+                  style={{ marginBottom: "var(--pf-t--global--spacer--sm)" }}
+                >
                   {m.resourceType}
                 </Label>
                 <pre
@@ -550,8 +559,7 @@ const DeploymentDetailPage: React.FC<{ clusterIds: string[] }> = () => {
                     background:
                       "var(--pf-t--global--background--color--secondary--default)",
                     padding: "var(--pf-t--global--spacer--md)",
-                    borderRadius:
-                      "var(--pf-t--global--border--radius--small)",
+                    borderRadius: "var(--pf-t--global--border--radius--small)",
                     overflow: "auto",
                     maxHeight: "400px",
                     whiteSpace: "pre-wrap",

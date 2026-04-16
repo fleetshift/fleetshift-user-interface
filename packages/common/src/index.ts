@@ -35,6 +35,15 @@ export {
 
 export type { ParsedCapacity } from "./format.js";
 
+export type {
+  ManifestStrategy,
+  Manifest,
+  PlacementStrategy,
+  OutputConstraint,
+} from "./canonical.js";
+
+export { buildSignedInputEnvelope, hashIntent } from "./canonical.js";
+
 export {
   makeRequest,
   fetchClusters,

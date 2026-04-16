@@ -25,12 +25,14 @@ import {
   Pagination,
   SearchInput,
   Spinner,
+  Switch,
   TextArea,
   TextInput,
   Title,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Tooltip,
 } from "@patternfly/react-core";
 import {
   Table,
@@ -48,6 +50,8 @@ import {
   resumeDeployment,
 } from "./api";
 import AuthBanner from "./AuthBanner";
+import { useSigningKey } from "./useSigningKey";
+import { buildSignedInputEnvelope } from "@fleetshift/common";
 import type { MgmtDeployment, DeploymentState } from "./api";
 
 const PER_PAGE = 20;
@@ -65,17 +69,6 @@ const STATE_LABELS: Record<
 };
 
 type PlacementType = "TYPE_STATIC" | "TYPE_ALL";
-
-// Default kind cluster config (what goes inside ClusterSpec.config)
-const DEFAULT_KIND_CONFIG = JSON.stringify(
-  {
-    kind: "Cluster",
-    apiVersion: "kind.x-k8s.io/v1alpha4",
-    nodes: [{ role: "control-plane" }],
-  },
-  null,
-  2,
-);
 
 function formatTime(ts: string): string {
   if (!ts) return "—";
@@ -95,10 +88,15 @@ export default function DeploymentsPage() {
   const [nameFilter, setNameFilter] = useState("");
   const [page, setPage] = useState(1);
 
+  // Signing key
+  const { enrolled: hasSigningKey, signDeployment: signWithKey } =
+    useSigningKey();
+
   // Create modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [signDeploymentEnabled, setSignDeploymentEnabled] = useState(false);
 
   // Form fields
   const [deploymentId, setDeploymentId] = useState("");
@@ -167,6 +165,7 @@ export default function DeploymentsPage() {
     setManifestRaw("");
     setPlacementType("TYPE_STATIC");
     setTargetIds("kind-local");
+    setSignDeploymentEnabled(false);
     setModalError(null);
   }, []);
 
@@ -209,6 +208,50 @@ export default function DeploymentsPage() {
       }
       const rawBase64 = btoa(finalManifest);
 
+      const parsedTargets =
+        placementType === "TYPE_ALL"
+          ? undefined
+          : targetIds
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+
+      // Build signing fields if signing is enabled
+      let userSignature: string | undefined;
+      let validUntil: string | undefined;
+      let expectedGeneration: number | undefined;
+
+      if (signDeploymentEnabled) {
+        const validUntilDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        validUntil = validUntilDate.toISOString();
+        expectedGeneration = 1;
+
+        // Canonical envelope uses domain-level type strings (matching Go),
+        // not proto enum values (TYPE_INLINE → inline, TYPE_STATIC → static).
+        const envelope = buildSignedInputEnvelope(
+          deploymentId.trim(),
+          {
+            type: "inline",
+            manifests: [
+              {
+                resourceType: resourceType,
+                content: JSON.parse(finalManifest),
+              },
+            ],
+          },
+          placementType === "TYPE_ALL"
+            ? { type: "all" }
+            : { type: "static", targets: parsedTargets },
+          validUntilDate,
+          [],
+          expectedGeneration,
+        );
+
+        // Web Crypto hashes internally — pass raw envelope bytes
+        const envelopeBytes = new TextEncoder().encode(envelope);
+        userSignature = await signWithKey(envelopeBytes);
+      }
+
       await createDeployment({
         deploymentId: deploymentId.trim(),
         deployment: {
@@ -224,15 +267,12 @@ export default function DeploymentsPage() {
           placementStrategy:
             placementType === "TYPE_ALL"
               ? { type: "TYPE_ALL" }
-              : {
-                  type: "TYPE_STATIC",
-                  targetIds: targetIds
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                },
+              : { type: "TYPE_STATIC", targetIds: parsedTargets },
           rolloutStrategy: { type: "TYPE_IMMEDIATE" },
         },
+        userSignature,
+        validUntil,
+        expectedGeneration,
       });
 
       setSuccess(`Deployment "${deploymentId}" created.`);
@@ -252,6 +292,8 @@ export default function DeploymentsPage() {
     manifestRaw,
     placementType,
     targetIds,
+    signDeploymentEnabled,
+    signWithKey,
     resetForm,
     fetchDeployments,
   ]);
@@ -274,7 +316,9 @@ export default function DeploymentsPage() {
   const handleResume = useCallback(
     async (name: string) => {
       try {
-        await resumeDeployment(name.replace("deployments/", ""));
+        await resumeDeployment({
+          name: name.replace("deployments/", ""),
+        });
         setSuccess(`Deployment "${name}" resumed.`);
         fetchDeployments();
       } catch (err) {
@@ -731,6 +775,26 @@ export default function DeploymentsPage() {
                 />
               </FormGroup>
             )}
+
+            <FormGroup fieldId="sign-deployment">
+              {hasSigningKey ? (
+                <Switch
+                  id="sign-deployment"
+                  label="Sign deployment"
+                  isChecked={signDeploymentEnabled}
+                  onChange={(_e, checked) => setSignDeploymentEnabled(checked)}
+                />
+              ) : (
+                <Tooltip content="Enroll a signing key first (Signing Keys page)">
+                  <Switch
+                    id="sign-deployment"
+                    label="Sign deployment"
+                    isChecked={false}
+                    isDisabled
+                  />
+                </Tooltip>
+              )}
+            </FormGroup>
           </Form>
         </ModalBody>
         <ModalFooter>
@@ -740,7 +804,13 @@ export default function DeploymentsPage() {
             isDisabled={creating}
             isLoading={creating}
           >
-            {creating ? "Creating..." : "Create"}
+            {creating
+              ? signDeploymentEnabled
+                ? "Signing & Creating..."
+                : "Creating..."
+              : signDeploymentEnabled
+                ? "Sign & Create"
+                : "Create"}
           </Button>
           <Button variant="link" onClick={handleClose} isDisabled={creating}>
             Cancel
