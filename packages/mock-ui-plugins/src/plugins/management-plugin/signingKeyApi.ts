@@ -152,20 +152,18 @@ export async function exportSSHPublicKey(
 }
 
 /**
- * Export public key as base64 DER (SPKI) for Keycloak user attribute storage.
+ * Export public key as base64 DER (SPKI) for IdP user attribute storage.
  */
 export async function exportPublicKeyDER(
   publicKey: CryptoKey,
 ): Promise<string> {
-  const spki = new Uint8Array(
-    await crypto.subtle.exportKey("spki", publicKey),
-  );
+  const spki = new Uint8Array(await crypto.subtle.exportKey("spki", publicKey));
   return uint8ToBase64(spki);
 }
 
 /**
  * Get the stored public key CryptoKey, if any.
- * Used by enrollment to write to Keycloak or export for GitHub.
+ * Used by enrollment to write to IdP or export for GitHub.
  */
 export async function getStoredPublicKey(): Promise<CryptoKey | null> {
   const kp = await loadKeyPair();

@@ -51,6 +51,7 @@
       ],
       "protocol": "openid-connect",
       "defaultClientScopes": [
+        "basic",
         "web-origins",
         "profile",
         "roles",
@@ -66,6 +67,20 @@
             "included.client.audience": "fleetshift-ui",
             "id.token.claim": "false",
             "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "signing-public-key",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "signing_public_key",
+            "claim.name": "signing_public_key",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "false"
           }
         }
       ]
@@ -83,6 +98,7 @@
       ],
       "protocol": "openid-connect",
       "defaultClientScopes": [
+        "basic",
         "profile",
         "roles",
         "email"

@@ -14,7 +14,7 @@ import { createSignerEnrollment, deleteSignerEnrollment } from "./api";
 // Types
 // ---------------------------------------------------------------------------
 
-export type Registry = "keycloak" | "github.com" | "manual";
+export type Registry = "oidc" | "github.com" | "manual";
 export type Step =
   | "loading"
   | "empty"
@@ -62,7 +62,7 @@ type SigningKeyStore = ReturnType<
 const INITIAL: SigningKeyStoreState = {
   step: "loading",
   sshPublicKey: null,
-  selectedRegistry: "keycloak",
+  selectedRegistry: "oidc",
   error: null,
   success: null,
 };
@@ -142,7 +142,7 @@ function getStore(): SigningKeyStore {
 }
 
 // ---------------------------------------------------------------------------
-// Keycloak helpers
+// OIDC helpers (Keycloak Account API for the POC)
 // ---------------------------------------------------------------------------
 
 const KC_AUTHORITY = "http://keycloak:8180/auth/realms/fleetshift";
@@ -157,6 +157,54 @@ function getAccessToken(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Refresh the OIDC session to get a fresh ID token that includes
+ * any recently-updated user attributes (e.g. signing_public_key).
+ * Returns the new ID token, or null if refresh fails.
+ */
+async function refreshAndGetIdToken(): Promise<string | null> {
+  const key = `oidc.user:${KC_AUTHORITY}:${KC_CLIENT_ID}`;
+  const raw = sessionStorage.getItem(key);
+  if (!raw) return null;
+
+  let session: Record<string, unknown>;
+  try {
+    session = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  const refreshToken = session.refresh_token as string | undefined;
+  if (!refreshToken) return null;
+
+  const tokenUrl = `${KC_AUTHORITY}/protocol/openid-connect/token`;
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: KC_CLIENT_ID,
+    refresh_token: refreshToken,
+  });
+
+  const resp = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  if (!resp.ok) return null;
+
+  const tokens = await resp.json();
+  // Update stored session with fresh tokens
+  const updated = {
+    ...session,
+    access_token: tokens.access_token,
+    id_token: tokens.id_token,
+    refresh_token: tokens.refresh_token ?? refreshToken,
+  };
+  sessionStorage.setItem(key, JSON.stringify(updated));
+
+  return (tokens.id_token as string) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -213,13 +261,17 @@ export function useSigningKeyStore() {
     try {
       const token = getAccessToken();
       if (!token) {
-        throw new Error("No OIDC session found. Log in via Keycloak first.");
+        throw new Error("No OIDC session found. Log in first.");
       }
 
       const currentState = s.getState();
 
-      // Keycloak: auto-store public key as user attribute
-      if (currentState.selectedRegistry === "keycloak") {
+      let enrollmentToken = token;
+
+      // OIDC (e.g. Keycloak): store public key as user attribute,
+      // then refresh the session to get a fresh ID token that
+      // includes the signing_public_key claim.
+      if (currentState.selectedRegistry === "oidc") {
         const pub = await getStoredPublicKey();
         if (!pub) throw new Error("No signing key in IndexedDB");
         const derB64 = await exportPublicKeyDER(pub);
@@ -233,7 +285,7 @@ export function useSigningKeyStore() {
         });
         if (!profileResp.ok) {
           throw new Error(
-            `Keycloak GET profile returned ${profileResp.status}: ${await profileResp.text()}`,
+            `IdP GET profile returned ${profileResp.status}: ${await profileResp.text()}`,
           );
         }
         const profile = await profileResp.json();
@@ -248,9 +300,18 @@ export function useSigningKeyStore() {
         });
         if (!resp.ok) {
           throw new Error(
-            `Keycloak returned ${resp.status}: ${await resp.text()}`,
+            `IdP returned ${resp.status}: ${await resp.text()}`,
           );
         }
+
+        // Refresh to get a new ID token with the signing_public_key claim
+        const freshIdToken = await refreshAndGetIdToken();
+        if (!freshIdToken) {
+          throw new Error(
+            "Failed to refresh session after storing public key. Try logging out and back in.",
+          );
+        }
+        enrollmentToken = freshIdToken;
       } else if (currentState.selectedRegistry === "github.com") {
         // GitHub: copy SSH key to clipboard + open settings page
         if (currentState.sshPublicKey) {
@@ -263,7 +324,7 @@ export function useSigningKeyStore() {
       // The subject is derived server-side — no client overrides.
       await createSignerEnrollment({
         signerEnrollmentId: `browser-${Date.now()}`,
-        identityToken: token,
+        identityToken: enrollmentToken,
         registryId:
           currentState.selectedRegistry === "manual"
             ? undefined
@@ -271,8 +332,7 @@ export function useSigningKeyStore() {
       });
 
       const messages: Record<Registry, string> = {
-        keycloak:
-          "Public key stored in Keycloak and enrollment registered. You can now sign deployments.",
+        oidc: "Public key stored in IdP and enrollment registered. You can now sign deployments.",
         "github.com":
           "SSH public key copied. Paste it in GitHub SSH keys (as a Signing Key). Enrollment registered.",
         manual:

@@ -35,9 +35,9 @@ import {
 } from "@patternfly/react-icons";
 import { useSigningKeyStore } from "./signingKeyStore";
 
-const KC_SETUP_CMD = `fleetctl auth setup \\
+const OIDC_SETUP_CMD = `fleetctl auth setup \\
   --key-enrollment-client-id fleetshift-ui \\
-  --registry-id keycloak \\
+  --registry-id oidc \\
   --registry-subject-expression 'claims.preferred_username'`;
 
 const GH_SETUP_CMD = `fleetctl auth setup \\
@@ -275,8 +275,8 @@ export default function SigningKeyPage() {
                     ) : undefined
                   }
                 >
-                  {store.selectedRegistry === "keycloak"
-                    ? "Store in Keycloak & enroll"
+                  {store.selectedRegistry === "oidc"
+                    ? "Store in IdP & enroll"
                     : store.selectedRegistry === "github.com"
                       ? "Copy key & open GitHub"
                       : "Enroll"}
@@ -318,12 +318,12 @@ export default function SigningKeyPage() {
               style={{ marginBottom: "var(--pf-t--global--spacer--lg)" }}
             >
               <Radio
-                id="registry-keycloak"
+                id="registry-oidc"
                 name="registry"
-                label="Keycloak (recommended)"
-                description="Automatically stores the public key as a Keycloak user attribute. No manual steps."
-                isChecked={store.selectedRegistry === "keycloak"}
-                onChange={() => store.selectRegistry("keycloak")}
+                label="OIDC (recommended)"
+                description="Automatically stores the public key as an IdP user attribute. No manual steps."
+                isChecked={store.selectedRegistry === "oidc"}
+                onChange={() => store.selectRegistry("oidc")}
               />
               <Radio
                 id="registry-github"
@@ -394,12 +394,12 @@ export default function SigningKeyPage() {
         </p>
         <Flex direction={{ default: "column" }} gap={{ default: "gapLg" }}>
           <Card isCompact>
-            <CardTitle>Keycloak registry</CardTitle>
+            <CardTitle>OIDC registry</CardTitle>
             <CardBody>
               <p style={{ marginBottom: "var(--pf-t--global--spacer--sm)" }}>
-                Maps <code>preferred_username</code> from the ID token to look
-                up the <code>signing_public_key</code> user attribute in
-                Keycloak.
+                The public key is embedded as a <code>signing_public_key</code>{" "}
+                claim in the enrollment ID token. Works with any OIDC IdP
+                (Keycloak, Auth0, etc.) that supports custom claims.
               </p>
               <ClipboardCopy
                 isReadOnly
@@ -408,7 +408,7 @@ export default function SigningKeyPage() {
                 hoverTip="Copy"
                 clickTip="Copied"
               >
-                {KC_SETUP_CMD}
+                {OIDC_SETUP_CMD}
               </ClipboardCopy>
             </CardBody>
           </Card>
@@ -418,7 +418,7 @@ export default function SigningKeyPage() {
               <p style={{ marginBottom: "var(--pf-t--global--spacer--sm)" }}>
                 Maps <code>github_username</code> from the ID token to fetch SSH
                 signing keys from GitHub. Requires a{" "}
-                <code>github_username</code> attribute on each Keycloak user.
+                <code>github_username</code> claim from your IdP.
               </p>
               <ClipboardCopy
                 isReadOnly
