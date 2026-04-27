@@ -1,4 +1,4 @@
-const MGMT_BASE = "/api/v1/management";
+const MGMT_BASE = "/api/v1/ome";
 
 export async function mgmtFetch<T>(
   path: string,
@@ -127,6 +127,11 @@ export interface CreateDeploymentRequest {
     placementStrategy: PlacementStrategy;
     rolloutStrategy?: RolloutStrategy;
   };
+  /** Base64-encoded ECDSA-P256-SHA256 ASN.1 DER signature. */
+  userSignature?: string;
+  /** ISO 8601 timestamp for signing envelope reconstruction. */
+  validUntil?: string;
+  expectedGeneration?: number;
 }
 
 export function createDeployment(
@@ -134,11 +139,56 @@ export function createDeployment(
 ): Promise<MgmtDeployment> {
   const params = new URLSearchParams();
   params.set("deployment_id", req.deploymentId);
+  if (req.validUntil) {
+    params.set("valid_until", req.validUntil);
+  }
+  if (req.expectedGeneration) {
+    params.set("expected_generation", String(req.expectedGeneration));
+  }
+  if (req.userSignature) {
+    params.set("user_signature", req.userSignature);
+  }
   return mgmtFetch(`/deployments?${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req.deployment),
   });
+}
+
+// --- Signer Enrollments ---
+
+export interface SignerEnrollment {
+  name: string;
+  subject: string;
+  issuer: string;
+  registrySubject: string;
+  registryId: string;
+  createTime: string;
+  expireTime: string;
+}
+
+export interface CreateSignerEnrollmentRequest {
+  signerEnrollmentId: string;
+  identityToken: string;
+  registryId?: string;
+}
+
+export function createSignerEnrollment(
+  req: CreateSignerEnrollmentRequest,
+): Promise<SignerEnrollment> {
+  return mgmtFetch("/signerEnrollments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      signer_enrollment_id: req.signerEnrollmentId,
+      identity_token: req.identityToken,
+      ...(req.registryId && { registry_id: req.registryId }),
+    }),
+  });
+}
+
+export function deleteSignerEnrollment(): Promise<void> {
+  return mgmtFetch("/signerEnrollments", { method: "DELETE" });
 }
 
 export function deleteDeployment(name: string): Promise<MgmtDeployment> {
@@ -147,10 +197,26 @@ export function deleteDeployment(name: string): Promise<MgmtDeployment> {
   });
 }
 
-export function resumeDeployment(name: string): Promise<MgmtDeployment> {
-  return mgmtFetch(`/deployments/${encodeURIComponent(name)}:resume`, {
+export interface ResumeDeploymentRequest {
+  name: string;
+  /** Base64-encoded ECDSA-P256-SHA256 ASN.1 DER signature for re-signing. */
+  userSignature?: string;
+  validUntil?: string;
+}
+
+export function resumeDeployment(
+  req: ResumeDeploymentRequest,
+): Promise<MgmtDeployment> {
+  const body: Record<string, unknown> = {};
+  if (req.validUntil) {
+    body.valid_until = req.validUntil;
+  }
+  if (req.userSignature) {
+    body.user_signature = req.userSignature;
+  }
+  return mgmtFetch(`/deployments/${encodeURIComponent(req.name)}:resume`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify(body),
   });
 }

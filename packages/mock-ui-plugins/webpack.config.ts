@@ -514,6 +514,13 @@ const ManagementPlugin = new DynamicRemotePlugin({
         component: { $codeRef: "DeploymentsPage.default" },
       },
     },
+    {
+      type: "fleetshift.module",
+      properties: {
+        label: "Signing Keys",
+        component: { $codeRef: "SigningKeyPage.default" },
+      },
+    },
   ],
   sharedModules,
   entryScriptFilename: "management-plugin.[contenthash].js",
@@ -529,6 +536,10 @@ const ManagementPlugin = new DynamicRemotePlugin({
       DeploymentsPage: p("./src/plugins/management-plugin/DeploymentsPage.tsx"),
       DeploymentDetailPage: p(
         "./src/plugins/management-plugin/DeploymentDetailPage.tsx",
+      ),
+      SigningKeyPage: p("./src/plugins/management-plugin/SigningKeyPage.tsx"),
+      useSigningKeyStore: p(
+        "./src/plugins/management-plugin/signingKeyStore.ts",
       ),
       authState: p("./src/plugins/management-plugin/authState.ts"),
     },

@@ -76,6 +76,11 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
     port: 3000,
     proxy: [
       {
+        context: ["/api/v1/ome"],
+        target: process.env.OME_API_TARGET ?? "http://localhost:8085",
+        pathRewrite: { "^/api/v1/ome": "/v1" },
+      },
+      {
         context: ["/api"],
         target: process.env.API_PROXY_TARGET ?? "http://localhost:4000",
       },
