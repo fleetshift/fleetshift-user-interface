@@ -17,14 +17,8 @@
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "joi": "^18.0.2",
-    "json-parse-even-better-errors": "^5.0.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18",
-    "wait-on": "^9.0.4"
-  },
-  "dependencies": {
-    "immutable": "^5.1.5"
+    "vitest": "^4.0.18"
   }
 }

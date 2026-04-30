@@ -85,9 +85,3 @@ Plugins are Module Federation remotes loaded via Scalprum. Each plugin is a `Dyn
 
 Plugin pages and nav layout are computed by the Go backend from `plugin-registry.json`. The GUI fetches this from `GET /api/ui/user-config`.
 
-## Documentation
-
-- [Shell Architecture](docs/shell-architecture.md) — bootstrap chain, provider tree, ScalprumProvider, bridge pattern
-- [Plugin System](docs/plugin-system.md) — how plugins are built, registered, discovered, and loaded
-- [Build System](docs/build-system.md) — PatternFly import transforms, Module Federation sharing, monorepo setup
-- [Cross-Plugin Routing](docs/routing-plugin.md) — runtime path resolution between plugins
