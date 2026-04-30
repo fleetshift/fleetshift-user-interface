@@ -50,7 +50,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const loadConfig = useCallback(() => {
     if (!user) return;
 
-    fetch(`/api/v1/users/${user.id}/config`)
+    fetch("/api/ui/user-config")
       .then((res) => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.json();

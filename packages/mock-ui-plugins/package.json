@@ -1,13 +1,10 @@
 {
   "name": "@fleetshift/mock-ui-plugins",
-  "description": "Webpack Module Federation remote plugins (15 plugins). Built and served on port 8001.",
+  "description": "Webpack Module Federation remote plugins — built and served by the Go backend.",
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "webpack",
-    "watch": "nodemon --watch webpack.config.ts --ext ts --exec 'webpack --watch'",
-    "serve": "webpack && concurrently \"nodemon --watch webpack.config.ts --ext ts --exec 'webpack --watch'\" \"http-server dist -p 8001 -c-1 --cors=*\"",
-    "serve:dist": "http-server dist -p 8001 -c-1 --cors=*"
+    "build": "webpack"
   },
   "dependencies": {
     "@fleetshift/common": "*",
@@ -31,16 +28,12 @@
     "@openshift/dynamic-plugin-sdk-webpack": "^4.0.2",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
-    "nodemon": "^3.1.14",
-    "concurrently": "^9.2.1",
     "css-loader": "^7.1.4",
-    "http-server": "^14.1.1",
     "sass": "^1.97.3",
     "sass-loader": "^16.0.7",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
-    "wait-on": "^7.2.0",
     "webpack": "^5.98.0",
     "webpack-cli": "^5.1.4"
   }

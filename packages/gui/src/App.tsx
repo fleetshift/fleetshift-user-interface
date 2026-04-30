@@ -55,7 +55,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
   const api = useMemo(
     () => ({
       fleetshift: {
-        apiBase: "/api/v1",
+        apiBase: "/v1",
         getClusterIdsForPlugin: () => [] as string[],
         getClusterName: (clusterId: string) => clusterId,
         onClustersChange: () => () => {},

@@ -142,30 +142,45 @@ function getStore(): SigningKeyStore {
 }
 
 // ---------------------------------------------------------------------------
-// OIDC helpers (Keycloak Account API for the POC)
+// OIDC helpers — authority + clientId fetched from /api/ui/config
 // ---------------------------------------------------------------------------
 
-const KC_AUTHORITY = "http://keycloak:8180/auth/realms/fleetshift";
-const KC_CLIENT_ID = "fleetshift-ui";
-
-function getAccessToken(): string | null {
-  const key = `oidc.user:${KC_AUTHORITY}:${KC_CLIENT_ID}`;
-  const raw = sessionStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw).access_token ?? null;
-  } catch {
-    return null;
-  }
+interface OidcConfig {
+  authority: string;
+  clientId: string;
 }
 
-/**
- * Refresh the OIDC session to get a fresh ID token that includes
- * any recently-updated user attributes (e.g. signing_public_key).
- * Returns the new ID token, or null if refresh fails.
- */
+let cachedConfig: OidcConfig | null = null;
+
+async function getOidcConfig(): Promise<OidcConfig> {
+  if (cachedConfig) return cachedConfig;
+  const resp = await fetch("/api/ui/config");
+  if (!resp.ok) throw new Error(`Failed to fetch UI config: ${resp.status}`);
+  const data = await resp.json();
+  cachedConfig = {
+    authority: data.oidc.authority,
+    clientId: data.oidc.clientId,
+  };
+  return cachedConfig;
+}
+
+function getAccessToken(): string | null {
+  // Scan sessionStorage for the oidc.user:* key
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (!key?.startsWith("oidc.user:")) continue;
+    try {
+      return JSON.parse(sessionStorage.getItem(key)!).access_token ?? null;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 async function refreshAndGetIdToken(): Promise<string | null> {
-  const key = `oidc.user:${KC_AUTHORITY}:${KC_CLIENT_ID}`;
+  const config = await getOidcConfig();
+  const key = `oidc.user:${config.authority}:${config.clientId}`;
   const raw = sessionStorage.getItem(key);
   if (!raw) return null;
 
@@ -179,10 +194,10 @@ async function refreshAndGetIdToken(): Promise<string | null> {
   const refreshToken = session.refresh_token as string | undefined;
   if (!refreshToken) return null;
 
-  const tokenUrl = `${KC_AUTHORITY}/protocol/openid-connect/token`;
+  const tokenUrl = `${config.authority}/protocol/openid-connect/token`;
   const body = new URLSearchParams({
     grant_type: "refresh_token",
-    client_id: KC_CLIENT_ID,
+    client_id: config.clientId,
     refresh_token: refreshToken,
   });
 
@@ -195,7 +210,6 @@ async function refreshAndGetIdToken(): Promise<string | null> {
   if (!resp.ok) return null;
 
   const tokens = await resp.json();
-  // Update stored session with fresh tokens
   const updated = {
     ...session,
     access_token: tokens.access_token,
@@ -268,10 +282,8 @@ export function useSigningKeyStore() {
 
       let enrollmentToken = token;
 
-      // OIDC (e.g. Keycloak): store public key as user attribute,
-      // then refresh the session to get a fresh ID token that
-      // includes the signing_public_key claim.
       if (currentState.selectedRegistry === "oidc") {
+        const config = await getOidcConfig();
         const pub = await getStoredPublicKey();
         if (!pub) throw new Error("No signing key in IndexedDB");
         const derB64 = await exportPublicKeyDER(pub);
@@ -280,7 +292,7 @@ export function useSigningKeyStore() {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         };
-        const profileResp = await fetch(`${KC_AUTHORITY}/account`, {
+        const profileResp = await fetch(`${config.authority}/account`, {
           headers,
         });
         if (!profileResp.ok) {
@@ -293,7 +305,7 @@ export function useSigningKeyStore() {
           ...profile.attributes,
           signing_public_key: [derB64],
         };
-        const resp = await fetch(`${KC_AUTHORITY}/account`, {
+        const resp = await fetch(`${config.authority}/account`, {
           method: "POST",
           headers,
           body: JSON.stringify(profile),
@@ -304,7 +316,6 @@ export function useSigningKeyStore() {
           );
         }
 
-        // Refresh to get a new ID token with the signing_public_key claim
         const freshIdToken = await refreshAndGetIdToken();
         if (!freshIdToken) {
           throw new Error(

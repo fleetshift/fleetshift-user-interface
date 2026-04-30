@@ -78,8 +78,8 @@ const ManagementPlugin = new DynamicRemotePlugin({
     },
   ],
   sharedModules,
-  entryScriptFilename: "management-plugin.[contenthash].js",
-  pluginManifestFilename: "management-plugin-manifest.json",
+  entryScriptFilename: "plugins/management/management-plugin.[contenthash].js",
+  pluginManifestFilename: "plugins/management/management-plugin-manifest.json",
   // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
@@ -102,8 +102,8 @@ const ManagementPlugin = new DynamicRemotePlugin({
 const RoutingPlugin = new DynamicRemotePlugin({
   extensions: [],
   sharedModules,
-  entryScriptFilename: "routing-plugin.[contenthash].js",
-  pluginManifestFilename: "routing-plugin-manifest.json",
+  entryScriptFilename: "plugins/routing/routing-plugin.[contenthash].js",
+  pluginManifestFilename: "plugins/routing/routing-plugin-manifest.json",
   // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
@@ -125,6 +125,7 @@ const config: Configuration = {
   },
   output: {
     publicPath: "auto",
+    chunkFilename: "plugins/[name].js",
   },
   mode: "development",
   cache: {
@@ -134,7 +135,7 @@ const config: Configuration = {
     ManagementPlugin,
     RoutingPlugin,
     new PluginRegistryPlugin({
-      assetsHost: "http://localhost:8001",
+      assetsHost: "",
       plugins: [
         {
           name: "management-plugin",

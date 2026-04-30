@@ -11,7 +11,8 @@ import {
   AuthProvider as OidcAuthProvider,
   useAuth as useOidcAuth,
 } from "react-oidc-context";
-import { oidcConfig } from "../auth/oidcConfig";
+import type { AuthProviderProps } from "react-oidc-context";
+import { fetchOidcConfig } from "../auth/oidcConfig";
 import {
   setAccessToken,
   setOnUnauthorized,
@@ -124,8 +125,23 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [oidcProps, setOidcProps] = useState<AuthProviderProps | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOidcConfig()
+      .then(setOidcProps)
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) {
+    return <div style={{ padding: "2rem", color: "red" }}>Failed to load OIDC config: {error}</div>;
+  }
+
+  if (!oidcProps) return null;
+
   return (
-    <OidcAuthProvider {...oidcConfig}>
+    <OidcAuthProvider {...oidcProps}>
       <KeycloakAuthInner>{children}</KeycloakAuthInner>
     </OidcAuthProvider>
   );
