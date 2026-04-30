@@ -12,7 +12,6 @@ import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import * as buildUtils from "@fleetshift/build-utils";
 const { getDynamicModules, createTsLoaderRule } = buildUtils;
 import type { Configuration } from "webpack";
-import type { Configuration as DevServerConfiguration } from "webpack-dev-server";
 
 const configDir = typeof __dirname === "string" ? __dirname : process.cwd();
 const monorepoRoot = path.resolve(configDir, "../..");
@@ -20,11 +19,12 @@ const nodeModulesRoot = path.resolve(monorepoRoot, "node_modules");
 const pfSharedModules = getDynamicModules(configDir, monorepoRoot);
 const tsLoaderRule = createTsLoaderRule({ nodeModulesRoot });
 
-const config: Configuration & { devServer?: DevServerConfiguration } = {
+const config: Configuration = {
   entry: "./src/index.ts",
   output: {
     publicPath: "/",
     path: path.resolve(configDir, "dist"),
+    chunkFilename: "shell/[name].js",
     clean: true,
   },
   mode: "development",
@@ -65,27 +65,12 @@ const config: Configuration & { devServer?: DevServerConfiguration } = {
         ...pfSharedModules,
       },
     }),
-    new MiniCssExtractPlugin(),
+    new MiniCssExtractPlugin({ chunkFilename: "shell/[name].css" }),
     new HtmlWebpackPlugin({
       template: "./src/index.html",
       favicon: "./src/assets/masthead.ico",
     }),
   ],
-  devServer: {
-    historyApiFallback: true,
-    port: 3000,
-    proxy: [
-      {
-        context: ["/api/v1/ome"],
-        target: process.env.OME_API_TARGET ?? "http://localhost:8085",
-        pathRewrite: { "^/api/v1/ome": "/v1" },
-      },
-      {
-        context: ["/api"],
-        target: process.env.API_PROXY_TARGET ?? "http://localhost:4000",
-      },
-    ],
-  },
 };
 
 export default config;

@@ -1,0 +1,41 @@
+# Frontend builder — produces /srv/web with all static assets.
+#
+# Used as an init container in the compose stack:
+#   command: ["cp", "-a", "/srv/web/.", "/output/"]
+
+FROM registry.access.redhat.com/ubi9/nodejs-22:latest
+
+USER 0
+WORKDIR /build
+
+# Copy package manifests for layer caching
+COPY package*.json ./
+COPY packages/common/package.json packages/common/
+COPY packages/build-utils/package.json packages/build-utils/
+COPY packages/gui/package.json packages/gui/
+COPY packages/mock-ui-plugins/package.json packages/mock-ui-plugins/
+
+RUN npm ci --include-workspace-root \
+    -w packages/common \
+    -w packages/build-utils \
+    -w packages/gui \
+    -w packages/mock-ui-plugins
+
+# Copy root tsconfig
+COPY tsconfig.json ./
+
+# Copy all source
+COPY packages/common/ packages/common/
+COPY packages/build-utils/ packages/build-utils/
+COPY packages/gui/ packages/gui/
+COPY packages/mock-ui-plugins/ packages/mock-ui-plugins/
+COPY scripts/merge-web.mjs scripts/merge-web.mjs
+
+# Build in order: common → plugins → GUI → merge
+RUN npm run build -w packages/common \
+    && npm run build -w packages/mock-ui-plugins \
+    && npm run build -w packages/gui \
+    && node scripts/merge-web.mjs \
+    && cp -a web/. /srv/web/
+
+CMD ["cp", "-a", "/srv/web/.", "/output/"]

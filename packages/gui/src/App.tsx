@@ -1,23 +1,17 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ScalprumProvider } from "@scalprum/react-core";
 import { useScalprum } from "@scalprum/react-core";
 import { initSharedScope } from "@scalprum/core";
 import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "./layouts/AppLayout";
-import { ClusterProvider, useClusters } from "./contexts/ClusterContext";
+import { ClusterProvider } from "./contexts/ClusterContext";
 import { ScopeProvider, useScope } from "./contexts/ScopeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { PluginRegistryProvider } from "./contexts/PluginRegistryContext";
 import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
-import { subscribe as eventBusSubscribe } from "./hooks/useInvalidationSocket";
 import { PluginPage } from "./pages/PluginPage";
-import { AddClusterPage } from "./pages/ClusterListPage";
 import { DebugPage } from "./pages/DebugPage";
-import { GrantAccessPage } from "./pages/GrantAccessPage/GrantAccessPage";
-import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
 import { AnimationsProvider } from "@patternfly/react-core";
-
-const API_BASE = "http://localhost:4000/api/v1";
 
 const scopeRef = { current: "all" as string };
 const scopeListenersRef = { current: new Set<() => void>() };
@@ -56,34 +50,15 @@ const PluginLoader = ({ children }: PropsWithChildren) => {
 };
 
 const ScalprumShell = ({ children }: PropsWithChildren) => {
-  const { installed } = useClusters();
   const { scalprumConfig, assetsHost } = useAppConfig();
-
-  const installedRef = useRef(installed);
-  installedRef.current = installed;
-
-  const clusterListenersRef = useRef<Set<() => void>>(new Set());
-  useEffect(() => {
-    clusterListenersRef.current.forEach((fn) => fn());
-  }, [installed]);
 
   const api = useMemo(
     () => ({
       fleetshift: {
-        apiBase: API_BASE,
-        getClusterIdsForPlugin: (pluginKey: string) =>
-          installedRef.current
-            .filter((c) => c.plugins.includes(pluginKey))
-            .map((c) => c.id),
-        getClusterName: (clusterId: string) =>
-          installedRef.current.find((c) => c.id === clusterId)?.name ??
-          clusterId,
-        onClustersChange: (fn: () => void) => {
-          clusterListenersRef.current.add(fn);
-          return () => {
-            clusterListenersRef.current.delete(fn);
-          };
-        },
+        apiBase: "/v1",
+        getClusterIdsForPlugin: () => [] as string[],
+        getClusterName: (clusterId: string) => clusterId,
+        onClustersChange: () => () => {},
         getScope: () => scopeRef.current,
         onScopeChange: (fn: () => void) => {
           scopeListenersRef.current.add(fn);
@@ -91,7 +66,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
             scopeListenersRef.current.delete(fn);
           };
         },
-        on: eventBusSubscribe,
+        on: () => () => {},
       },
     }),
     [],
@@ -145,19 +120,34 @@ const AuthGate = ({ children }: PropsWithChildren) => {
 };
 
 const AppRoutes = () => {
-  const { pluginPages } = useAppConfig();
+  const { pluginPages, navLayout } = useAppConfig();
 
   const sortedPages = useMemo(
     () => [...pluginPages].sort((a, b) => b.path.length - a.path.length),
     [pluginPages],
   );
 
+  const pageMap = useMemo(() => {
+    const map = new Map<string, (typeof pluginPages)[number]>();
+    for (const page of pluginPages) map.set(page.id, page);
+    return map;
+  }, [pluginPages]);
+
+  const firstNavPath = useMemo(() => {
+    for (const entry of navLayout) {
+      if (entry.type === "page") {
+        const page = pageMap.get(entry.pageId);
+        if (page) return `/${page.path}`;
+      }
+    }
+    return "/debug";
+  }, [navLayout, pageMap]);
+
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route path="/clusters/add" element={<AddClusterPage />} />
+        <Route path="/" element={<Navigate to={firstNavPath} replace />} />
         <Route path="/debug" element={<DebugPage />} />
-        <Route path="/grant-access" element={<GrantAccessPage />} />
         {sortedPages.map((page) => (
           <Route
             key={page.id}
@@ -204,9 +194,7 @@ export const App = () => (
           <AuthGate>
             <AppConfigProvider>
               <AppConfigBridge>
-                <UserPreferencesProvider>
-                  <AppRoutes />
-                </UserPreferencesProvider>
+                <AppRoutes />
               </AppConfigBridge>
             </AppConfigProvider>
           </AuthGate>

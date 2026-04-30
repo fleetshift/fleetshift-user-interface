@@ -1,4 +1,4 @@
-const MGMT_BASE = "/api/v1/ome";
+const MGMT_BASE = "/v1";
 
 export async function mgmtFetch<T>(
   path: string,

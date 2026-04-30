@@ -10,7 +10,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:8085",
     trace: "on-first-retry",
   },
   projects: [
@@ -28,14 +28,4 @@ export default defineConfig({
       dependencies: ["setup"],
     },
   ],
-  // In CI, servers are started by the workflow. Locally, start them automatically.
-  ...(!process.env.CI && {
-    webServer: {
-      command: "npm run dev",
-      cwd: "../..",
-      url: "http://localhost:3000",
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-  }),
 });

@@ -14,6 +14,25 @@ interface PluginRegistryPluginOptions {
   plugins: PluginMeta[];
 }
 
+function findManifests(dir: string, base: string): { path: string; rel: string }[] {
+  const results: { path: string; rel: string }[] = [];
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...findManifests(full, base));
+    } else if (entry.name.endsWith("-manifest.json")) {
+      results.push({ path: full, rel: path.relative(base, full) });
+    }
+  }
+  return results;
+}
+
 export class PluginRegistryPlugin {
   private options: PluginRegistryPluginOptions;
 
@@ -41,20 +60,9 @@ export class PluginRegistryPlugin {
         };
 
         const plugins = registry.plugins as Record<string, unknown>;
+        const manifests = findManifests(outputPath, outputPath);
 
-        // Read all manifest files from output directory
-        let files: string[];
-        try {
-          files = fs.readdirSync(outputPath);
-        } catch {
-          callback();
-          return;
-        }
-
-        for (const file of files) {
-          if (!file.endsWith("-manifest.json")) continue;
-
-          const filePath = path.join(outputPath, file);
+        for (const { path: filePath, rel } of manifests) {
           let manifest: Record<string, unknown>;
           try {
             manifest = JSON.parse(fs.readFileSync(filePath, "utf-8"));
@@ -76,6 +84,7 @@ export class PluginRegistryPlugin {
             key: meta.key,
             label: meta.label,
             persona: meta.persona,
+            manifestPath: "/" + rel.split(path.sep).join("/"),
             pluginManifest: manifest,
           };
         }

@@ -9,7 +9,6 @@ import {
 import type { AppsConfig } from "@scalprum/core";
 import type { PluginEntry } from "./PluginRegistryContext";
 import { useAuth } from "./AuthContext";
-import { subscribe } from "../hooks/useInvalidationSocket";
 
 export interface PluginPage {
   id: string;
@@ -44,8 +43,6 @@ interface AppConfigContextValue {
 
 const AppConfigContext = createContext<AppConfigContextValue | null>(null);
 
-const API_BASE = "http://localhost:4000/api/v1";
-
 export function AppConfigProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [config, setConfig] = useState<AppConfigContextValue | null>(null);
@@ -53,7 +50,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   const loadConfig = useCallback(() => {
     if (!user) return;
 
-    fetch(`${API_BASE}/users/${user.id}/config`)
+    fetch("/api/ui/user-config")
       .then((res) => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.json();
@@ -72,14 +69,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
       });
   }, [user]);
 
-  // Initial load
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
-
-  // Re-fetch when clusters change (WS invalidation)
-  useEffect(() => {
-    return subscribe("clusters", loadConfig);
   }, [loadConfig]);
 
   if (!config) return null;
