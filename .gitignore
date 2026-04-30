@@ -1,13 +1,8 @@
 node_modules
 dist
 .cache
-*.db
-*.db-shm
-*.db-wal
 reference
 test-results
 playwright-report
 getting-started
 .env
-clusters.yaml
-k8s/*.yaml

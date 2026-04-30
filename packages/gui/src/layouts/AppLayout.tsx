@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
-  Divider,
   Masthead,
   MastheadBrand,
   MastheadContent,
@@ -25,14 +24,12 @@ import {
 import {
   BarsIcon,
   BugIcon,
-  KeyIcon,
   MoonIcon,
   SunIcon,
 } from "@patternfly/react-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppConfig } from "../contexts/AppConfigContext";
 import type { PluginPage } from "../contexts/AppConfigContext";
-import { ClusterSwitcher } from "./ClusterSwitcher";
 import logo from "../assets/masthead.png";
 import "./AppLayout.scss";
 
@@ -105,9 +102,6 @@ const AppMasthead = () => (
       <Toolbar>
         <ToolbarContent>
           <ToolbarItem>
-            <ClusterSwitcher />
-          </ToolbarItem>
-          <ToolbarItem>
             <UserSwitcher />
           </ToolbarItem>
           <ToolbarGroup align={{ default: "alignEnd" }}>
@@ -134,7 +128,6 @@ const AppNav = () => {
   const location = useLocation();
   const { pluginPages, navLayout } = useAppConfig();
 
-  // Build a lookup from page ID to plugin page definition
   const pageMap = useMemo(() => {
     const map = new Map<string, PluginPage>();
     for (const page of pluginPages) {
@@ -143,45 +136,21 @@ const AppNav = () => {
     return map;
   }, [pluginPages]);
 
-  // Build ordered nav items from the user's nav layout, split by section
-  const { clusterItems, controlPlaneItems } = useMemo(() => {
-    const cluster: PluginPage[] = [];
-    const controlPlane: PluginPage[] = [];
+  const navItems = useMemo(() => {
+    const items: PluginPage[] = [];
     for (const entry of navLayout) {
       if (entry.type === "page") {
         const page = pageMap.get(entry.pageId);
-        if (page) {
-          if (page.pluginKey === "management") {
-            controlPlane.push(page);
-          } else {
-            cluster.push(page);
-          }
-        }
+        if (page) items.push(page);
       }
     }
-    return { clusterItems: cluster, controlPlaneItems: controlPlane };
+    return items;
   }, [navLayout, pageMap]);
 
   return (
     <Nav>
       <NavList>
-        {/* Built-in items */}
-        <NavItem isActive={location.pathname === "/"}>
-          <Link to="/">Dashboard</Link>
-        </NavItem>
-        <NavItem
-          isActive={
-            location.pathname === "/clusters" ||
-            location.pathname.startsWith("/clusters/")
-          }
-        >
-          <Link to="/clusters">Clusters</Link>
-        </NavItem>
-
-        {clusterItems.length > 0 && <Divider component="li" />}
-
-        {/* Cluster-scoped plugin nav items */}
-        {clusterItems.map((page) => {
+        {navItems.map((page) => {
           const fullPath = `/${page.path}`;
           return (
             <NavItem
@@ -195,47 +164,6 @@ const AppNav = () => {
             </NavItem>
           );
         })}
-
-        {/* Control Plane section */}
-        <Divider component="li" />
-        <li
-          className="pf-v6-c-nav__item"
-          style={{
-            fontSize: "var(--pf-t--global--font--size--xs)",
-            color: "var(--pf-t--global--text--color--subtle)",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            padding:
-              "var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md)",
-            fontWeight:
-              "var(--pf-t--global--font--weight--heading--default)",
-            cursor: "default",
-          }}
-        >
-          Control Plane
-        </li>
-        {controlPlaneItems.map((page) => {
-          const fullPath = `/${page.path}`;
-          return (
-            <NavItem
-              key={page.id}
-              isActive={
-                location.pathname === fullPath ||
-                location.pathname.startsWith(fullPath + "/")
-              }
-            >
-              <Link to={fullPath}>{page.title}</Link>
-            </NavItem>
-          );
-        })}
-
-        <Divider component="li" />
-
-        <NavItem isActive={location.pathname === "/grant-access"}>
-          <Link to="/grant-access">
-            <KeyIcon /> Grant Access
-          </Link>
-        </NavItem>
       </NavList>
     </Nav>
   );

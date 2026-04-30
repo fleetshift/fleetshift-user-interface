@@ -1,26 +1,4 @@
-export type {
-  Alert,
-  AvailableCluster,
-  Cluster,
-  ConfigMap,
-  Deployment,
-  Event,
-  GitOpsApp,
-  Ingress,
-  Namespace,
-  Node,
-  PersistentVolume,
-  PersistentVolumeClaim,
-  Pipeline,
-  Pod,
-  Route,
-  Secret,
-  Service,
-  ServicePort,
-  User,
-  PluginEntry,
-  PluginRegistry,
-} from "./types.js";
+export type { User, PluginEntry, PluginRegistry } from "./types.js";
 
 export {
   formatRelativeTime,
@@ -44,28 +22,4 @@ export type {
 
 export { buildSignedInputEnvelope, hashIntent } from "./canonical.js";
 
-export {
-  makeRequest,
-  fetchClusters,
-  fetchCluster,
-  fetchAvailableClusters,
-  fetchPods,
-  fetchNamespaces,
-  fetchNodes,
-  fetchAlerts,
-  fetchDeployments,
-  fetchServices,
-  fetchIngresses,
-  fetchPersistentVolumes,
-  fetchPersistentVolumeClaims,
-  fetchPipelines,
-  fetchConfigMaps,
-  fetchSecrets,
-  fetchGitOpsApps,
-  fetchEvents,
-  fetchRoutes,
-  fetchPluginRegistry,
-  installCluster,
-  uninstallCluster,
-  updateClusterPlugins,
-} from "./api.js";
+export { makeRequest, fetchPluginRegistry } from "./api.js";

@@ -49,7 +49,6 @@ import {
   deleteDeployment,
   resumeDeployment,
 } from "./api";
-import AuthBanner from "./AuthBanner";
 import { useSigningKey } from "./useSigningKey";
 import { buildSignedInputEnvelope } from "@fleetshift/common";
 import type { MgmtDeployment, DeploymentState } from "./api";
@@ -365,8 +364,6 @@ export default function DeploymentsPage() {
           </span>
         </FlexItem>
       </Flex>
-
-      <AuthBanner />
 
       {success && (
         <Alert

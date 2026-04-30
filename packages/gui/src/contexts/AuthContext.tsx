@@ -75,7 +75,6 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
     if (fetchedForToken.current === accessToken) return;
     fetchedForToken.current = accessToken;
 
-    // Ensure the interceptor has the token before we fetch
     setAccessToken(accessToken);
 
     const profile = oidc.user!.profile as OidcProfile;
@@ -83,37 +82,14 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
     const roles = profile.realm_access?.roles ?? [];
     const role = roles.includes("ops") ? "ops" : "dev";
 
-    // Call the server login endpoint to auto-create user and get full data
-    fetch("/api/v1/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((serverUser) => {
-        if (serverUser) {
-          setUser(serverUser);
-        } else {
-          setUser({
-            id: `user-${username}`,
-            username,
-            display_name: username.charAt(0).toUpperCase() + username.slice(1),
-            role,
-            navLayout: [],
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setUser({
-          id: `user-${username}`,
-          username,
-          display_name: username.charAt(0).toUpperCase() + username.slice(1),
-          role,
-          navLayout: [],
-        });
-        setLoading(false);
-      });
+    setUser({
+      id: `user-${username}`,
+      username,
+      display_name: username.charAt(0).toUpperCase() + username.slice(1),
+      role,
+      navLayout: [],
+    });
+    setLoading(false);
   }, [oidc.isLoading, oidc.isAuthenticated, accessToken]);
 
   // On 401 from any API call, redirect to Keycloak login

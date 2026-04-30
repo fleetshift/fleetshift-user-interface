@@ -1,6 +1,6 @@
 {
   "name": "@fleetshift/mock-servers",
-  "description": "Express + SQLite mock API server. Seeds clusters, pods, namespaces, metrics, and user data on startup.",
+  "description": "Minimal Express server serving plugin registry and user config endpoints.",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -9,21 +9,14 @@
   },
   "dependencies": {
     "@fleetshift/common": "*",
-    "@kubernetes/client-node": "^1.4.0",
-    "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "http-proxy-middleware": "^3.0.5",
-    "jose": "^6.2.1",
-    "ws": "^8.19.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/ws": "^8.18.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2"
   }

@@ -32,7 +32,6 @@ import {
   ExpandableRowContent,
 } from "@patternfly/react-table";
 import { listDeployments } from "./api";
-import AuthBanner from "./AuthBanner";
 
 interface TargetInfo {
   id: string;
@@ -128,8 +127,6 @@ export default function TargetsPage() {
           </span>
         </FlexItem>
       </Flex>
-
-      <AuthBanner />
 
       {error && (
         <Alert
