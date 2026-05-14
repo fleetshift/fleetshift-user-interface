@@ -1,5 +1,6 @@
-import { type ReactNode, lazy, Suspense } from "react";
+import { type ReactNode, lazy, Suspense, useState } from "react";
 import { Routes, Route, useNavigate, Link } from "react-router-dom";
+import CompletionModal from "./CompletionModal";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -94,6 +95,7 @@ function Placeholder({ title }: { title: string }) {
 
 function ComponentGallery() {
   const navigate = useNavigate();
+  const [completionOpen, setCompletionOpen] = useState(false);
 
   return (
     <div>
@@ -125,7 +127,29 @@ function ComponentGallery() {
             <CardBody>{c.description}</CardBody>
           </Card>
         ))}
+        <Card
+          isFullHeight
+          isClickable
+          isSelectable
+          onClick={() => setCompletionOpen(true)}
+          style={{ cursor: "pointer" }}
+        >
+          <CardHeader
+            actions={{
+              actions: <Label color="orange">in-progress</Label>,
+            }}
+          >
+            <CardTitle>Completion</CardTitle>
+          </CardHeader>
+          <CardBody>
+            Success modal shown after the first cluster is created.
+          </CardBody>
+        </Card>
       </Gallery>
+      <CompletionModal
+        isOpen={completionOpen}
+        onClose={() => setCompletionOpen(false)}
+      />
     </div>
   );
 }
