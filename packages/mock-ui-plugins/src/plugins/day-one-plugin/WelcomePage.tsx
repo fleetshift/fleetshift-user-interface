@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
   Bullseye,
   Icon,
@@ -51,6 +52,8 @@ const workloads: WorkloadOption[] = [
 ];
 
 export default function WelcomePage() {
+  const navigate = useNavigate();
+
   return (
     <Stack hasGutter className="day-one-welcome">
       <StackItem className="pf-v6-u-mb-lg">
@@ -94,7 +97,7 @@ export default function WelcomePage() {
       </StackItem>
 
       <StackItem>
-        <ScalingCard />
+        <ScalingCard onSetup={() => navigate("/day-one/create-cluster")} />
       </StackItem>
 
       <StackItem>

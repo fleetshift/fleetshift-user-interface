@@ -14,6 +14,7 @@ import {
 
 const InitialSetupForm = lazy(() => import("./InitialSetupForm"));
 const WelcomePage = lazy(() => import("./WelcomePage"));
+const CreateClusterWizard = lazy(() => import("./CreateClusterWizard"));
 
 interface ComponentCard {
   title: string;
@@ -45,6 +46,18 @@ const components: ComponentCard[] = [
     element: (
       <Suspense>
         <WelcomePage />
+      </Suspense>
+    ),
+  },
+  {
+    title: "Create Cluster",
+    slug: "create-cluster",
+    description:
+      "Wizard to provision a new kind cluster via the deployment API.",
+    status: "in-progress",
+    element: (
+      <Suspense>
+        <CreateClusterWizard />
       </Suspense>
     ),
   },

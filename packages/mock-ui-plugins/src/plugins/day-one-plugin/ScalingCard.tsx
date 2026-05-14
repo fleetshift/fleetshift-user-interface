@@ -12,7 +12,11 @@ import {
 } from "@patternfly/react-core";
 import NetworkWiredIcon from "@patternfly/react-icons/dist/dynamic/icons/network-wired-icon";
 
-export default function ScalingCard() {
+interface ScalingCardProps {
+  onSetup?: () => void;
+}
+
+export default function ScalingCard({ onSetup }: ScalingCardProps) {
   return (
     <Card>
       <CardBody>
@@ -38,7 +42,7 @@ export default function ScalingCard() {
                 </Content>
               </StackItem>
               <StackItem>
-                <Button variant="primary">
+                <Button variant="primary" onClick={onSetup}>
                   Setup a cluster for management
                 </Button>
               </StackItem>
