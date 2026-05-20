@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -11,8 +11,8 @@ import {
   WizardStep,
 } from "@patternfly/react-core";
 import { buildSignedInputEnvelope } from "@fleetshift/common";
+import { getModule } from "@scalprum/core";
 import { createDeployment } from "../management-plugin/api";
-import { useSigningKey } from "../management-plugin/useSigningKey";
 import ClusterDetailsStep from "./ClusterDetailsStep";
 import NetworkingStep from "./NetworkingStep";
 import NodesStep from "./NodesStep";
@@ -46,7 +46,26 @@ const initialFormData: ClusterFormData = {
 
 export default function CreateClusterWizard() {
   const navigate = useNavigate();
-  const { loaded: signingLoaded, enrolled, signDeployment } = useSigningKey();
+  const [signingLoaded, setSigningLoaded] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
+  const signDeploymentRef = useRef<(bytes: Uint8Array) => Promise<string>>();
+  useEffect(() => {
+    Promise.all([
+      getModule("signing-plugin", "signingKeyApi", "getSigningKeyStatus"),
+      getModule("signing-plugin", "signingKeyApi", "signDeployment"),
+    ]).then(
+      ([getStatus, signFn]: [
+        () => Promise<{ enrolled: boolean }>,
+        (bytes: Uint8Array) => Promise<string>,
+      ]) => {
+        signDeploymentRef.current = signFn;
+        getStatus().then((s) => {
+          setEnrolled(s.enrolled);
+          setSigningLoaded(true);
+        });
+      },
+    );
+  }, []);
   const [formData, setFormData] = useState<ClusterFormData>(initialFormData);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +151,9 @@ export default function CreateClusterWizard() {
         );
 
         const envelopeBytes = new TextEncoder().encode(envelope);
-        userSignature = await signDeployment(envelopeBytes);
+        if (!signDeploymentRef.current)
+          throw new Error("Signing module not loaded");
+        userSignature = await signDeploymentRef.current(envelopeBytes);
       }
 
       await createDeployment({
@@ -140,9 +161,7 @@ export default function CreateClusterWizard() {
         deployment: {
           manifestStrategy: {
             type: "TYPE_INLINE",
-            manifests: [
-              { resourceType: "api.kind.cluster", raw: rawBase64 },
-            ],
+            manifests: [{ resourceType: "api.kind.cluster", raw: rawBase64 }],
           },
           placementStrategy: { type: "TYPE_ALL" },
         },
@@ -157,7 +176,7 @@ export default function CreateClusterWizard() {
     } finally {
       setCreating(false);
     }
-  }, [formData, enrolled, signDeployment, navigate]);
+  }, [formData, enrolled, navigate]);
 
   const isStep1Valid = formData.name.trim().length > 0;
 
@@ -200,10 +219,7 @@ export default function CreateClusterWizard() {
               status={isStep1Valid ? "default" : "error"}
               isDisabled={creating}
             >
-              <ClusterDetailsStep
-                formData={formData}
-                onChange={updateField}
-              />
+              <ClusterDetailsStep formData={formData} onChange={updateField} />
             </WizardStep>
 
             <WizardStep
@@ -240,9 +256,7 @@ export default function CreateClusterWizard() {
               id="review"
               isDisabled={!isStep1Valid || creating}
               footer={{
-                nextButtonText: creating
-                  ? "Creating..."
-                  : "Create cluster",
+                nextButtonText: creating ? "Creating..." : "Create cluster",
                 onNext: handleSubmit,
                 isNextDisabled: creating,
               }}

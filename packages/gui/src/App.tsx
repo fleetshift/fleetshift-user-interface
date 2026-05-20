@@ -200,10 +200,24 @@ const SetupPluginPage = () => (
   <ScalprumComponent scope="day-one-plugin" module="InitialSetupForm" />
 );
 
+const SetupEnrollPage = () => (
+  <ScalprumComponent scope="signing-plugin" module="SigningKeyEnrollment" />
+);
+
 const SetupRoutes = () => (
   <Routes>
     <Route path="/setup" element={<SetupLayout />}>
       <Route index element={<SetupPluginPage />} />
+      <Route
+        path="enroll"
+        element={
+          <AuthProvider>
+            <AuthGate>
+              <SetupEnrollPage />
+            </AuthGate>
+          </AuthProvider>
+        }
+      />
     </Route>
   </Routes>
 );
