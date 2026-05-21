@@ -46,7 +46,6 @@ const SigningKeyEnrollment = () => {
     retry,
     handleReenroll,
     setGhPollEnabled,
-    simulateSuccess,
   } = useSigningKeyEnrollment();
 
   if (step === "loading" || step === "generating" || step === "verifying") {
@@ -146,7 +145,6 @@ const SigningKeyEnrollment = () => {
               <GHEnroll
                 githubUsername={githubUsername}
                 setGhPollEnabled={setGhPollEnabled}
-                simulateSuccess={simulateSuccess}
               />
             )}
 

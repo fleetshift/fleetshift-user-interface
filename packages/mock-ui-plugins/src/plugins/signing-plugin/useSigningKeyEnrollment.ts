@@ -233,11 +233,6 @@ export function useSigningKeyEnrollment() {
     }
   }, [keyFound, step, registry, enrollGithub]);
 
-  const simulateSuccess = useCallback(() => {
-    setEnrollmentName("browser-fake-1234567890");
-    setStep("enrolled");
-  }, []);
-
   return {
     step,
     sshPublicKey,
@@ -250,6 +245,5 @@ export function useSigningKeyEnrollment() {
     retry,
     handleReenroll,
     setGhPollEnabled,
-    simulateSuccess,
   };
 }

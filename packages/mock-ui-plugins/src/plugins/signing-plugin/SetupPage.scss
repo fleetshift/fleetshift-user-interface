@@ -32,5 +32,19 @@
     border-radius: var(--pf-t--global--border--radius--small);
     margin-top: var(--pf-t--global--spacer--md);
     margin-bottom: var(--pf-t--global--spacer--md);
+
+    &--dark {
+      display: none;
+    }
+  }
+}
+
+.pf-v6-theme-dark .fs-setup__screenshot {
+  &--light {
+    display: none;
+  }
+
+  &--dark {
+    display: block;
   }
 }

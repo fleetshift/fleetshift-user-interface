@@ -9,19 +9,15 @@ import {
 import { ExternalLinkAltIcon } from "@patternfly/react-icons";
 
 import ghSigningKeyImg from "../assets/gh-signing-screen.png";
+import ghSigningKeyDarkImg from "../assets/gh-signing-screen-dark.png";
 import MotionPollingAnimation from "./MotionPollingAnimation";
 
 export type GHEnrollProps = {
   githubUsername?: string | null;
   setGhPollEnabled: (enabled: boolean) => void;
-  simulateSuccess?: () => void;
 };
 
-const GHEnroll = ({
-  githubUsername,
-  setGhPollEnabled,
-  simulateSuccess,
-}: GHEnrollProps) => {
+const GHEnroll = ({ githubUsername, setGhPollEnabled }: GHEnrollProps) => {
   return (
     <Card isCompact className="pf-v6-u-mt-lg">
       <CardHeader>
@@ -35,7 +31,12 @@ const GHEnroll = ({
         <img
           src={ghSigningKeyImg}
           alt="GitHub SSH key settings page — select Signing Key from the key type dropdown"
-          className="fs-setup__screenshot"
+          className="fs-setup__screenshot fs-setup__screenshot--light"
+        />
+        <img
+          src={ghSigningKeyDarkImg}
+          alt="GitHub SSH key settings page — select Signing Key from the key type dropdown"
+          className="fs-setup__screenshot fs-setup__screenshot--dark"
         />
         <Button
           variant="secondary"
@@ -54,20 +55,9 @@ const GHEnroll = ({
           Open GitHub SSH keys
         </Button>
         {githubUsername ? (
-          <>
-            <MotionPollingAnimation>
-              Waiting for key to appear on GitHub&hellip;
-            </MotionPollingAnimation>
-            {simulateSuccess && (
-              <Button
-                variant="link"
-                onClick={simulateSuccess}
-                className="pf-v6-u-mt-sm"
-              >
-                Simulate success
-              </Button>
-            )}
-          </>
+          <MotionPollingAnimation>
+            Waiting for key to appear on GitHub&hellip;
+          </MotionPollingAnimation>
         ) : (
           <Alert
             variant="warning"
