@@ -38,6 +38,8 @@ function useGitHubKeyPolling(
 
   useEffect(() => {
     if (!enabled || !username || !sshPublicKey || found) return;
+    const pollIncrement = 1000; // 1 second
+    let pollInterval = pollIncrement; // increase if not found to avoid hitting GitHub rate limits
 
     const keyData = sshPublicKey.split(" ")[1];
 
@@ -46,20 +48,22 @@ function useGitHubKeyPolling(
         const res = await fetch(
           `/api/ui/github-signing-keys/${encodeURIComponent(username)}`,
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          throw "unable to fetch GitHub keys, retrying...";
+        }
         const keys: string[] = await res.json();
         if (keys.some((k) => k.includes(keyData))) {
           setFound(true);
         }
       } catch {
         // ignore fetch errors
+        pollInterval += pollIncrement;
+        setTimeout(poll, pollInterval);
       }
     };
-
-    poll();
-    const id = setInterval(poll, 4000);
+    const id = setTimeout(poll, pollInterval);
     return () => {
-      clearInterval(id);
+      clearTimeout(id);
     };
   }, [enabled, username, sshPublicKey, found]);
 
@@ -75,6 +79,7 @@ export function useSigningKeyEnrollment() {
   const [error, setError] = useState<string | null>(null);
   const [enrollmentName, setEnrollmentName] = useState<string | null>(null);
   const initialized = useRef(false);
+  const [ghPollEnabled, setGhPollEnabled] = useState(false);
 
   const githubUsername = authMethod?.oidcConfig?.registrySubjectMapping
     ? (((auth.user?.profile as Record<string, unknown>)?.github_username as
@@ -85,7 +90,7 @@ export function useSigningKeyEnrollment() {
   const keyFound = useGitHubKeyPolling(
     githubUsername,
     sshPublicKey,
-    step === "register-key" && registry === "github",
+    ghPollEnabled && step === "register-key" && registry === "github",
   );
 
   const initialize = useCallback(async () => {
@@ -239,5 +244,6 @@ export function useSigningKeyEnrollment() {
     enrollOidc,
     retry,
     handleReenroll,
+    setGhPollEnabled,
   };
 }

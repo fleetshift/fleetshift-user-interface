@@ -35,6 +35,7 @@ const SigningKeyEnrollment = () => {
     enrollOidc,
     retry,
     handleReenroll,
+    setGhPollEnabled,
   } = useSigningKeyEnrollment();
 
   if (step === "loading" || step === "generating" || step === "verifying") {
@@ -92,7 +93,12 @@ const SigningKeyEnrollment = () => {
         </CardBody>
       </Card>
 
-      {registry === "github" && <GHEnroll githubUsername={githubUsername} />}
+      {registry === "github" && (
+        <GHEnroll
+          githubUsername={githubUsername}
+          setGhPollEnabled={setGhPollEnabled}
+        />
+      )}
 
       {registry === "oidc" && (
         <OIDCEnroll step={step} enrollOidc={enrollOidc} />

@@ -5,17 +5,18 @@ import {
   CardBody,
   CardHeader,
   CardTitle,
-  Spinner,
 } from "@patternfly/react-core";
 import { ExternalLinkAltIcon } from "@patternfly/react-icons";
 
 import ghSigningKeyImg from "../assets/gh-signing-screen.png";
+import MotionPollingAnimation from "./MotionPollingAnimation";
 
 export type GHEnrollProps = {
   githubUsername?: string | null;
+  setGhPollEnabled: (enabled: boolean) => void;
 };
 
-const GHEnroll = ({ githubUsername }: GHEnrollProps) => {
+const GHEnroll = ({ githubUsername, setGhPollEnabled }: GHEnrollProps) => {
   return (
     <Card isCompact className="pf-v6-u-mt-lg">
       <CardHeader>
@@ -36,6 +37,10 @@ const GHEnroll = ({ githubUsername }: GHEnrollProps) => {
           icon={<ExternalLinkAltIcon />}
           iconPosition="end"
           component="a"
+          onClick={() => {
+            // start polling for GH key
+            setGhPollEnabled(true);
+          }}
           href="https://github.com/settings/ssh/new"
           target="_blank"
           rel="noopener noreferrer"
@@ -43,18 +48,21 @@ const GHEnroll = ({ githubUsername }: GHEnrollProps) => {
         >
           Open GitHub SSH keys
         </Button>
-        <Alert
-          variant="info"
-          isInline
-          isPlain
-          title="Waiting for key to appear on GitHub..."
-          className="pf-v6-u-mt-md"
-        >
-          {githubUsername
-            ? `Polling github.com/users/${githubUsername}/ssh_signing_keys every few seconds.`
-            : "GitHub username not found in token claims. You may need to enroll manually after adding the key."}
-          <Spinner size="md" className="pf-v6-u-ml-sm" />
-        </Alert>
+        {githubUsername ? (
+          <MotionPollingAnimation>
+            Waiting for key to appear on GitHub&hellip;
+          </MotionPollingAnimation>
+        ) : (
+          <Alert
+            variant="warning"
+            isInline
+            isPlain
+            title="GitHub username not found in token claims."
+            className="pf-v6-u-mt-md"
+          >
+            You may need to enroll manually after adding the key.
+          </Alert>
+        )}
       </CardBody>
     </Card>
   );
