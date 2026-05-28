@@ -40,51 +40,13 @@ import {
   deleteDeployment,
   resumeDeployment,
   type MgmtDeployment,
-  type DeploymentState,
 } from "../management-plugin/api";
-
-interface KindClusterSpec {
-  name: string;
-  nodes?: Array<{ role: string; image?: string }>;
-  networking?: {
-    apiServerPort?: number;
-    podSubnet?: string;
-    serviceSubnet?: string;
-  };
-}
-
-const STATE_LABELS: Record<
-  DeploymentState,
-  { text: string; color: "blue" | "green" | "red" | "orange" | "grey" }
-> = {
-  STATE_UNSPECIFIED: { text: "Unknown", color: "grey" },
-  STATE_CREATING: { text: "Creating", color: "blue" },
-  STATE_ACTIVE: { text: "Healthy", color: "green" },
-  STATE_DELETING: { text: "Deleting", color: "orange" },
-  STATE_FAILED: { text: "Failed", color: "red" },
-  STATE_PAUSED_AUTH: { text: "Paused", color: "orange" },
-};
-
-function decodeSpec(deployment: MgmtDeployment): KindClusterSpec | null {
-  const manifest = deployment.manifestStrategy?.manifests?.find(
-    (m) => m.resourceType === "api.kind.cluster",
-  );
-  if (!manifest?.raw) return null;
-  try {
-    return JSON.parse(atob(manifest.raw));
-  } catch {
-    return null;
-  }
-}
-
-function formatTime(iso: string): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
+import {
+  STATE_LABELS,
+  decodeSpec,
+  formatTime,
+  type KindClusterSpec,
+} from "./clusterUtils";
 
 function OverviewTab({
   deployment,

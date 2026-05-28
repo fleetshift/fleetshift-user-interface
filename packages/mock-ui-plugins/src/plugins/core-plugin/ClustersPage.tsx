@@ -2,15 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { PluginLink } from "@fleetshift/common";
 import {
   Button,
-  Card,
-  CardBody,
   Content,
   EmptyState,
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  Grid,
-  GridItem,
   Label,
   Pagination,
   Stack,
@@ -41,76 +37,17 @@ import { DataViewToolbar } from "@patternfly/react-data-view/dist/dynamic/DataVi
 import { DataViewFilters } from "@patternfly/react-data-view/dist/dynamic/DataViewFilters";
 import { DataViewTextFilter } from "@patternfly/react-data-view/dist/dynamic/DataViewTextFilter";
 
+import { listDeployments, deleteDeployment } from "../management-plugin/api";
 import {
-  listDeployments,
-  deleteDeployment,
-  type MgmtDeployment,
-  type DeploymentState,
-} from "../management-plugin/api";
-
-interface KindClusterSpec {
-  name: string;
-  nodes?: Array<{ role: string; image?: string }>;
-  networking?: {
-    apiServerPort?: number;
-    podSubnet?: string;
-    serviceSubnet?: string;
-  };
-}
-
-interface ClusterRow {
-  deployment: MgmtDeployment;
-  clusterName: string;
-  nodeCount: number;
-  spec: KindClusterSpec | null;
-}
+  STATE_LABELS,
+  toClusterRow,
+  formatTime,
+  type ClusterRow,
+} from "./clusterUtils";
+import ClusterSummaryCards from "./ClusterSummaryCards";
 
 interface ClusterFilters {
   name: string;
-}
-
-const STATE_LABELS: Record<
-  DeploymentState,
-  { text: string; color: "blue" | "green" | "red" | "orange" | "grey" }
-> = {
-  STATE_UNSPECIFIED: { text: "Unknown", color: "grey" },
-  STATE_CREATING: { text: "Creating", color: "blue" },
-  STATE_ACTIVE: { text: "Healthy", color: "green" },
-  STATE_DELETING: { text: "Deleting", color: "orange" },
-  STATE_FAILED: { text: "Failed", color: "red" },
-  STATE_PAUSED_AUTH: { text: "Paused", color: "orange" },
-};
-
-function decodeSpec(deployment: MgmtDeployment): KindClusterSpec | null {
-  const manifest = deployment.manifestStrategy?.manifests?.find(
-    (m) => m.resourceType === "api.kind.cluster",
-  );
-  if (!manifest?.raw) return null;
-  try {
-    return JSON.parse(atob(manifest.raw));
-  } catch {
-    return null;
-  }
-}
-
-function toClusterRow(dep: MgmtDeployment): ClusterRow {
-  const spec = decodeSpec(dep);
-  const shortName = dep.name.replace(/^deployments\//, "");
-  return {
-    deployment: dep,
-    clusterName: spec?.name ?? shortName,
-    nodeCount: spec?.nodes?.length ?? 0,
-    spec,
-  };
-}
-
-function formatTime(iso: string): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
 }
 
 const columns: DataViewTh[] = [
@@ -171,6 +108,18 @@ export default function ClustersPage() {
     [rows, filters],
   );
 
+  const handleDelete = async (name: string) => {
+    setDeleting(name);
+    try {
+      await deleteDeployment(name);
+      await fetchClusters();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const pageRows: DataViewTr[] = useMemo(
     () =>
       filtered
@@ -229,24 +178,6 @@ export default function ClustersPage() {
         }),
     [filtered, page, perPage, deleting],
   );
-
-  const totalNodes = rows.reduce((sum, r) => sum + r.nodeCount, 0);
-  const healthy = rows.filter(
-    (r) => r.deployment.state === "STATE_ACTIVE",
-  ).length;
-  const needsAttention = rows.length - healthy;
-
-  const handleDelete = async (name: string) => {
-    setDeleting(name);
-    try {
-      await deleteDeployment(name);
-      await fetchClusters();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setDeleting(null);
-    }
-  };
 
   const activeState = loading
     ? DataViewState.loading
@@ -330,64 +261,7 @@ export default function ClustersPage() {
       </StackItem>
 
       <StackItem>
-        <Grid hasGutter>
-          <GridItem span={3}>
-            <Card isPlain isCompact>
-              <CardBody>
-                <Content component="p">Total Clusters</Content>
-                <Title headingLevel="h2" size="2xl">
-                  {rows.length}
-                </Title>
-              </CardBody>
-            </Card>
-          </GridItem>
-          <GridItem span={3}>
-            <Card isPlain isCompact>
-              <CardBody>
-                <Content component="p">Total Nodes</Content>
-                <Title headingLevel="h2" size="2xl">
-                  {totalNodes}
-                </Title>
-              </CardBody>
-            </Card>
-          </GridItem>
-          <GridItem span={3}>
-            <Card isPlain isCompact>
-              <CardBody>
-                <Content component="p">Healthy</Content>
-                <Title
-                  headingLevel="h2"
-                  size="2xl"
-                  style={{
-                    color:
-                      "var(--pf-t--global--color--status--success--default)",
-                  }}
-                >
-                  {healthy}
-                </Title>
-              </CardBody>
-            </Card>
-          </GridItem>
-          <GridItem span={3}>
-            <Card isPlain isCompact>
-              <CardBody>
-                <Content component="p">Needs Attention</Content>
-                <Title
-                  headingLevel="h2"
-                  size="2xl"
-                  style={{
-                    color:
-                      needsAttention > 0
-                        ? "var(--pf-t--global--color--status--danger--default)"
-                        : undefined,
-                  }}
-                >
-                  {needsAttention}
-                </Title>
-              </CardBody>
-            </Card>
-          </GridItem>
-        </Grid>
+        <ClusterSummaryCards rows={rows} />
       </StackItem>
 
       <StackItem>
