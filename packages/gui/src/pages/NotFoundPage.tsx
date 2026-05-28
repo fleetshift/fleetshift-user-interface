@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Button,
   EmptyState,
@@ -23,7 +23,10 @@ export function NotFoundPage() {
       </EmptyStateBody>
       <EmptyStateFooter>
         <EmptyStateActions>
-          <Button variant="primary" component="a" href="/">
+          <Button
+            variant="primary"
+            component={(props) => <Link {...props} to="/" />}
+          >
             Go to home
           </Button>
         </EmptyStateActions>
