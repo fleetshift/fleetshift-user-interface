@@ -3,6 +3,7 @@ import { useAppConfig } from "../contexts/AppConfigContext";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
 import { DebugPage } from "../pages/DebugPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
 import { PluginPage } from "../pages/PluginPage";
 import { AuthProvider } from "../contexts/AuthContext";
 import AuthGate from "../components/Auth/AuthGate";
@@ -56,6 +57,7 @@ const ConsoleRoutes = () => {
                   }
                 />
               ))}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
         </AppConfigBridge>
