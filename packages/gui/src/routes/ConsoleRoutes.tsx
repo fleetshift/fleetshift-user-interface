@@ -4,6 +4,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
 import { DebugPage } from "../pages/DebugPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import GcpHcpClustersPage from "../pages/gcphcp/GcpHcpClustersPage";
+import GcpHcpClusterDetailPage from "../pages/gcphcp/GcpHcpClusterDetailPage";
 import { PluginPage } from "../pages/PluginPage";
 import { AuthProvider } from "../contexts/AuthContext";
 import AuthGate from "../components/Auth/AuthGate";
@@ -44,6 +46,11 @@ const ConsoleRoutes = () => {
                 element={<Navigate to={firstNavPath} replace />}
               />
               <Route path="/debug" element={<DebugPage />} />
+              <Route path="/gcphcp" element={<GcpHcpClustersPage />} />
+              <Route
+                path="/gcphcp/:clusterId"
+                element={<GcpHcpClusterDetailPage />}
+              />
               {sortedPages.map((page) => (
                 <Route
                   key={page.id}
