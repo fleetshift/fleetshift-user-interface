@@ -7,6 +7,8 @@ import {
 } from "@patternfly/react-core";
 import type { GcpHcpFormData } from "./CreateGcpHcpWizard";
 
+const CLUSTER_ID_PATTERN = /^[a-z][-a-z0-9]*$/;
+
 interface ClusterDetailsStepProps {
   formData: GcpHcpFormData;
   onChange: <K extends keyof GcpHcpFormData>(
@@ -21,14 +23,31 @@ export default function ClusterDetailsStep({
 }: ClusterDetailsStepProps) {
   return (
     <Form>
-      <FormGroup label="Cluster ID" isRequired fieldId="cluster-id">
+      <FormGroup
+        label="Cluster ID"
+        isRequired
+        fieldId="cluster-id"
+        // helperText="Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens."
+        // helperTextInvalid="Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens."
+        // validated={
+        //   !formData.clusterId.trim() || CLUSTER_ID_PATTERN.test(formData.clusterId.trim())
+        //     ? "default"
+        //     : "error"
+        // }
+      >
         <TextInput
           id="cluster-id"
           isRequired
           value={formData.clusterId}
           onChange={(_e, val) => onChange("clusterId", val)}
           placeholder="my-hcp-cluster"
-          validated={formData.clusterId.trim() ? "default" : "error"}
+          validated={
+            !formData.clusterId.trim()
+              ? "default"
+              : CLUSTER_ID_PATTERN.test(formData.clusterId.trim())
+                ? "default"
+                : "error"
+          }
         />
       </FormGroup>
 

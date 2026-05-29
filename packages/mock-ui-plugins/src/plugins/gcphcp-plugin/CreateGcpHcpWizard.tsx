@@ -78,8 +78,8 @@ export default function CreateGcpHcpWizard({
   }, [navigate]);
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.clusterId.trim()) {
-      setError("Cluster ID is required.");
+    if (!formData.clusterId.trim() || !/^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim())) {
+      setError("Cluster ID must start with a lowercase letter and contain only lowercase letters, digits, and hyphens.");
       return;
     }
     if (!formData.releaseVersion.trim()) {
@@ -123,7 +123,7 @@ export default function CreateGcpHcpWizard({
   }, [formData, onSetupNext, clusters]);
 
   const isStep1Valid =
-    formData.clusterId.trim().length > 0 &&
+    /^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim()) &&
     formData.releaseVersion.trim().length > 0;
 
   const isStep2Valid = formData.nodepools.every(

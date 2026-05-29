@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (!oidcProps) return null;
 
   return (
-    <OidcAuthProvider {...oidcProps}>
+    <OidcAuthProvider {...oidcProps} client_id="fleetshift-cli">
       <KeycloakAuthInner>{children}</KeycloakAuthInner>
     </OidcAuthProvider>
   );
