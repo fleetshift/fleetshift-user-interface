@@ -28,12 +28,34 @@ export interface GcpHcpCluster {
   etag: string;
 }
 
+export async function listGcpHcpClusters(): Promise<GcpHcpCluster[]> {
+  const res = await fetch(`${BASE}/gCPHCPClusters`);
+  if (!res.ok) {
+    throw new Error(`List GCP HCP clusters failed (${res.status})`);
+  }
+  const data = await res.json();
+  return data.gCPHCPClusters ?? [];
+}
+
+export async function getGcpHcpCluster(id: string): Promise<GcpHcpCluster> {
+  const res = await fetch(
+    `${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`,
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      body.message || body.error || `Get GCP HCP cluster failed (${res.status})`,
+    );
+  }
+  return res.json();
+}
+
 export async function createGcpHcpCluster(
   clusterId: string,
   spec: GcpHcpClusterSpec,
 ): Promise<GcpHcpCluster> {
   const res = await fetch(
-    `${BASE}/gcphCPClusters?gcphCPCluster_id=${encodeURIComponent(clusterId)}`,
+    `${BASE}/gCPHCPClusters?gCPHCPCluster_id=${encodeURIComponent(clusterId)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -47,4 +69,17 @@ export async function createGcpHcpCluster(
     );
   }
   return res.json();
+}
+
+export async function deleteGcpHcpCluster(id: string): Promise<void> {
+  const res = await fetch(
+    `${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      body.message || body.error || `Delete GCP HCP cluster failed (${res.status})`,
+    );
+  }
 }
