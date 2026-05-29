@@ -43,13 +43,13 @@ export async function listGcpHcpClusters(): Promise<GcpHcpCluster[]> {
 }
 
 export async function getGcpHcpCluster(id: string): Promise<GcpHcpCluster> {
-  const res = await fetch(
-    `${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`,
-  );
+  const res = await fetch(`${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      body.message || body.error || `Get GCP HCP cluster failed (${res.status})`,
+      body.message ||
+        body.error ||
+        `Get GCP HCP cluster failed (${res.status})`,
     );
   }
   return res.json();
@@ -90,14 +90,15 @@ export async function resumeGcpHcpCluster(id: string): Promise<void> {
 }
 
 export async function deleteGcpHcpCluster(id: string): Promise<void> {
-  const res = await fetch(
-    `${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
-  );
+  const res = await fetch(`${BASE}/gCPHCPClusters/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      body.message || body.error || `Delete GCP HCP cluster failed (${res.status})`,
+      body.message ||
+        body.error ||
+        `Delete GCP HCP cluster failed (${res.status})`,
     );
   }
 }

@@ -78,8 +78,13 @@ export default function CreateGcpHcpWizard({
   }, [navigate]);
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.clusterId.trim() || !/^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim())) {
-      setError("Cluster ID must start with a lowercase letter and contain only lowercase letters, digits, and hyphens.");
+    if (
+      !formData.clusterId.trim() ||
+      !/^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim())
+    ) {
+      setError(
+        "Cluster ID must start with a lowercase letter and contain only lowercase letters, digits, and hyphens.",
+      );
       return;
     }
     if (!formData.releaseVersion.trim()) {

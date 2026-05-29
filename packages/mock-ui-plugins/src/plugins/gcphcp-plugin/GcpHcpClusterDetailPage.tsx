@@ -349,7 +349,7 @@ export default function GcpHcpClusterDetailPage() {
                   {isResuming ? "Resuming..." : "Resume cluster"}
                 </DropdownItem>
               )}
-              {true && (
+              {canDelete && (
                 <DropdownItem
                   key="delete"
                   isDanger

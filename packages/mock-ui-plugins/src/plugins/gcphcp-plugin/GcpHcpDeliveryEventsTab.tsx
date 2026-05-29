@@ -65,7 +65,8 @@ export default function GcpHcpDeliveryEventsTab() {
       events.length > 0
         ? events
             .map(
-              (ev) => `[${formatTimestamp(ev.timestamp)}] [${ev.eventKind}] ${ev.message}`,
+              (ev) =>
+                `[${formatTimestamp(ev.timestamp)}] [${ev.eventKind}] ${ev.message}`,
             )
             .join("\n")
         : "Waiting for delivery events...",
