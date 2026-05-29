@@ -232,6 +232,13 @@ const RoutingPlugin = new DynamicRemotePlugin({
 const GcpHcpPlugin = new DynamicRemotePlugin({
   extensions: [
     {
+      type: "fleetshift.module",
+      properties: {
+        label: "GCP HCP Clusters",
+        component: { $codeRef: "GcpHcpClustersModule.default" },
+      },
+    },
+    {
       type: "fleetshift.cluster-provider",
       properties: {
         id: "gcphcp",
@@ -253,6 +260,9 @@ const GcpHcpPlugin = new DynamicRemotePlugin({
     name: "gcphcp-plugin",
     version: "1.0.0",
     exposedModules: {
+      GcpHcpClustersModule: p(
+        "./src/plugins/gcphcp-plugin/GcpHcpClustersModule.tsx",
+      ),
       GcpHcpProviderCard: p(
         "./src/plugins/gcphcp-plugin/GcpHcpProviderCard.tsx",
       ),

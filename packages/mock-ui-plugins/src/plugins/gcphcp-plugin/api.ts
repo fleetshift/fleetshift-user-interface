@@ -21,11 +21,16 @@ export interface GcpHcpCluster {
   name: string;
   uid: string;
   spec: GcpHcpClusterSpec;
+  intentVersion: string;
   state: string;
   reconciling: boolean;
   createTime: string;
   updateTime: string;
   etag: string;
+}
+
+export function extractClusterId(name: string): string {
+  return name.replace(/^gCPHCPClusters\//, "");
 }
 
 export async function listGcpHcpClusters(): Promise<GcpHcpCluster[]> {
@@ -69,6 +74,19 @@ export async function createGcpHcpCluster(
     );
   }
   return res.json();
+}
+
+export async function resumeGcpHcpCluster(id: string): Promise<void> {
+  const res = await fetch(
+    `/api/ui/managed-resources/api.gcphcp.cluster/${encodeURIComponent(id)}/resume`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      body.error || `Resume GCP HCP cluster failed (${res.status})`,
+    );
+  }
 }
 
 export async function deleteGcpHcpCluster(id: string): Promise<void> {
