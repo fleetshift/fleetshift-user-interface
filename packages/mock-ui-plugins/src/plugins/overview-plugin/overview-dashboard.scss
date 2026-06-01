@@ -1,0 +1,165 @@
+// ---------- Resize handles: bottom only, show on hover ----------
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  background-image: none !important;
+
+  svg {
+    color: var(--pf-t--global--text--color--subtle);
+  }
+}
+
+.react-resizable-handle-n,
+.react-resizable-handle-ne,
+.react-resizable-handle-nw,
+.react-resizable-handle-e,
+.react-resizable-handle-w {
+  display: none !important;
+}
+
+.react-resizable:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+// ---------- SLO Error Budgets ----------
+.ov-slo {
+  display: flex;
+  justify-content: center;
+  gap: var(--pf-t--global--spacer--xl);
+
+  &__item {
+    text-align: center;
+  }
+
+  &__chart {
+    position: relative;
+    width: 175px;
+    height: 175px;
+    margin: 0 auto;
+  }
+
+  &__overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  &__value {
+    display: block;
+    font-size: var(--pf-t--global--font--size--heading--h1);
+    font-weight: var(--pf-t--global--font--weight--heading--bold);
+    color: var(--pf-t--global--text--color--regular);
+    line-height: 1;
+  }
+
+  &__subtitle {
+    display: block;
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+  }
+
+  &__label {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    margin-top: var(--pf-t--global--spacer--xs);
+  }
+}
+
+// ---------- Cluster Fleet Health ----------
+.ov-stat-cell {
+  text-align: center;
+  padding: var(--pf-t--global--spacer--md);
+
+  &__value {
+    font-size: var(--pf-t--global--font--size--heading--h1);
+    font-weight: var(--pf-t--global--font--weight--heading--bold);
+    color: var(--pf-t--global--text--color--regular);
+
+    &--success {
+      color: var(--pf-t--global--color--status--success--default);
+    }
+
+    &--warning {
+      color: var(--pf-t--global--color--status--warning--default);
+    }
+  }
+
+  &__label {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+  }
+}
+
+// ---------- Compliance Status ----------
+.ov-compliance-wrap {
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+}
+
+.ov-compliance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+
+  &__framework {
+    font-weight: var(--pf-t--global--font--weight--heading--bold);
+    color: var(--pf-t--global--text--color--regular);
+  }
+
+  &__audit {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+  }
+}
+
+// ---------- Global Map (Leaflet) ----------
+.ov-global-map {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border-radius: var(--pf-t--global--border--radius--medium);
+  overflow: hidden;
+
+  .leaflet-tile-pane {
+    filter: grayscale(0.3) brightness(0.95);
+  }
+}
+
+// ---------- MTTR Trend ----------
+.ov-mttr {
+  height: 250px;
+  width: 100%;
+}
+
+// ---------- Active Incidents ----------
+.ov-incident-header {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.ov-incident-badges {
+  display: flex;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+// ---------- Service Topology ----------
+.ov-topology-cluster {
+  margin-left: var(--pf-t--global--spacer--lg);
+}
+
+.ov-topology-cluster-inner {
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+}
+
+.ov-topology-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.ov-topology-role {
+  color: var(--pf-t--global--text--color--subtle);
+}
