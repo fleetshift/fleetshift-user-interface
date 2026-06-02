@@ -78,7 +78,7 @@ export async function createGcpHcpCluster(
 
 export async function resumeGcpHcpCluster(id: string): Promise<void> {
   const res = await fetch(
-    `/api/ui/managed-resources/api.gcphcp.cluster/${encodeURIComponent(id)}/resume`,
+    `${BASE}/gCPHCPClusters/${encodeURIComponent(id)}:resume`,
     { method: "POST" },
   );
   if (!res.ok) {

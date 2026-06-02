@@ -13,8 +13,6 @@ import {
 interface DeliveryEvent {
   type: string;
   deliveryId: string;
-  targetId: string;
-  targetType: string;
   eventKind: string;
   message: string;
   timestamp: number;
@@ -41,7 +39,7 @@ export default function GcpHcpDeliveryEventsTab() {
     ws.onmessage = (e) => {
       try {
         const event: DeliveryEvent = JSON.parse(e.data);
-        if (event.targetType === "gcphcp") {
+        if (event.deliveryId?.includes("gcphcp")) {
           setEvents((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.message === event.message) return prev;
