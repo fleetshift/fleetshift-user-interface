@@ -11,6 +11,7 @@ import {
   InfoCircleIcon,
 } from "@patternfly/react-icons";
 import { incidents } from "../mockData";
+import "./ActiveIncidents.scss";
 
 const severityIcon = (s: "critical" | "warning" | "info") => {
   switch (s) {
@@ -34,7 +35,7 @@ const severityColor = (s: "critical" | "warning" | "info") =>
 
 export default function ActiveIncidents(_props: { widgetId: string }) {
   return (
-    <Stack hasGutter>
+    <Stack hasGutter className="pf-v6-u-p-md">
       {incidents.map((inc) => (
         <StackItem key={inc.id}>
           <Card isCompact>
