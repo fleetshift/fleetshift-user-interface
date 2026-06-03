@@ -111,6 +111,17 @@ const DayOnePlugin = new DynamicRemotePlugin({
         requiresAuth: true,
       },
     },
+    {
+      type: "fleetshift.search-index",
+      properties: {
+        id: "create-cluster",
+        title: "Create Cluster",
+        description: "Launch the cluster creation wizard",
+        category: "action",
+        meta: "deploy new cluster wizard gcp",
+        component: { $codeRef: "CreateClusterSearchResult.default" },
+      },
+    },
   ],
   sharedModules,
   entryScriptFilename: "plugins/day-one/day-one-plugin.[contenthash].js",
@@ -125,6 +136,9 @@ const DayOnePlugin = new DynamicRemotePlugin({
       InitialSetupForm: p("./src/plugins/day-one-plugin/InitialSetupForm.tsx"),
       CreateClusterWizard: p(
         "./src/plugins/day-one-plugin/CreateClusterWizard.tsx",
+      ),
+      CreateClusterSearchResult: p(
+        "./src/plugins/day-one-plugin/CreateClusterSearchResult.tsx",
       ),
     },
   },

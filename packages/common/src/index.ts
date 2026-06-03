@@ -1,4 +1,4 @@
-export type { User, PluginEntry, PluginRegistry } from "./types.js";
+export type { User, PluginEntry, PluginRegistry, SearchEntry } from "./types.js";
 
 export {
   formatRelativeTime,

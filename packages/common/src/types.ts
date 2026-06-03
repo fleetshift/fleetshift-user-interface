@@ -16,3 +16,14 @@ export interface PluginRegistry {
   assetsHost: string;
   plugins: Record<string, PluginEntry>;
 }
+
+export interface SearchEntry {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  pathname: string;
+  icon: string;
+  status: string;
+  meta: string;
+}

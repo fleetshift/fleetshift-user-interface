@@ -1,12 +1,17 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
+  Divider,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Masthead,
   MastheadBrand,
   MastheadContent,
   MastheadLogo,
   MastheadMain,
   MastheadToggle,
+  MenuToggle,
   Nav,
   NavItem,
   NavList,
@@ -19,7 +24,6 @@ import {
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
-  Button,
 } from "@patternfly/react-core";
 import {
   BarsIcon,
@@ -31,80 +35,122 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useAppConfig } from "../contexts/AppConfigContext";
 import type { PluginPage } from "../contexts/AppConfigContext";
+import {
+  ThemeToggleType,
+  initThemeMode,
+} from "../components/Themes/ThemeToggle";
 import logo from "../assets/masthead.png";
 import "./AppLayout.scss";
-import ThemeToggle, { ThemeToggleType } from "../components/Themes/ThemeToggle";
+import { SearchProvider } from "../components/Search/SearchProvider";
+import FleetSearch from "../components/Search/FleetSearch";
 
-const UserSwitcher = () => {
+function getThemeClass(theme: ThemeToggleType): string {
+  return `pf-v6-theme-${theme}`;
+}
+
+function getThemeKey(theme: ThemeToggleType): string {
+  return `fleetshift_${theme}_mode`;
+}
+
+const AppMasthead = () => {
   const { user, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(() => initThemeMode(ThemeToggleType.Dark));
+  const [isGlass, setIsGlass] = useState(() => initThemeMode(ThemeToggleType.Glass));
+
+  const toggleTheme = useCallback(
+    (theme: ThemeToggleType, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+      setter((prev) => {
+        const next = !prev;
+        document.documentElement.classList.toggle(getThemeClass(theme), next);
+        localStorage.setItem(getThemeKey(theme), String(next));
+        return next;
+      });
+    },
+    [],
+  );
 
   return (
-    <ToolbarGroup>
-      <ToolbarItem>{user?.display_name ?? user?.username}</ToolbarItem>
-      <ToolbarItem>
-        <Button variant="link" onClick={logout}>
-          Log out
-        </Button>
-      </ToolbarItem>
-    </ToolbarGroup>
+    <Masthead>
+      <MastheadMain>
+        <MastheadToggle>
+          <PageToggleButton aria-label="Navigation toggle">
+            <BarsIcon />
+          </PageToggleButton>
+        </MastheadToggle>
+        <MastheadBrand>
+          <MastheadLogo component="a" href="/">
+            <img
+              src={logo}
+              alt="FleetShift"
+              className="fs-masthead-logo"
+              style={{ height: 36 }}
+            />
+          </MastheadLogo>
+        </MastheadBrand>
+      </MastheadMain>
+      <MastheadContent>
+        <Toolbar isFullHeight>
+          <ToolbarContent>
+            <ToolbarGroup className="pf-v6-u-flex-grow-1" variant="filter-group">
+              <FleetSearch />
+            </ToolbarGroup>
+            <ToolbarGroup align={{ default: "alignEnd" }}>
+              <ToolbarItem>
+                <Dropdown
+                  isOpen={isMenuOpen}
+                  onSelect={() => setIsMenuOpen(false)}
+                  onOpenChange={setIsMenuOpen}
+                  toggle={(toggleRef) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setIsMenuOpen((prev) => !prev)}
+                      isExpanded={isMenuOpen}
+                      isFullHeight
+                    >
+                      {user?.display_name ?? user?.username}
+                    </MenuToggle>
+                  )}
+                >
+                  <DropdownList>
+                    <DropdownItem
+                      icon={<BugIcon />}
+                      component={(props: React.HTMLAttributes<HTMLAnchorElement>) => (
+                        <Link to="/debug" {...props} />
+                      )}
+                    >
+                      Debug
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={isDark ? <SunIcon /> : <MoonIcon />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTheme(ThemeToggleType.Dark, setIsDark);
+                      }}
+                    >
+                      {isDark ? "Light mode" : "Dark mode"}
+                    </DropdownItem>
+                    <DropdownItem
+                      icon={<WineGlassIcon />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTheme(ThemeToggleType.Glass, setIsGlass);
+                      }}
+                    >
+                      {isGlass ? "Disable glass" : "Enable glass"}
+                    </DropdownItem>
+                    <Divider />
+                    <DropdownItem onClick={logout}>Log out</DropdownItem>
+                  </DropdownList>
+                </Dropdown>
+              </ToolbarItem>
+            </ToolbarGroup>
+          </ToolbarContent>
+        </Toolbar>
+      </MastheadContent>
+    </Masthead>
   );
 };
-
-const AppMasthead = () => (
-  <Masthead>
-    <MastheadMain>
-      <MastheadToggle>
-        <PageToggleButton aria-label="Navigation toggle">
-          <BarsIcon />
-        </PageToggleButton>
-      </MastheadToggle>
-      <MastheadBrand>
-        <MastheadLogo component="a" href="/">
-          <img
-            src={logo}
-            alt="FleetShift"
-            className="fs-masthead-logo"
-            style={{ height: 36 }}
-          />
-        </MastheadLogo>
-      </MastheadBrand>
-    </MastheadMain>
-    <MastheadContent>
-      <Toolbar>
-        <ToolbarContent>
-          <ToolbarItem>
-            <UserSwitcher />
-          </ToolbarItem>
-          <ToolbarGroup align={{ default: "alignEnd" }}>
-            <ToolbarItem>
-              <Button
-                variant="plain"
-                aria-label="Debug"
-                component={(props) => <Link to="/debug" {...props} />}
-              >
-                <BugIcon />
-              </Button>
-            </ToolbarItem>
-            <ToolbarItem>
-              <ThemeToggle
-                theme={ThemeToggleType.Glass}
-                OnIcon={WineGlassIcon}
-                OffIcon={WineGlassIcon}
-              />
-            </ToolbarItem>
-            <ToolbarItem>
-              <ThemeToggle
-                theme={ThemeToggleType.Dark}
-                OnIcon={MoonIcon}
-                OffIcon={SunIcon}
-              />
-            </ToolbarItem>
-          </ToolbarGroup>
-        </ToolbarContent>
-      </Toolbar>
-    </MastheadContent>
-  </Masthead>
-);
 
 const AppNav = () => {
   const location = useLocation();
@@ -160,9 +206,11 @@ const Sidebar = () => (
 );
 
 export const AppLayout = () => (
-  <Page masthead={<AppMasthead />} sidebar={<Sidebar />} isManagedSidebar>
-    <PageSection isFilled hasOverflowScroll>
-      <Outlet />
-    </PageSection>
-  </Page>
+  <SearchProvider>
+    <Page masthead={<AppMasthead />} sidebar={<Sidebar />} isManagedSidebar>
+      <PageSection isFilled hasOverflowScroll>
+        <Outlet />
+      </PageSection>
+    </Page>
+  </SearchProvider>
 );
