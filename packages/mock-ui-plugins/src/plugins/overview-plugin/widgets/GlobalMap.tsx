@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusters } from "../mockData";
+import "./GlobalMap.scss";
 
 const LEAFLET_SELECTOR = ".leaflet-right";
 

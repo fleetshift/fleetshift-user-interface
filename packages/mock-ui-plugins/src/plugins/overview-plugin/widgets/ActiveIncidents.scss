@@ -1,4 +1,10 @@
-.ov-active-incidents {
-  
+.ov-incident-header {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
 }
 
+.ov-incident-badges {
+  display: flex;
+  gap: var(--pf-t--global--spacer--sm);
+}

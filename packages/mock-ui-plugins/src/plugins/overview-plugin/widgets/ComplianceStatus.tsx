@@ -1,6 +1,7 @@
 import { Stack, StackItem } from "@patternfly/react-core";
 import { CheckCircleIcon } from "@patternfly/react-icons";
 import { complianceStatuses } from "../mockData";
+import "./ComplianceStatus.scss";
 
 export default function ComplianceStatus(_props: { widgetId: string }) {
   return (

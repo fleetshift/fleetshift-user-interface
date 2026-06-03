@@ -3,6 +3,7 @@ import {
   ChartThemeColor,
 } from "@patternfly/react-charts/victory";
 import { useLiveSlos } from "../useLiveData";
+import "./SloErrorBudgets.scss";
 
 export default function SloErrorBudgets(_props: { widgetId: string }) {
   const getSlos = useLiveSlos();

@@ -1,11 +1,12 @@
-import ServiceTopology from "./widgets/ServiceTopology";
 import "./overview-dashboard.scss";
 import MttrTrend from "./widgets/MttrTrend";
 import ActiveIncidents from "./widgets/ActiveIncidents";
-import ClusterFleetHealth from "./widgets/ClusterFleetHealth";
+import FleetHealthGrouped from "./widgets/FleetHealthGrouped";
 import GlobalMap from "./widgets/GlobalMap";
 import ComplianceStatus from "./widgets/ComplianceStatus";
-import TopServices from "./widgets/TopServices";
+import VersionDistribution from "./widgets/VersionDistribution";
+import ClustersAttention from "./widgets/ClustersAttention";
+import FleetCapacity from "./widgets/FleetCapacity";
 import {
   WidgetLayout,
   WidgetMapping,
@@ -15,19 +16,19 @@ import "@patternfly/widgetized-dashboard/dist/esm/styles.css";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import SloErrorBudgets from "./widgets/SloErrorBudgets";
-import "./overview-dashboard.scss";
 import {
+  BundleIcon,
   ChartLineIcon,
   CogIcon,
-  CubesIcon,
+  ExclamationTriangleIcon,
   GlobeIcon,
-  ListIcon,
+  MonitoringIcon,
   SecurityIcon,
   ShieldAltIcon,
   TachometerAltIcon,
 } from "@patternfly/react-icons";
 
-const LAYOUT_VERSION = 6;
+const LAYOUT_VERSION = 8;
 const STORAGE_KEY = "fleetshift:dashboard-layout";
 const VERSION_KEY = "fleetshift:dashboard-layout-version";
 
@@ -53,40 +54,48 @@ const widgetMapping: WidgetMapping = {
     config: { title: "SLO Error Budgets", icon: <TachometerAltIcon /> },
     renderWidget: (id) => <SloErrorBudgets widgetId={id} />,
   },
-  "service-topology": {
-    defaults: { w: 2, h: 4, maxH: 8, minH: 3 },
-    config: { title: "Service Topology", icon: <CubesIcon /> },
-    renderWidget: (id) => <ServiceTopology widgetId={id} />,
-  },
-  "mttr-trend": {
-    defaults: { w: 2, h: 3, maxH: 5, minH: 2 },
-    config: { title: "Mean Time to Resolution", icon: <ChartLineIcon /> },
-    renderWidget: (id) => <MttrTrend widgetId={id} />,
-  },
-  "active-incidents": {
-    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
-    config: { title: "Active Incidents", icon: <ShieldAltIcon /> },
-    renderWidget: (id) => <ActiveIncidents widgetId={id} />,
-  },
-  "cluster-fleet-health": {
-    defaults: { w: 1, h: 2, maxH: 4, minH: 2 },
-    config: { title: "Cluster Fleet Health", icon: <CogIcon /> },
-    renderWidget: (id) => <ClusterFleetHealth widgetId={id} />,
-  },
-  "global-map": {
-    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
-    config: { title: "Global Cluster Map", icon: <GlobeIcon /> },
-    renderWidget: (id) => <GlobalMap widgetId={id} />,
+  "fleet-health-grouped": {
+    defaults: { w: 1, h: 3, maxH: 5, minH: 2 },
+    config: { title: "Fleet Health by Group", icon: <CogIcon /> },
+    renderWidget: (id) => <FleetHealthGrouped widgetId={id} />,
   },
   "compliance-status": {
     defaults: { w: 1, h: 2, maxH: 4, minH: 2 },
     config: { title: "Compliance Status", icon: <SecurityIcon /> },
     renderWidget: (id) => <ComplianceStatus widgetId={id} />,
   },
-  "top-services": {
+  "global-map": {
+    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
+    config: { title: "Global Cluster Map", icon: <GlobeIcon /> },
+    renderWidget: (id) => <GlobalMap widgetId={id} />,
+  },
+  "version-distribution": {
     defaults: { w: 2, h: 3, maxH: 5, minH: 2 },
-    config: { title: "Top Services", icon: <ListIcon /> },
-    renderWidget: (id) => <TopServices widgetId={id} />,
+    config: { title: "Version Distribution", icon: <BundleIcon /> },
+    renderWidget: (id) => <VersionDistribution widgetId={id} />,
+  },
+  "active-incidents": {
+    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
+    config: { title: "Active Incidents", icon: <ShieldAltIcon /> },
+    renderWidget: (id) => <ActiveIncidents widgetId={id} />,
+  },
+  "clusters-attention": {
+    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
+    config: {
+      title: "Clusters Needing Attention",
+      icon: <ExclamationTriangleIcon />,
+    },
+    renderWidget: (id) => <ClustersAttention widgetId={id} />,
+  },
+  "fleet-capacity": {
+    defaults: { w: 2, h: 3, maxH: 6, minH: 2 },
+    config: { title: "Fleet Capacity", icon: <MonitoringIcon /> },
+    renderWidget: (id) => <FleetCapacity widgetId={id} />,
+  },
+  "mttr-trend": {
+    defaults: { w: 2, h: 3, maxH: 5, minH: 2 },
+    config: { title: "Mean Time to Resolution", icon: <ChartLineIcon /> },
+    renderWidget: (id) => <MttrTrend widgetId={id} />,
   },
 };
 
@@ -104,13 +113,13 @@ const defaultTemplate: ExtendedTemplateConfig = {
       title: "SLO Error Budgets",
     },
     {
-      i: "cluster-fleet-health#1",
+      i: "fleet-health-grouped#1",
       x: 2,
       y: 0,
       w: 1,
       h: 6,
-      widgetType: "cluster-fleet-health",
-      title: "Cluster Fleet Health",
+      widgetType: "fleet-health-grouped",
+      title: "Fleet Health by Group",
     },
     {
       i: "compliance-status#1",
@@ -124,47 +133,56 @@ const defaultTemplate: ExtendedTemplateConfig = {
     {
       i: "global-map#1",
       x: 0,
-      y: 3,
-      w: 4,
+      y: 6,
+      w: 2,
       h: 6,
       widgetType: "global-map",
       title: "Global Cluster Map",
     },
     {
-      i: "active-incidents#1",
-      x: 0,
-      y: 9,
+      i: "version-distribution#1",
+      x: 2,
+      y: 6,
       w: 2,
-      h: 4,
+      h: 6,
+      widgetType: "version-distribution",
+      title: "Version Distribution",
+    },
+    {
+      i: "fleet-capacity#1",
+      x: 0,
+      y: 12,
+      w: 2,
+      h: 5,
+      widgetType: "fleet-capacity",
+      title: "Fleet Capacity",
+    },
+    {
+      i: "active-incidents#1",
+      x: 2,
+      y: 12,
+      w: 2,
+      h: 5,
       widgetType: "active-incidents",
       title: "Active Incidents",
     },
     {
+      i: "clusters-attention#1",
+      x: 0,
+      y: 17,
+      w: 2,
+      h: 4,
+      widgetType: "clusters-attention",
+      title: "Clusters Needing Attention",
+    },
+    {
       i: "mttr-trend#1",
       x: 2,
-      y: 9,
+      y: 17,
       w: 2,
       h: 4,
       widgetType: "mttr-trend",
       title: "Mean Time to Resolution",
-    },
-    {
-      i: "service-topology#1",
-      x: 0,
-      y: 13,
-      w: 2,
-      h: 5,
-      widgetType: "service-topology",
-      title: "Service Topology",
-    },
-    {
-      i: "top-services#1",
-      x: 2,
-      y: 13,
-      w: 2,
-      h: 5,
-      widgetType: "top-services",
-      title: "Top Services",
     },
   ],
   lg: [
@@ -178,22 +196,31 @@ const defaultTemplate: ExtendedTemplateConfig = {
       title: "SLO Error Budgets",
     },
     {
-      i: "cluster-fleet-health#1",
+      i: "fleet-health-grouped#1",
       x: 2,
       y: 0,
       w: 1,
       h: 6,
-      widgetType: "cluster-fleet-health",
-      title: "Cluster Fleet Health",
+      widgetType: "fleet-health-grouped",
+      title: "Fleet Health by Group",
     },
     {
       i: "global-map#1",
       x: 0,
       y: 6,
-      w: 3,
+      w: 2,
       h: 6,
       widgetType: "global-map",
       title: "Global Cluster Map",
+    },
+    {
+      i: "version-distribution#1",
+      x: 2,
+      y: 6,
+      w: 1,
+      h: 6,
+      widgetType: "version-distribution",
+      title: "Version Distribution",
     },
     {
       i: "compliance-status#1",
@@ -214,31 +241,31 @@ const defaultTemplate: ExtendedTemplateConfig = {
       title: "Active Incidents",
     },
     {
-      i: "mttr-trend#1",
+      i: "fleet-capacity#1",
       x: 0,
       y: 16,
       w: 2,
-      h: 6,
-      widgetType: "mttr-trend",
-      title: "Mean Time to Resolution",
+      h: 5,
+      widgetType: "fleet-capacity",
+      title: "Fleet Capacity",
     },
     {
-      i: "service-topology#1",
+      i: "clusters-attention#1",
       x: 2,
       y: 16,
       w: 1,
-      h: 6,
-      widgetType: "service-topology",
-      title: "Service Topology",
+      h: 5,
+      widgetType: "clusters-attention",
+      title: "Clusters Needing Attention",
     },
     {
-      i: "top-services#1",
+      i: "mttr-trend#1",
       x: 0,
-      y: 22,
+      y: 21,
       w: 3,
       h: 5,
-      widgetType: "top-services",
-      title: "Top Services",
+      widgetType: "mttr-trend",
+      title: "Mean Time to Resolution",
     },
   ],
   md: [
@@ -252,67 +279,76 @@ const defaultTemplate: ExtendedTemplateConfig = {
       title: "SLO Error Budgets",
     },
     {
-      i: "cluster-fleet-health#1",
+      i: "fleet-health-grouped#1",
       x: 0,
       y: 6,
       w: 1,
-      h: 4,
-      widgetType: "cluster-fleet-health",
-      title: "Cluster Fleet Health",
+      h: 5,
+      widgetType: "fleet-health-grouped",
+      title: "Fleet Health by Group",
     },
     {
       i: "compliance-status#1",
       x: 1,
       y: 6,
       w: 1,
-      h: 4,
+      h: 5,
       widgetType: "compliance-status",
       title: "Compliance Status",
     },
     {
       i: "global-map#1",
       x: 0,
-      y: 10,
+      y: 11,
       w: 2,
       h: 6,
       widgetType: "global-map",
       title: "Global Cluster Map",
     },
     {
+      i: "version-distribution#1",
+      x: 0,
+      y: 17,
+      w: 2,
+      h: 5,
+      widgetType: "version-distribution",
+      title: "Version Distribution",
+    },
+    {
+      i: "fleet-capacity#1",
+      x: 0,
+      y: 22,
+      w: 2,
+      h: 5,
+      widgetType: "fleet-capacity",
+      title: "Fleet Capacity",
+    },
+    {
       i: "active-incidents#1",
       x: 0,
-      y: 16,
+      y: 27,
       w: 2,
       h: 4,
       widgetType: "active-incidents",
       title: "Active Incidents",
     },
     {
+      i: "clusters-attention#1",
+      x: 0,
+      y: 31,
+      w: 2,
+      h: 5,
+      widgetType: "clusters-attention",
+      title: "Clusters Needing Attention",
+    },
+    {
       i: "mttr-trend#1",
       x: 0,
-      y: 20,
-      w: 1,
+      y: 36,
+      w: 2,
       h: 5,
       widgetType: "mttr-trend",
       title: "Mean Time to Resolution",
-    },
-    {
-      i: "service-topology#1",
-      x: 1,
-      y: 20,
-      w: 1,
-      h: 5,
-      widgetType: "service-topology",
-      title: "Service Topology",
-    },
-    {
-      i: "top-services#1",
-      x: 0,
-      y: 25,
-      w: 2,
-      h: 5,
-      widgetType: "top-services",
-      title: "Top Services",
     },
   ],
   sm: [
@@ -326,18 +362,18 @@ const defaultTemplate: ExtendedTemplateConfig = {
       title: "SLO Error Budgets",
     },
     {
-      i: "cluster-fleet-health#1",
+      i: "fleet-health-grouped#1",
       x: 0,
       y: 5,
       w: 1,
-      h: 4,
-      widgetType: "cluster-fleet-health",
-      title: "Cluster Fleet Health",
+      h: 5,
+      widgetType: "fleet-health-grouped",
+      title: "Fleet Health by Group",
     },
     {
       i: "compliance-status#1",
       x: 0,
-      y: 9,
+      y: 10,
       w: 1,
       h: 3,
       widgetType: "compliance-status",
@@ -346,58 +382,64 @@ const defaultTemplate: ExtendedTemplateConfig = {
     {
       i: "global-map#1",
       x: 0,
-      y: 12,
+      y: 13,
       w: 1,
       h: 6,
       widgetType: "global-map",
       title: "Global Cluster Map",
     },
     {
+      i: "version-distribution#1",
+      x: 0,
+      y: 19,
+      w: 1,
+      h: 5,
+      widgetType: "version-distribution",
+      title: "Version Distribution",
+    },
+    {
+      i: "fleet-capacity#1",
+      x: 0,
+      y: 24,
+      w: 1,
+      h: 5,
+      widgetType: "fleet-capacity",
+      title: "Fleet Capacity",
+    },
+    {
       i: "active-incidents#1",
       x: 0,
-      y: 18,
+      y: 29,
       w: 1,
       h: 4,
       widgetType: "active-incidents",
       title: "Active Incidents",
     },
     {
+      i: "clusters-attention#1",
+      x: 0,
+      y: 33,
+      w: 1,
+      h: 5,
+      widgetType: "clusters-attention",
+      title: "Clusters Needing Attention",
+    },
+    {
       i: "mttr-trend#1",
       x: 0,
-      y: 22,
+      y: 38,
       w: 1,
-      h: 4,
+      h: 5,
       widgetType: "mttr-trend",
       title: "Mean Time to Resolution",
-    },
-    {
-      i: "service-topology#1",
-      x: 0,
-      y: 26,
-      w: 1,
-      h: 5,
-      widgetType: "service-topology",
-      title: "Service Topology",
-    },
-    {
-      i: "top-services#1",
-      x: 0,
-      y: 31,
-      w: 1,
-      h: 5,
-      widgetType: "top-services",
-      title: "Top Services",
     },
   ],
 };
 
 export default function OverviewDashboard() {
-  // const saved = loadTemplate();
-
   return (
     <WidgetLayout
       widgetMapping={widgetMapping}
-      // initialTemplate={saved ?? defaultTemplate}
       initialTemplate={defaultTemplate}
       onTemplateChange={saveTemplate}
       showDrawer={false}

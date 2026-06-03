@@ -5,17 +5,10 @@ export interface MockCluster {
   region: string;
   type: "core" | "edge";
   status: "healthy" | "degraded" | "critical";
+  version: string;
+  environment: "Production" | "Development" | "Edge" | "Infrastructure";
   lat: number;
   lng: number;
-}
-
-export interface MockService {
-  name: string;
-  clusterId: string;
-  requestsPerSec: number;
-  errorRate: number;
-  p99Latency: number;
-  status: "healthy" | "degraded" | "critical";
 }
 
 export interface MockSlo {
@@ -48,6 +41,13 @@ export interface MockCompliance {
   lastAudit: string;
 }
 
+export interface MockAttentionCluster {
+  clusterId: string;
+  clusterName: string;
+  reason: string;
+  severity: "warning" | "danger";
+}
+
 export const clusters: MockCluster[] = [
   {
     id: "ocp-vsphere-dc1",
@@ -56,6 +56,8 @@ export const clusters: MockCluster[] = [
     region: "US-East (Richmond)",
     type: "core",
     status: "healthy",
+    version: "4.17.12",
+    environment: "Production",
     lat: 37.5,
     lng: -77.4,
   },
@@ -66,6 +68,8 @@ export const clusters: MockCluster[] = [
     region: "US-East (Virginia)",
     type: "core",
     status: "healthy",
+    version: "4.20.5",
+    environment: "Production",
     lat: 39.0,
     lng: -77.5,
   },
@@ -76,6 +80,8 @@ export const clusters: MockCluster[] = [
     region: "US-West (Oregon)",
     type: "core",
     status: "healthy",
+    version: "4.20.5",
+    environment: "Development",
     lat: 45.5,
     lng: -122.7,
   },
@@ -86,6 +92,8 @@ export const clusters: MockCluster[] = [
     region: "EU-Central (Frankfurt)",
     type: "core",
     status: "healthy",
+    version: "4.17.12",
+    environment: "Infrastructure",
     lat: 50.1,
     lng: 8.7,
   },
@@ -96,6 +104,8 @@ export const clusters: MockCluster[] = [
     region: "US-Central (Chicago)",
     type: "edge",
     status: "degraded",
+    version: "4.14.38",
+    environment: "Edge",
     lat: 41.9,
     lng: -87.6,
   },
@@ -106,6 +116,8 @@ export const clusters: MockCluster[] = [
     region: "US-South (Dallas)",
     type: "edge",
     status: "healthy",
+    version: "4.20.5",
+    environment: "Edge",
     lat: 32.8,
     lng: -96.8,
   },
@@ -116,6 +128,8 @@ export const clusters: MockCluster[] = [
     region: "EU-West (London)",
     type: "edge",
     status: "healthy",
+    version: "4.17.12",
+    environment: "Edge",
     lat: 51.5,
     lng: -0.1,
   },
@@ -126,51 +140,10 @@ export const clusters: MockCluster[] = [
     region: "APAC (Tokyo)",
     type: "edge",
     status: "healthy",
+    version: "4.20.5",
+    environment: "Edge",
     lat: 35.7,
     lng: 139.7,
-  },
-];
-
-export const services: MockService[] = [
-  {
-    name: "Fraud Analysis Pipeline",
-    clusterId: "ocp-vsphere-dc1",
-    requestsPerSec: 12400,
-    errorRate: 0.02,
-    p99Latency: 38,
-    status: "healthy",
-  },
-  {
-    name: "Transaction Gateway",
-    clusterId: "ocp-aws-east1",
-    requestsPerSec: 45200,
-    errorRate: 0.01,
-    p99Latency: 12,
-    status: "healthy",
-  },
-  {
-    name: "Edge UPF - Chicago",
-    clusterId: "edge-chicago",
-    requestsPerSec: 8300,
-    errorRate: 0.15,
-    p99Latency: 85,
-    status: "degraded",
-  },
-  {
-    name: "Edge UPF - Dallas",
-    clusterId: "edge-dallas",
-    requestsPerSec: 9100,
-    errorRate: 0.01,
-    p99Latency: 22,
-    status: "healthy",
-  },
-  {
-    name: "Roaming Gateway",
-    clusterId: "ocp-gcp-eu1",
-    requestsPerSec: 18700,
-    errorRate: 0.03,
-    p99Latency: 45,
-    status: "healthy",
   },
 ];
 
@@ -233,38 +206,42 @@ export const complianceStatuses: MockCompliance[] = [
   },
 ];
 
-export const serviceTopology = {
-  services: [
-    {
-      name: "Global Fraud Analysis Pipeline",
-      status: "healthy" as const,
-      clusters: [
-        {
-          id: "ocp-vsphere-dc1",
-          role: "Secure Data (on-prem)",
-          status: "healthy" as const,
-        },
-        {
-          id: "ocp-aws-east1",
-          role: "ML Compute (cloud)",
-          status: "healthy" as const,
-        },
-      ],
-    },
-    {
-      name: "5G Edge Network (UPF)",
-      status: "degraded" as const,
-      clusters: [
-        {
-          id: "ocp-gcp-eu1",
-          role: "Central Control Plane",
-          status: "healthy" as const,
-        },
-        { id: "edge-chicago", role: "Edge Site", status: "degraded" as const },
-        { id: "edge-dallas", role: "Edge Site", status: "healthy" as const },
-        { id: "edge-london", role: "Edge Site", status: "healthy" as const },
-        { id: "edge-tokyo", role: "Edge Site", status: "healthy" as const },
-      ],
-    },
-  ],
-};
+export interface MockCapacityGroup {
+  environment: string;
+  cpuPercent: number;
+  memoryPercent: number;
+}
+
+export const capacityByGroup: MockCapacityGroup[] = [
+  { environment: "Production", cpuPercent: 78, memoryPercent: 72 },
+  { environment: "Development", cpuPercent: 41, memoryPercent: 38 },
+  { environment: "Edge", cpuPercent: 63, memoryPercent: 55 },
+  { environment: "Infrastructure", cpuPercent: 52, memoryPercent: 67 },
+];
+
+export const attentionClusters: MockAttentionCluster[] = [
+  {
+    clusterId: "edge-chicago",
+    clusterName: "edge-site-chicago",
+    reason: "Degraded — node NotReady",
+    severity: "danger",
+  },
+  {
+    clusterId: "ocp-vsphere-dc1",
+    clusterName: "on-prem-vSphere-datacenter-1",
+    reason: "2 versions behind (4.17 → 4.20)",
+    severity: "warning",
+  },
+  {
+    clusterId: "ocp-gcp-eu1",
+    clusterName: "gcp-eu-central-1",
+    reason: "Policy drift: 3 violations",
+    severity: "warning",
+  },
+  {
+    clusterId: "edge-london",
+    clusterName: "edge-site-london",
+    reason: "Certificate expires in 12 days",
+    severity: "warning",
+  },
+];
