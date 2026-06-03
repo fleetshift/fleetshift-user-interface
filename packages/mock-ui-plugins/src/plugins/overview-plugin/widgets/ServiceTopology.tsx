@@ -1,7 +1,5 @@
 import {
-  Card,
-  CardBody,
-  CardTitle,
+  Divider,
   Label,
   Stack,
   StackItem,
@@ -14,47 +12,42 @@ const statusColor = (s: "healthy" | "degraded" | "critical") =>
 const borderVar = (s: "healthy" | "degraded" | "critical") =>
   s === "healthy"
     ? "var(--pf-t--global--color--status--success--default)"
-    : "var(--pf-t--global--color--status--warning--default)";
+    : s === "degraded"
+      ? "var(--pf-t--global--color--status--warning--default)"
+      : "var(--pf-t--global--color--status--danger--default)";
 
 export default function ServiceTopology(_props: { widgetId: string }) {
   return (
-    <Stack hasGutter>
-      {serviceTopology.services.map((svc) => (
+    <Stack>
+      {serviceTopology.services.map((svc, i) => (
         <StackItem key={svc.name}>
-          <Card isCompact>
-            <CardTitle>
-              <span className="ov-topology-row">
-                {svc.name}
-                <Label color={statusColor(svc.status)} isCompact>
-                  {svc.status}
-                </Label>
-              </span>
-            </CardTitle>
-            <CardBody>
-              <Stack hasGutter>
-                {svc.clusters.map((cl) => (
-                  <StackItem key={cl.id} className="ov-topology-cluster">
-                    <Card
-                      isCompact
-                      style={{
-                        borderLeft: `3px solid ${borderVar(cl.status)}`,
-                      }}
-                    >
-                      <CardBody className="ov-topology-cluster-inner">
-                        <span className="ov-topology-row">
-                          <strong>{cl.id}</strong>
-                          <span className="ov-topology-role">{cl.role}</span>
-                          <Label color={statusColor(cl.status)} isCompact>
-                            {cl.status}
-                          </Label>
-                        </span>
-                      </CardBody>
-                    </Card>
-                  </StackItem>
-                ))}
-              </Stack>
-            </CardBody>
-          </Card>
+          {i > 0 && <Divider />}
+          <div className="ov-topology-svc">
+            <div className="ov-topology-row">
+              <strong>{svc.name}</strong>
+              <Label color={statusColor(svc.status)} isCompact>
+                {svc.status}
+              </Label>
+            </div>
+            <Stack hasGutter className="ov-topology-clusters">
+              {svc.clusters.map((cl) => (
+                <StackItem key={cl.id}>
+                  <div
+                    className="ov-topology-cluster"
+                    style={{ borderLeftColor: borderVar(cl.status) }}
+                  >
+                    <span className="ov-topology-row">
+                      <strong>{cl.id}</strong>
+                      <span className="ov-topology-role">{cl.role}</span>
+                      <Label color={statusColor(cl.status)} isCompact>
+                        {cl.status}
+                      </Label>
+                    </span>
+                  </div>
+                </StackItem>
+              ))}
+            </Stack>
+          </div>
         </StackItem>
       ))}
     </Stack>

@@ -15,8 +15,8 @@ export default function SloErrorBudgets(_props: { widgetId: string }) {
           <div className="ov-slo__chart">
             <ChartDonutUtilization
               data={{ x: "Budget used", y: 100 - slo.budgetRemaining }}
-              height={175}
-              width={175}
+              height={150}
+              width={150}
               themeColor={ChartThemeColor.green}
               title=" "
               subTitle=" "

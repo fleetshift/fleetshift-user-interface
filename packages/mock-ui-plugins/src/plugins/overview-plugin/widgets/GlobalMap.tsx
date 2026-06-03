@@ -3,13 +3,28 @@ import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusters } from "../mockData";
 
+const LEAFLET_SELECTOR = ".leaflet-right";
+
 const TILES = {
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
 };
 
+const WORLD_COPIES = [-360, 0, 360];
+
 const dotColor = (s: "healthy" | "degraded" | "critical") =>
   s === "healthy" ? "#3e8635" : s === "degraded" ? "#f0ab00" : "#c9190b";
+
+function useCleanMap() {
+  useEffect(() => {
+    const element = document.querySelectorAll(LEAFLET_SELECTOR);
+    if (element) {
+      Array.from(element).forEach((e) => {
+        e.remove();
+      });
+    }
+  }, [LEAFLET_SELECTOR]);
+}
 
 function useIsDarkTheme() {
   const [dark, setDark] = useState(() =>
@@ -32,6 +47,7 @@ function useIsDarkTheme() {
 
 export default function GlobalMap(_props: { widgetId: string }) {
   const isDark = useIsDarkTheme();
+  useCleanMap();
 
   return (
     <MapContainer
@@ -40,6 +56,7 @@ export default function GlobalMap(_props: { widgetId: string }) {
       minZoom={2}
       maxZoom={6}
       scrollWheelZoom={false}
+      worldCopyJump
       className="ov-global-map"
     >
       <TileLayer
@@ -47,25 +64,27 @@ export default function GlobalMap(_props: { widgetId: string }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
         url={isDark ? TILES.dark : TILES.light}
       />
-      {clusters.map((c) => (
-        <CircleMarker
-          key={c.id}
-          center={[c.lat, c.lng]}
-          radius={8}
-          pathOptions={{
-            color: dotColor(c.status),
-            fillColor: dotColor(c.status),
-            fillOpacity: 0.7,
-            weight: 2,
-          }}
-        >
-          <Tooltip>
-            <strong>{c.name}</strong>
-            <br />
-            {c.region} — {c.status}
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {clusters.flatMap((c) =>
+        WORLD_COPIES.map((offset) => (
+          <CircleMarker
+            key={`${c.id}:${offset}`}
+            center={[c.lat, c.lng + offset]}
+            radius={8}
+            pathOptions={{
+              color: dotColor(c.status),
+              fillColor: dotColor(c.status),
+              fillOpacity: 0.7,
+              weight: 2,
+            }}
+          >
+            <Tooltip>
+              <strong>{c.name}</strong>
+              <br />
+              {c.region} — {c.status}
+            </Tooltip>
+          </CircleMarker>
+        )),
+      )}
     </MapContainer>
   );
 }
