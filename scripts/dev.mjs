@@ -1,8 +1,9 @@
 import { spawn } from "child_process";
-import { watch, mkdirSync } from "fs";
+import { mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import Watchpack from "watchpack";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guiDist = resolve(root, "packages/gui/dist");
@@ -13,20 +14,15 @@ const watchOnly = process.argv.includes("--watch");
 console.log("Building @fleetshift/common...");
 execSync("npm run build -w packages/common", { cwd: root, stdio: "inherit" });
 
-let mergeTimer = null;
-
 function merge() {
-  clearTimeout(mergeTimer);
-  mergeTimer = setTimeout(() => {
-    try {
-      execSync("node scripts/merge-web.mjs --incremental", {
-        cwd: root,
-        stdio: "inherit",
-      });
-    } catch {
-      console.error("merge-web.mjs failed");
-    }
-  }, 1500);
+  try {
+    execSync("node scripts/merge-web.mjs --incremental", {
+      cwd: root,
+      stdio: "inherit",
+    });
+  } catch {
+    console.error("merge-web.mjs failed");
+  }
 }
 
 if (!watchOnly) {
@@ -45,33 +41,42 @@ if (!watchOnly) {
 
 console.log("\nStarting watch mode...\n");
 
-const pluginsWatch = spawn(
-  "npx",
-  ["webpack", "--watch", "--config", "webpack.config.ts"],
-  {
-    cwd: resolve(root, "packages/mock-ui-plugins"),
-    stdio: "inherit",
-    env: { ...process.env, NODE_OPTIONS: "--loader ts-node/esm" },
-  },
-);
+function spawnWebpack(cwd) {
+  return spawn(
+    "npx",
+    ["webpack", "--watch", "--config", "webpack.config.ts"],
+    {
+      cwd,
+      stdio: "inherit",
+      env: { ...process.env, NODE_OPTIONS: "--loader ts-node/esm" },
+    },
+  );
+}
 
-const guiWatch = spawn(
-  "npx",
-  ["webpack", "--watch", "--config", "webpack.config.ts"],
-  {
-    cwd: resolve(root, "packages/gui"),
-    stdio: "inherit",
-    env: { ...process.env, NODE_OPTIONS: "--loader ts-node/esm" },
-  },
-);
+const pluginsCwd = resolve(root, "packages/mock-ui-plugins");
+const guiCwd = resolve(root, "packages/gui");
+
+let pluginsWatch = spawnWebpack(pluginsCwd);
+const guiWatch = spawnWebpack(guiCwd);
+
+const configWatcher = new Watchpack({ aggregateTimeout: 300 });
+configWatcher.watch({ files: [resolve(pluginsCwd, "webpack.config.ts")] });
+configWatcher.on("change", () => {
+  console.log("\nwebpack.config.ts changed — restarting plugins build...\n");
+  pluginsWatch.kill();
+  pluginsWatch = spawnWebpack(pluginsCwd);
+});
 
 mkdirSync(guiDist, { recursive: true });
 mkdirSync(pluginsDist, { recursive: true });
-watch(guiDist, { recursive: true }, merge);
-watch(pluginsDist, { recursive: true }, merge);
+const distWatcher = new Watchpack({ aggregateTimeout: 1500 });
+distWatcher.watch({ directories: [guiDist, pluginsDist] });
+distWatcher.on("aggregated", merge);
 
 process.on("SIGINT", () => {
   pluginsWatch.kill();
   guiWatch.kill();
+  configWatcher.close();
+  distWatcher.close();
   process.exit(0);
 });

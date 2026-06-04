@@ -90,6 +90,13 @@ const DayOnePlugin = new DynamicRemotePlugin({
       },
     },
     {
+      type: "fleetshift.module",
+      properties: {
+        label: "Create Cluster",
+        component: { $codeRef: "CreateClusterPage.default" },
+      },
+    },
+    {
       type: "fleetshift.setup",
       properties: {
         id: "auth-setup",
@@ -144,6 +151,9 @@ const DayOnePlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       DayOnePage: p("./src/plugins/day-one-plugin/DayOnePage.tsx"),
+      CreateClusterPage: p(
+        "./src/plugins/day-one-plugin/CreateClusterPage.tsx",
+      ),
       InitialSetupForm: p("./src/plugins/day-one-plugin/InitialSetupForm.tsx"),
       CreateClusterWizard: p(
         "./src/plugins/day-one-plugin/CreateClusterWizard.tsx",

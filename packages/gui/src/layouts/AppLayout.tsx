@@ -60,7 +60,10 @@ const AppMasthead = () => {
       <MastheadContent>
         <Toolbar isFullHeight>
           <ToolbarContent>
-            <ToolbarGroup className="pf-v6-u-flex-grow-1" variant="filter-group">
+            <ToolbarGroup
+              className="pf-v6-u-flex-grow-1"
+              variant="filter-group"
+            >
               <FleetSearch />
             </ToolbarGroup>
             <ToolbarGroup align={{ default: "alignEnd" }}>
