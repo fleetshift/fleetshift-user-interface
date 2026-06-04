@@ -13,6 +13,8 @@ const pluginMeta = [
   { name: "signing-plugin", key: "signing", label: "Signing Keys", persona: "ops" },
   { name: "routing-plugin", key: "routing", label: "Routing", persona: "ops" },
   { name: "overview-plugin", key: "overview", label: "Overview", persona: "ops" },
+  { name: "kind-plugin", key: "kind", label: "Kind provider", persona: "ops" },
+  { name: "gcphcp-plugin", key: "gcphcp", label: "GCP HCP provider", persona: "ops" }
 ];
 
 const metaByName = new Map(pluginMeta.map((p) => [p.name, p]));

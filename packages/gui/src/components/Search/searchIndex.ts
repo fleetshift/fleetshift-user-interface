@@ -5,7 +5,7 @@ import { highlightText } from "./highlightUtils";
 
 export type { SearchEntry };
 
-export type SearchCategory = "nav" | "cluster" | "action" | "setting";
+export type SearchCategory = "nav" | "cluster" | "setting";
 
 export interface SearchResultItem {
   id: string;
@@ -15,6 +15,8 @@ export interface SearchResultItem {
   pathname: string;
   icon: string;
   status: string;
+  feature?: string;
+  IconComponent?: React.ComponentType;
   Component?: React.ComponentType<{ title: string; description: string }>;
 }
 
@@ -28,6 +30,7 @@ const searchSchema = {
   icon: "string",
   status: "string",
   meta: "string",
+  feature: "string",
 } as const;
 
 export type SearchDB = Orama<typeof searchSchema>;
@@ -46,12 +49,16 @@ export function insertEntry(db: SearchDB, entry: SearchEntry) {
     icon: entry.icon,
     status: entry.status,
     meta: entry.meta,
+    feature: entry.feature ?? "",
   });
 }
 
 const MAX_PER_CATEGORY = 5;
 
-export async function queryIndex(db: SearchDB, term: string): Promise<GroupedResults> {
+export async function queryIndex(
+  db: SearchDB,
+  term: string,
+): Promise<GroupedResults> {
   if (!term.trim()) return {};
 
   const result = await search(db, {
@@ -78,6 +85,7 @@ export async function queryIndex(db: SearchDB, term: string): Promise<GroupedRes
       pathname: doc.pathname,
       icon: doc.icon,
       status: doc.status,
+      feature: doc.feature || undefined,
     });
   }
 

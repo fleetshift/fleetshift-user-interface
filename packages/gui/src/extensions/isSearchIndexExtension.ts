@@ -12,9 +12,12 @@ export type SearchIndexExtension = Extension<
     id: string;
     title: string;
     description: string;
-    category: "nav" | "action" | "cluster" | "setting";
-    meta?: string;
-    component: CodeRef<ComponentType<SearchResultProps>>;
+    category?: string;
+    meta?: string[];
+    scope?: string;
+    module?: string;
+    to?: { pathname?: string; search?: string };
+    component?: CodeRef<ComponentType<SearchResultProps>>;
   }
 >;
 

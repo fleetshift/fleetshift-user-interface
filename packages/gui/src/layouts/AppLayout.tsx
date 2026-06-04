@@ -55,11 +55,18 @@ function getThemeKey(theme: ThemeToggleType): string {
 const AppMasthead = () => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => initThemeMode(ThemeToggleType.Dark));
-  const [isGlass, setIsGlass] = useState(() => initThemeMode(ThemeToggleType.Glass));
+  const [isDark, setIsDark] = useState(() =>
+    initThemeMode(ThemeToggleType.Dark),
+  );
+  const [isGlass, setIsGlass] = useState(() =>
+    initThemeMode(ThemeToggleType.Glass),
+  );
 
   const toggleTheme = useCallback(
-    (theme: ThemeToggleType, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    (
+      theme: ThemeToggleType,
+      setter: React.Dispatch<React.SetStateAction<boolean>>,
+    ) => {
       setter((prev) => {
         const next = !prev;
         document.documentElement.classList.toggle(getThemeClass(theme), next);
@@ -92,7 +99,10 @@ const AppMasthead = () => {
       <MastheadContent>
         <Toolbar isFullHeight>
           <ToolbarContent>
-            <ToolbarGroup className="pf-v6-u-flex-grow-1" variant="filter-group">
+            <ToolbarGroup
+              className="pf-v6-u-flex-grow-1"
+              variant="filter-group"
+            >
               <FleetSearch />
             </ToolbarGroup>
             <ToolbarGroup align={{ default: "alignEnd" }}>
@@ -115,9 +125,9 @@ const AppMasthead = () => {
                   <DropdownList>
                     <DropdownItem
                       icon={<BugIcon />}
-                      component={(props: React.HTMLAttributes<HTMLAnchorElement>) => (
-                        <Link to="/debug" {...props} />
-                      )}
+                      component={(
+                        props: React.HTMLAttributes<HTMLAnchorElement>,
+                      ) => <Link to="/debug" {...props} />}
                     >
                       Debug
                     </DropdownItem>

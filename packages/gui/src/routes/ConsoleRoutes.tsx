@@ -23,7 +23,7 @@ const ConsoleRoutes = () => {
     return map;
   }, [pluginPages]);
 
-  const firstNavPath = useMemo(() => {
+  const _firstNavPath = useMemo(() => {
     for (const entry of navLayout) {
       if (entry.type === "page") {
         const page = pageMap.get(entry.pageId);

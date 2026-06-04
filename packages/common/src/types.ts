@@ -26,4 +26,5 @@ export interface SearchEntry {
   icon: string;
   status: string;
   meta: string;
+  feature?: string;
 }

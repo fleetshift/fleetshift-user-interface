@@ -90,6 +90,13 @@ const DayOnePlugin = new DynamicRemotePlugin({
       },
     },
     {
+      type: "fleetshift.module",
+      properties: {
+        label: "Create Cluster",
+        component: { $codeRef: "CreateClusterPage.default" },
+      },
+    },
+    {
       type: "fleetshift.setup",
       properties: {
         id: "auth-setup",
@@ -111,17 +118,6 @@ const DayOnePlugin = new DynamicRemotePlugin({
         requiresAuth: true,
       },
     },
-    {
-      type: "fleetshift.search-index",
-      properties: {
-        id: "create-cluster",
-        title: "Create Cluster",
-        description: "Launch the cluster creation wizard",
-        category: "action",
-        meta: "deploy new cluster wizard gcp",
-        component: { $codeRef: "CreateClusterSearchResult.default" },
-      },
-    },
   ],
   sharedModules,
   entryScriptFilename: "plugins/day-one/day-one-plugin.[contenthash].js",
@@ -133,12 +129,12 @@ const DayOnePlugin = new DynamicRemotePlugin({
     version: "1.0.0",
     exposedModules: {
       DayOnePage: p("./src/plugins/day-one-plugin/DayOnePage.tsx"),
+      CreateClusterPage: p(
+        "./src/plugins/day-one-plugin/CreateClusterPage.tsx",
+      ),
       InitialSetupForm: p("./src/plugins/day-one-plugin/InitialSetupForm.tsx"),
       CreateClusterWizard: p(
         "./src/plugins/day-one-plugin/CreateClusterWizard.tsx",
-      ),
-      CreateClusterSearchResult: p(
-        "./src/plugins/day-one-plugin/CreateClusterSearchResult.tsx",
       ),
     },
   },
@@ -253,6 +249,67 @@ const OverviewPlugin = new DynamicRemotePlugin({
   },
 });
 
+const KindPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.search-extension",
+      properties: {
+        id: "create-kind-cluster",
+        title: "Create Kind cluster",
+        description: "Create a local Kind cluster for development and testing",
+        feature: "day-one-createclusterpage",
+        meta: ["kind", "local", "development", "testing"],
+        to: { pathname: "/kind" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "plugins/kind/kind-plugin.[contenthash].js",
+  pluginManifestFilename: "plugins/kind/kind-plugin-manifest.json",
+  // @ts-ignore
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "kind-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      KindEntry: p("./src/plugins/kind-plugin/index.ts"),
+    },
+  },
+});
+
+const GcpHcpPlugin = new DynamicRemotePlugin({
+  extensions: [
+    {
+      type: "fleetshift.search-extension",
+      properties: {
+        id: "create-gcphcp-cluster",
+        title: "Create GCP HCP cluster",
+        description: "Managed OpenShift cluster on Google Cloud Platform",
+        feature: "day-one-createclusterpage",
+        meta: ["gcp", "google cloud", "hosted control plane", "managed"],
+        to: { pathname: "/gcphcp" },
+        iconComponent: { $codeRef: "GcpHcpIcon.default" },
+        component: { $codeRef: "GcpHcpSearchResult.default" },
+      },
+    },
+  ],
+  sharedModules,
+  entryScriptFilename: "plugins/gcphcp/gcphcp-plugin.[contenthash].js",
+  pluginManifestFilename: "plugins/gcphcp/gcphcp-plugin-manifest.json",
+  // @ts-ignore
+  moduleFederationSettings: mfOverride,
+  pluginMetadata: {
+    name: "gcphcp-plugin",
+    version: "1.0.0",
+    exposedModules: {
+      GcpHcpSearchResult: p(
+        "./src/plugins/gcphcp-plugin/GcpHcpSearchResult.tsx",
+      ),
+      GcpHcpIcon: p("./src/plugins/gcphcp-plugin/GcpHcpIcon.tsx"),
+    },
+  },
+});
+
 const pluginConfigs = [
   { plugin: OverviewPlugin, key: "overview" },
   { plugin: ManagementPlugin, key: "management" },
@@ -260,6 +317,8 @@ const pluginConfigs = [
   { plugin: CorePlugin, key: "core" },
   { plugin: SigningPlugin, key: "signing" },
   { plugin: RoutingPlugin, key: "routing" },
+  { plugin: KindPlugin, key: "kind" },
+  { plugin: GcpHcpPlugin, key: "gcphcp" },
 ] as const;
 
 const configs: Configuration[] = pluginConfigs.map(({ plugin, key }) => ({
@@ -299,7 +358,7 @@ const configs: Configuration[] = pluginConfigs.map(({ plugin, key }) => ({
         use: ["style-loader", "css-loader", "sass-loader"],
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/i,
+        test: /\.(png|jpe?g|gif|svg|webp)$/i,
         type: "asset/resource",
       },
     ],

@@ -22,11 +22,10 @@ import "./FleetSearch.scss";
 const CATEGORY_LABELS: Record<string, string> = {
   nav: "Pages",
   cluster: "Clusters",
-  action: "Actions",
   setting: "Settings",
 };
 
-const KNOWN_CATEGORIES = ["nav", "cluster", "action", "setting"];
+const KNOWN_CATEGORIES = ["nav", "cluster", "setting"];
 
 const ICON_MAP: Record<string, React.ComponentType> = {
   CubesIcon,
@@ -34,7 +33,14 @@ const ICON_MAP: Record<string, React.ComponentType> = {
   CogIcon,
 };
 
-function ResultIcon({ name }: { name: string }) {
+function ResultIcon({
+  name,
+  IconComponent,
+}: {
+  name: string;
+  IconComponent?: React.ComponentType;
+}) {
+  if (IconComponent) return <IconComponent />;
   const Icon = ICON_MAP[name] ?? SearchIcon;
   return <Icon />;
 }
@@ -77,6 +83,7 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
 
   const total = totalCount(results);
 
+  console.log({ results });
   const closeMenu = useCallback(() => {
     setIsOpen(false);
     onStateChange?.(false);
@@ -91,7 +98,10 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   const handleSelect = useCallback(
     (item: SearchResultItem) => {
       if (item.pathname.startsWith("#toggle-")) {
-        const key = item.pathname === "#toggle-dark" ? "fleetshift_dark_mode" : "fleetshift_glass_mode";
+        const key =
+          item.pathname === "#toggle-dark"
+            ? "fleetshift_dark_mode"
+            : "fleetshift_glass_mode";
         const current = localStorage.getItem(key) === "true";
         localStorage.setItem(key, String(!current));
         window.dispatchEvent(new Event("storage"));
@@ -140,7 +150,9 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
     (ev: React.KeyboardEvent) => {
       if (isOpen && ev.key === "ArrowDown" && menuRef.current) {
         ev.preventDefault();
-        const first = menuRef.current.querySelector<HTMLElement>("li > button, li > a");
+        const first = menuRef.current.querySelector<HTMLElement>(
+          "li > button, li > a",
+        );
         first?.focus();
       } else if (isOpen && ev.key === "Escape") {
         closeMenu();
@@ -152,7 +164,10 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      if (menuRef.current?.contains(e.target as Node) || toggleRef.current?.contains(e.target as Node)) {
+      if (
+        menuRef.current?.contains(e.target as Node) ||
+        toggleRef.current?.contains(e.target as Node)
+      ) {
         if (e.key === "Escape" || e.key === "Tab") {
           closeMenu();
           toggleRef.current?.focus();
@@ -160,7 +175,11 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
       }
     };
     const handleClickOutside = (e: MouseEvent) => {
-      if (!blockCloseRef.current && isOpen && !menuRef.current?.contains(e.target as Node)) {
+      if (
+        !blockCloseRef.current &&
+        isOpen &&
+        !menuRef.current?.contains(e.target as Node)
+      ) {
         closeMenu();
       }
       blockCloseRef.current = false;
@@ -186,6 +205,47 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
     return () => window.removeEventListener("resize", handleResize);
   }, [isOpen, total]);
 
+  const renderItem = (item: SearchResultItem) => {
+    if (item.Component) {
+      return (
+        <div key={item.id} role="none" onClick={clearSearch}>
+          <item.Component title={item.title} description={item.description} />
+        </div>
+      );
+    }
+    const isToggle = item.pathname.startsWith("#toggle-");
+    return (
+      <MenuItem
+        key={item.id}
+        icon={
+          <ResultIcon name={item.icon} IconComponent={item.IconComponent} />
+        }
+        description={
+          item.description ? (
+            <HighlightedText html={item.description} />
+          ) : undefined
+        }
+        {...(isToggle
+          ? { onClick: () => handleSelect(item) }
+          : {
+              component: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
+                <Link to={item.pathname} {...props} />
+              ),
+              onClick: clearSearch,
+            })}
+      >
+        <HighlightedText html={item.title} />
+        {item.status && (
+          <span
+            className={`fs-search__status fs-search__status--${item.status}`}
+          >
+            {item.status}
+          </span>
+        )}
+      </MenuItem>
+    );
+  };
+
   const toggle = (
     <SearchInput
       placeholder="Search pages, clusters, settings..."
@@ -205,45 +265,63 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
           {categoryOrder(results).map((cat) => {
             const items = results[cat];
             if (!items || items.length === 0) return null;
+
+            const parents: SearchResultItem[] = [];
+            const childrenByFeature = new Map<string, SearchResultItem[]>();
+            const standalone: SearchResultItem[] = [];
+
+            const toFeatureId = (id: string) => id.replace(/^(ext|nav)-/, "");
+
+            for (const item of items) {
+              if (item.feature) {
+                const list = childrenByFeature.get(item.feature) ?? [];
+                list.push(item);
+                childrenByFeature.set(item.feature, list);
+              } else {
+                const featureId = toFeatureId(item.id);
+                if (
+                  childrenByFeature.has(featureId) ||
+                  items.some((i) => i.feature === featureId)
+                ) {
+                  parents.push(item);
+                } else {
+                  standalone.push(item);
+                }
+              }
+            }
+
+            const orphanChildren: SearchResultItem[] = [];
+            for (const [featureId, children] of childrenByFeature) {
+              if (!parents.some((p) => toFeatureId(p.id) === featureId)) {
+                orphanChildren.push(...children);
+              }
+            }
+
             return (
               <MenuGroup key={cat} label={CATEGORY_LABELS[cat] ?? cat}>
-                {items.map((item) => {
-                  if (item.Component) {
-                    return (
-                      <li key={item.id} role="none" onClick={clearSearch}>
-                        <item.Component
-                          title={item.title}
-                          description={item.description}
-                        />
-                      </li>
-                    );
-                  }
-                  const isToggle = item.pathname.startsWith("#toggle-");
+                {parents.map((parent) => {
+                  const featureId = toFeatureId(parent.id);
+                  const children = childrenByFeature.get(featureId) ?? [];
                   return (
-                    <MenuItem
-                      key={item.id}
-                      icon={<ResultIcon name={item.icon} />}
-                      description={
-                        item.description ? <HighlightedText html={item.description} /> : undefined
-                      }
-                      {...(isToggle
-                        ? { onClick: () => handleSelect(item) }
-                        : {
-                            component: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
-                              <Link to={item.pathname} {...props} />
-                            ),
-                            onClick: clearSearch,
-                          })}
-                    >
-                      <HighlightedText html={item.title} />
-                      {item.status && (
-                        <span className={`fs-search__status fs-search__status--${item.status}`}>
-                          {item.status}
-                        </span>
+                    <div key={parent.id} className="fs-search__tree-group">
+                      {renderItem(parent)}
+                      {children.length > 0 && (
+                        <div className="fs-search__tree-children" role="group">
+                          {children.map((child, idx) => (
+                            <div
+                              key={child.id}
+                              className={`fs-search__tree-child${idx === children.length - 1 ? " fs-search__tree-child--last" : ""}`}
+                            >
+                              {renderItem(child)}
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </MenuItem>
+                    </div>
                   );
                 })}
+                {standalone.map((item) => renderItem(item))}
+                {orphanChildren.map((item) => renderItem(item))}
               </MenuGroup>
             );
           })}
