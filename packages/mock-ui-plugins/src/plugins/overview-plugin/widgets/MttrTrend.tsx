@@ -12,7 +12,10 @@ import "./MttrTrend.scss";
 const axisStyle = {
   tickLabels: { fill: "var(--pf-t--global--text--color--regular)" },
   axis: { stroke: "var(--pf-t--global--border--color--default)" },
-  grid: { stroke: "var(--pf-t--global--border--color--default)", strokeDasharray: "4,4" },
+  grid: {
+    stroke: "var(--pf-t--global--border--color--default)",
+    strokeDasharray: "4,4",
+  },
 };
 
 export default function MttrTrend(_props: { widgetId: string }) {

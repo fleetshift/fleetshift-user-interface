@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 function jitter(value: number, pct: number): number {
   const delta = value * pct * (Math.random() * 2 - 1);
@@ -15,7 +15,7 @@ export function useLiveSlos() {
     return () => clearInterval(id);
   }, []);
 
-  return useCallback(() => {
+  return useMemo(() => {
     void tick;
     return [
       {

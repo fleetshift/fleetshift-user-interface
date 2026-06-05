@@ -10,28 +10,12 @@ import AuthGate from "../components/Auth/AuthGate";
 import AppConfigBridge from "../components/Root/AppConfigBridge";
 
 const ConsoleRoutes = () => {
-  const { pluginPages, navLayout } = useAppConfig();
+  const { pluginPages } = useAppConfig();
 
   const sortedPages = useMemo(
     () => [...pluginPages].sort((a, b) => b.path.length - a.path.length),
     [pluginPages],
   );
-
-  const pageMap = useMemo(() => {
-    const map = new Map<string, (typeof pluginPages)[number]>();
-    for (const page of pluginPages) map.set(page.id, page);
-    return map;
-  }, [pluginPages]);
-
-  const firstNavPath = useMemo(() => {
-    for (const entry of navLayout) {
-      if (entry.type === "page") {
-        const page = pageMap.get(entry.pageId);
-        if (page) return `/${page.path}`;
-      }
-    }
-    return "/debug";
-  }, [navLayout, pageMap]);
 
   return (
     <AuthProvider>

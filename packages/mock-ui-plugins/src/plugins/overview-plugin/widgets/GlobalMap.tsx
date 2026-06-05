@@ -4,8 +4,6 @@ import "leaflet/dist/leaflet.css";
 import { clusters } from "../mockData";
 import "./GlobalMap.scss";
 
-const LEAFLET_SELECTOR = ".leaflet-right";
-
 const TILES = {
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
@@ -15,17 +13,6 @@ const WORLD_COPIES = [-360, 0, 360];
 
 const dotColor = (s: "healthy" | "degraded" | "critical") =>
   s === "healthy" ? "#3e8635" : s === "degraded" ? "#f0ab00" : "#c9190b";
-
-function useCleanMap() {
-  useEffect(() => {
-    const element = document.querySelectorAll(LEAFLET_SELECTOR);
-    if (element) {
-      Array.from(element).forEach((e) => {
-        e.remove();
-      });
-    }
-  }, [LEAFLET_SELECTOR]);
-}
 
 function useIsDarkTheme() {
   const [dark, setDark] = useState(() =>
@@ -48,7 +35,6 @@ function useIsDarkTheme() {
 
 export default function GlobalMap(_props: { widgetId: string }) {
   const isDark = useIsDarkTheme();
-  useCleanMap();
 
   return (
     <MapContainer
@@ -58,6 +44,8 @@ export default function GlobalMap(_props: { widgetId: string }) {
       maxZoom={6}
       scrollWheelZoom={false}
       worldCopyJump
+      attributionControl={false}
+      zoomControl={false}
       className="ov-global-map"
     >
       <TileLayer

@@ -6,8 +6,7 @@ import { useLiveSlos } from "../useLiveData";
 import "./SloErrorBudgets.scss";
 
 export default function SloErrorBudgets(_props: { widgetId: string }) {
-  const getSlos = useLiveSlos();
-  const liveSlos = getSlos();
+  const liveSlos = useLiveSlos();
 
   return (
     <div className="ov-slo">

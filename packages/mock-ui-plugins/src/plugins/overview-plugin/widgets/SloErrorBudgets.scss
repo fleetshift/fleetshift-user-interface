@@ -1,6 +1,8 @@
 .ov-slo {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: flex-start;
   gap: var(--pf-t--global--spacer--xl);
 
   &__item {

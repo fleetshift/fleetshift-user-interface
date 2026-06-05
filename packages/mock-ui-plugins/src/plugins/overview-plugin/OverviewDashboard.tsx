@@ -437,10 +437,11 @@ const defaultTemplate: ExtendedTemplateConfig = {
 };
 
 export default function OverviewDashboard() {
+  const initialTemplate = loadTemplate() ?? defaultTemplate;
   return (
     <WidgetLayout
       widgetMapping={widgetMapping}
-      initialTemplate={defaultTemplate}
+      initialTemplate={initialTemplate}
       onTemplateChange={saveTemplate}
       showDrawer={false}
       isLayoutLocked={false}
