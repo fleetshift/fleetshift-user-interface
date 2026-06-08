@@ -27,6 +27,7 @@ import {
   ShieldAltIcon,
   TachometerAltIcon,
 } from "@patternfly/react-icons";
+import { FleetDataContext, useFleetData } from "./useFleetData";
 
 const LAYOUT_VERSION = 8;
 const STORAGE_KEY = "fleetshift:dashboard-layout";
@@ -438,13 +439,16 @@ const defaultTemplate: ExtendedTemplateConfig = {
 
 export default function OverviewDashboard() {
   const initialTemplate = loadTemplate() ?? defaultTemplate;
+  const fleetData = useFleetData();
   return (
-    <WidgetLayout
-      widgetMapping={widgetMapping}
-      initialTemplate={initialTemplate}
-      onTemplateChange={saveTemplate}
-      showDrawer={false}
-      isLayoutLocked={false}
-    />
+    <FleetDataContext.Provider value={fleetData}>
+      <WidgetLayout
+        widgetMapping={widgetMapping}
+        initialTemplate={initialTemplate}
+        onTemplateChange={saveTemplate}
+        showDrawer={false}
+        isLayoutLocked={false}
+      />
+    </FleetDataContext.Provider>
   );
 }

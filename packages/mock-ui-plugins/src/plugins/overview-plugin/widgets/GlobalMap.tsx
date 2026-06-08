@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { clusters } from "../mockData";
+import { useFleetDataContext } from "../useFleetData";
 import "./GlobalMap.scss";
 
 const TILES = {
@@ -35,6 +35,7 @@ function useIsDarkTheme() {
 
 export default function GlobalMap(_props: { widgetId: string }) {
   const isDark = useIsDarkTheme();
+  const { clusters } = useFleetDataContext();
 
   return (
     <MapContainer

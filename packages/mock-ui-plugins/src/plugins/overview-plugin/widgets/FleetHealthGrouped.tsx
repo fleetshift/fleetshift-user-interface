@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { Label, Stack, StackItem } from "@patternfly/react-core";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@patternfly/react-icons";
-import { clusters } from "../mockData";
+import { useFleetDataContext } from "../useFleetData";
 import "./FleetHealthGrouped.scss";
 
 interface EnvGroup {
@@ -13,18 +14,25 @@ interface EnvGroup {
   degraded: number;
 }
 
-const groups: EnvGroup[] = Object.values(
-  clusters.reduce<Record<string, EnvGroup>>((acc, c) => {
-    const env = c.environment;
-    if (!acc[env]) acc[env] = { name: env, total: 0, healthy: 0, degraded: 0 };
-    acc[env].total++;
-    if (c.status === "healthy") acc[env].healthy++;
-    else acc[env].degraded++;
-    return acc;
-  }, {}),
-);
-
 export default function FleetHealthGrouped(_props: { widgetId: string }) {
+  const { clusters } = useFleetDataContext();
+
+  const groups = useMemo(
+    () =>
+      Object.values(
+        clusters.reduce<Record<string, EnvGroup>>((acc, c) => {
+          const env = c.environment;
+          if (!acc[env])
+            acc[env] = { name: env, total: 0, healthy: 0, degraded: 0 };
+          acc[env].total++;
+          if (c.status === "healthy") acc[env].healthy++;
+          else acc[env].degraded++;
+          return acc;
+        }, {}),
+      ),
+    [clusters],
+  );
+
   return (
     <Stack hasGutter className="ov-fleet-grouped-wrap">
       {groups.map((g) => (
