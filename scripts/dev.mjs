@@ -63,8 +63,11 @@ const configWatcher = new Watchpack({ aggregateTimeout: 300 });
 configWatcher.watch({ files: [resolve(pluginsCwd, "webpack.config.ts")] });
 configWatcher.on("change", () => {
   console.log("\nwebpack.config.ts changed — restarting plugins build...\n");
-  pluginsWatch.kill();
-  pluginsWatch = spawnWebpack(pluginsCwd);
+  const prev = pluginsWatch;
+  prev.kill();
+  prev.on("close", () => {
+    pluginsWatch = spawnWebpack(pluginsCwd);
+  });
 });
 
 mkdirSync(guiDist, { recursive: true });

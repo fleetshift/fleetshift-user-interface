@@ -130,6 +130,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     const db = createSearchDB();
     dbRef.current = db;
 
+    const inserts: ReturnType<typeof insertEntry>[] = [];
+
     // Maps extension type → global feature ID for parent-child linking
     const typeToFeatureId = new Map<string, string>();
 
@@ -148,16 +150,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
       const navId = `nav-${page.id}`;
       const pathname = `/${page.path}`;
-      insertEntry(db, {
-        id: navId,
-        title: page.title,
-        description: `Navigate to ${page.title}`,
-        category: "nav",
-        pathname,
-        icon: "CubesIcon",
-        status: "",
-        meta: page.path,
-      });
+      inserts.push(
+        insertEntry(db, {
+          id: navId,
+          title: page.title,
+          description: `Navigate to ${page.title}`,
+          category: "nav",
+          pathname,
+          icon: "CubesIcon",
+          status: "",
+          meta: page.path,
+        }),
+      );
 
       featureParentRef.current.set(page.id, {
         id: navId,
@@ -171,11 +175,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
 
     for (const cluster of MOCK_CLUSTERS) {
-      insertEntry(db, { ...cluster, category: "cluster", icon: "ServerIcon" });
+      inserts.push(
+        insertEntry(db, {
+          ...cluster,
+          category: "cluster",
+          icon: "ServerIcon",
+        }),
+      );
     }
 
     for (const setting of SETTINGS) {
-      insertEntry(db, { ...setting, category: "setting", icon: "CogIcon" });
+      inserts.push(
+        insertEntry(db, { ...setting, category: "setting", icon: "CogIcon" }),
+      );
     }
 
     // Module extensions: feature entries with description, keywords, extensionPoints
@@ -196,16 +208,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const basePath = `/${page.path}`;
       const entryId = `ext-${globalFeatureId}`;
 
-      insertEntry(db, {
-        id: entryId,
-        title: label,
-        description: description ?? `Navigate to ${label}`,
-        category: "nav",
-        pathname: basePath,
-        icon: "CubesIcon",
-        status: "",
-        meta: keywords ? keywords.join(" ") : "",
-      });
+      inserts.push(
+        insertEntry(db, {
+          id: entryId,
+          title: label,
+          description: description ?? `Navigate to ${label}`,
+          category: "nav",
+          pathname: basePath,
+          icon: "CubesIcon",
+          status: "",
+          meta: keywords ? keywords.join(" ") : "",
+        }),
+      );
 
       if (searchResult) {
         componentMapRef.current.set(entryId, searchResult);
@@ -241,25 +255,28 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         : undefined;
 
       const extPath = to?.pathname ?? "";
+      const extSearch = to?.search ?? "";
       let resolvedPathname = "";
       if (parent) {
         const parts = [parent.pathname, extPath].filter(Boolean);
-        resolvedPathname = parts.join("/").replace(/\/+/g, "/");
+        resolvedPathname = parts.join("/").replace(/\/+/g, "/") + extSearch;
       }
 
       const entryId = `ext-${id}`;
 
-      insertEntry(db, {
-        id: entryId,
-        title: `Create ${label} cluster`,
-        description,
-        category: parent?.category ?? "nav",
-        pathname: resolvedPathname,
-        icon: "",
-        status: "",
-        meta: keywords ? keywords.join(" ") : "",
-        feature: parentFeatureId,
-      });
+      inserts.push(
+        insertEntry(db, {
+          id: entryId,
+          title: `Create ${label} cluster`,
+          description,
+          category: parent?.category ?? "nav",
+          pathname: resolvedPathname,
+          icon: "",
+          status: "",
+          meta: keywords ? keywords.join(" ") : "",
+          feature: parentFeatureId,
+        }),
+      );
 
       if (searchIcon) {
         iconMapRef.current.set(entryId, searchIcon);
@@ -286,18 +303,22 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
       const entryId = `ext-${id}`;
 
-      insertEntry(db, {
-        id: entryId,
-        title: label,
-        description: description ?? `Navigate to ${label}`,
-        category: parent?.category ?? "nav",
-        pathname: resolvedPathname,
-        icon: "CogIcon",
-        status: "",
-        meta: [label, id].join(" "),
-        feature: parentFeatureId,
-      });
+      inserts.push(
+        insertEntry(db, {
+          id: entryId,
+          title: label,
+          description: description ?? `Navigate to ${label}`,
+          category: parent?.category ?? "nav",
+          pathname: resolvedPathname,
+          icon: "CogIcon",
+          status: "",
+          meta: [label, id].join(" "),
+          feature: parentFeatureId,
+        }),
+      );
     }
+
+    Promise.all(inserts);
   }, [
     modulesLoaded,
     cpLoaded,

@@ -352,6 +352,15 @@ function joinMatchPositions(marks: Match[]) {
   }, []);
 }
 
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function applyMarks(text: string, marks: { start: number; end: number }[]) {
   const cpy = [...marks];
   cpy.sort((a, b) => a.start - b.start);
@@ -359,11 +368,11 @@ function applyMarks(text: string, marks: { start: number; end: number }[]) {
   let out = "";
   let prevEnd = 0;
   for (const mark of cpy) {
-    out += text.substring(prevEnd, mark.start);
-    out += `<mark>${text.substring(mark.start, mark.end)}</mark>`;
+    out += escapeHtml(text.substring(prevEnd, mark.start));
+    out += `<mark>${escapeHtml(text.substring(mark.start, mark.end))}</mark>`;
     prevEnd = mark.end;
   }
-  out += text.substring(prevEnd);
+  out += escapeHtml(text.substring(prevEnd));
   return out;
 }
 
@@ -382,6 +391,7 @@ function asciiLowercase(value: string) {
   return String.fromCharCode(...out);
 }
 
+const HIGHLIGHT_CACHE_MAX = 500;
 const highlightCache = new Map<string, string>();
 
 export function highlightText(term: string, text: string): string {
@@ -395,6 +405,10 @@ export function highlightText(term: string, text: string): string {
     ]),
   );
   const result = applyMarks(text, merged);
+  if (highlightCache.size >= HIGHLIGHT_CACHE_MAX) {
+    const oldest = highlightCache.keys().next().value;
+    if (oldest !== undefined) highlightCache.delete(oldest);
+  }
   highlightCache.set(key, result);
   return result;
 }

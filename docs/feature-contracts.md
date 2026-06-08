@@ -12,7 +12,7 @@ FleetShift's UI is a plugin shell — plugins contribute pages, wizards, and act
 
 ![Search proposal](images/search-proposal.png)
 
-Features and their extensions are grouped in a tree: the parent feature ("Create Cluster") with child extensions ("Create Kind cluster", "Create GCP HCP cluster") indented beneath it. The search index is built entirely from the plugin registry — no separate metadata required.
+Features and their extensions are grouped in a tree: the parent feature ("Create Cluster") with child extensions ("Create Kind cluster", "Create GCP HCP cluster") indented beneath it. The search index is built from plugin extension metadata — each `fleetshift.module` declares `id`, `description`, `keywords`, and `extensionPoints` which the shell indexes automatically.
 
 ## Goal
 
@@ -43,14 +43,14 @@ interface PluginNavigateTo {
 }
 ```
 
-**Hash fragment contract:** When `to` includes a `hash` (e.g., `{ hash: "notifications" }`), the target page must contain a heading or element with a matching `id` attribute. The shell scrolls to that element after navigation. This enables deep-linking to specific sections within a page (e.g., a search result pointing to a particular settings section).
+**Hash fragment contract (future work):** `hash` deep-linking is planned but not yet implemented — current route composition uses `pathname` and `search` only. When implemented, a `to` with `hash` (e.g., `{ hash: "notifications" }`) will scroll to a matching element ID in the target page.
 
 ```typescript
-// Example: deep-link to the "Notifications" section of the Settings page
+// Future: deep-link to the "Notifications" section of the Settings page
 {
   "to": { "pathname": "settings", "hash": "notifications" }
 }
-// → navigates to /settings#notifications
+// → would navigate to /settings#notifications
 // → target page must have <h2 id="notifications">Notifications</h2> or similar
 ```
 
@@ -301,7 +301,7 @@ Route composition for extensions:
 | Extension path | `to.pathname` (relative) | `gcphcp` |
 | Full path | base + `/` + extension | `/create-cluster/gcphcp` |
 | Query params | `to.search` | `?provider=gcphcp` |
-| Hash fragment | `to.hash` | `#notifications` |
+| Hash fragment | (planned) `to.hash` | `#notifications` |
 
 This matches the routing plugin's resolution: `PluginLink` and `usePluginNavigate` already compose paths as `${basePath}/${to.pathname}`.
 
@@ -328,7 +328,7 @@ Affected code: `generatePluginPages` in `fleetshift-server/internal/transport/ht
 
 - [ ] **Backend awareness of extension points (post-POC):** For now, extension points are resolved purely in the UI shell at runtime. In the future, the backend addon registration API could also track extension points — enabling validation (reject unknown types), discovery (query available extension points), and dependency ordering. Not in scope for the initial POC milestone, but worth keeping in mind as the addon model (OME-3) matures.
 - [ ] **Developer tooling for the feature graph (post-POC):** The feature graph is internal — end users see pages and actions, not extensions. A developer-facing tool (MCP server, CLI skill, or Claude Code agent) that queries the graph ("show all extensions registered against `day-one.create-cluster`") would improve the plugin developer experience. Could also power the `/debug` console. Not POC scope.
-- [ ] **Non-page features (settings, toolbar actions):** Most non-page features are core platform concerns. If the feature has a page (e.g., Settings), search navigates there via normal routing. Hash fragments (`#section-id`) can deep-link to a specific section — the contract is that a `to` with a hash (e.g., `{ pathname: "/settings", search: "#notifications" }`) requires a matching heading ID in the target page. Toolbar actions (e.g., "Toggle glass theme") are trickier — selecting them in search would need to trigger a callback rather than a navigation. Needs design for action-type results.
+- [ ] **Non-page features (settings, toolbar actions):** Most non-page features are core platform concerns. If the feature has a page (e.g., Settings), search navigates there via normal routing. Hash fragments (`#section-id`) can deep-link to a specific section — the contract is that a `to` with a hash (e.g., `{ pathname: "settings", hash: "notifications" }`) requires a matching heading ID in the target page. Note: `hash` support is not yet implemented in the routing runtime. Toolbar actions (e.g., "Toggle glass theme") are trickier — selecting them in search would need to trigger a callback rather than a navigation. Needs design for action-type results.
 - [ ] **Inline actions from search:** Should some search results trigger actions directly (e.g., toggling a theme, opening a modal) rather than navigating? This is a UX question — command palette patterns (VS Code, Spotlight) do this, but it adds complexity and may confuse users who expect search to mean "find and go to". Needs UX input.
 - [ ] **Build-time validation of extension `to` params (post-POC):** A future FleetShift plugin SDK (wrapping the dynamic plugin SDK) could validate at build time that an extension's `to` params match the target feature's contract — e.g., that the parent feature declares an `<Outlet>` if a relative path is used. Runtime validation in the shell is also possible but less useful (the plugin is already built and shipped). SDK-level validation is the right layer for this.
 - [ ] **Feature visibility and permissions (post-POC):** Features and extensions should respect the platform's RBAC model — a feature can declare a required permission (e.g., `"requires": "clusters.create"`) and the shell only shows it in search and navigation if the current user has that permission. This follows the same pattern as the rest of the platform's access control and will be designed alongside it. Not in POC scope.

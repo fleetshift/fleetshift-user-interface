@@ -203,8 +203,10 @@ export default function ClusterDetailPage() {
         const data = await getGcpHcpCluster(clusterId);
         setCluster(data);
       } catch (e) {
-        if (!silent)
-          setError(e instanceof Error ? e.message : "Failed to load cluster");
+        const message =
+          e instanceof Error ? e.message : "Failed to load cluster";
+        setError(message);
+        if (silent) setCluster(null);
       } finally {
         if (!silent) setLoading(false);
       }

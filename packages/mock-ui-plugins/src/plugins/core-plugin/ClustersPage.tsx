@@ -78,6 +78,7 @@ export default function ClustersPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [silentFailCount, setSilentFailCount] = useState(0);
 
   const { filters, onSetFilters, clearAllFilters } =
     useDataViewFilters<ClusterFilters>({ initialFilters: { name: "" } });
@@ -96,9 +97,13 @@ export default function ClustersPage() {
         })),
       );
       setError(null);
+      if (silent) setSilentFailCount(0);
     } catch (e) {
-      if (!silent)
+      if (silent) {
+        setSilentFailCount((c) => c + 1);
+      } else {
         setError(e instanceof Error ? e.message : "Failed to load clusters");
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -115,10 +120,10 @@ export default function ClustersPage() {
       r.cluster.reconciling,
   );
   useEffect(() => {
-    if (!hasTransient) return;
+    if (!hasTransient || silentFailCount >= 3) return;
     const id = setInterval(() => fetchClusters(true), 5000);
     return () => clearInterval(id);
-  }, [hasTransient, fetchClusters]);
+  }, [hasTransient, silentFailCount, fetchClusters]);
 
   const filtered = useMemo(
     () =>

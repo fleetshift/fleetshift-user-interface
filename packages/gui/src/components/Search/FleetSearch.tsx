@@ -80,6 +80,7 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const blockCloseRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   const total = totalCount(results);
 
@@ -103,7 +104,9 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
         onStateChange?.(false);
         return;
       }
+      const id = ++requestIdRef.current;
       const r = await query(value);
+      if (id !== requestIdRef.current) return;
       setResults(r);
       const hasResults = totalCount(r) > 0;
       setIsOpen(hasResults);

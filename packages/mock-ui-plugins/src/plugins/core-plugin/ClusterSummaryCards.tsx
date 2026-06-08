@@ -14,9 +14,13 @@ interface SummaryCard {
   color?: string;
 }
 
+const FAILURE_STATES = ["ERROR", "DEGRADED", "FAILED"];
+
 function buildSummary(rows: GcpHcpClusterRow[]): SummaryCard[] {
   const healthy = rows.filter((r) => r.cluster.state === "ACTIVE").length;
-  const needsAttention = rows.length - healthy;
+  const needsAttention = rows.filter((r) =>
+    FAILURE_STATES.includes(r.cluster.state),
+  ).length;
   const totalNodePools = rows.reduce((sum, r) => sum + r.nodePoolCount, 0);
 
   return [

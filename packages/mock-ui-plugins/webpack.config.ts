@@ -276,7 +276,7 @@ const GcpHcpPlugin = new DynamicRemotePlugin({
           "managed",
           "hcp",
         ],
-        to: { pathname: "/gcphcp" },
+        to: { pathname: "gcphcp" },
         icon: { $codeRef: "GcpHcpProviderCard.GcpHcpIcon" },
         card: { $codeRef: "GcpHcpProviderCard.default" },
         wizard: { $codeRef: "CreateGcpHcpWizard.default" },
@@ -342,7 +342,7 @@ const KindPlugin = new DynamicRemotePlugin({
         label: "Kind",
         description: "Create a local Kind cluster for development and testing.",
         keywords: ["kind", "local", "development", "testing"],
-        to: { pathname: "/kind" },
+        to: { pathname: "kind" },
         icon: { $codeRef: "KindProviderCard.KindIcon" },
         card: { $codeRef: "KindProviderCard.default" },
         wizard: { $codeRef: "CreateClusterWizard.default" },
@@ -400,6 +400,23 @@ const configs: Configuration[] = pluginConfigs.map(({ plugin, key }) => ({
     new webpack.DefinePlugin({
       "process.env.DRAGGABLE_DEBUG": "false",
     }),
+    new webpack.NormalModuleReplacementPlugin(
+      /^@patternfly\/react-core\/dist\/esm\/(components|helpers|layouts)(\/|$)/,
+      (resource) => {
+        const compMatch = resource.request.match(
+          /^(@patternfly\/react-core\/)dist\/esm\/((?:components|layouts)\/[^/]+)/,
+        );
+        if (compMatch) {
+          resource.request = `${compMatch[1]}dist/dynamic/${compMatch[2]}`;
+          return;
+        }
+        resource.request = resource.request.replace(
+          "/dist/esm/",
+          "/dist/dynamic/",
+        );
+        resource.request = resource.request.replace(/\.(js|mjs)$/, "");
+      },
+    ),
   ],
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx"],
