@@ -1,10 +1,15 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-import { createTsLoaderRule, getDynamicModules } from "@fleetshift/build-utils";
+import {
+  createClusterProvider,
+  createModule,
+  createSetup,
+  createTsLoaderRule,
+  FleetshiftPlugin,
+  getDynamicModules,
+} from "@fleetshift/build-utils";
 import {
   ContainerPlugin,
   ModuleFederationPlugin as BaseMFPlugin,
 } from "@module-federation/enhanced";
-import { DynamicRemotePlugin } from "@openshift/dynamic-plugin-sdk-webpack";
 import path from "path";
 import type { Configuration } from "webpack";
 import webpack from "webpack";
@@ -45,7 +50,6 @@ class ModuleFederationPlugin extends BaseMFPlugin {
   }
 }
 
-// @ts-ignore — @module-federation/enhanced types differ from SDK expectations
 const mfOverride = {
   libraryType: "global",
   pluginOverride: {
@@ -56,23 +60,19 @@ const mfOverride = {
 
 const p = (rel: string) => path.resolve(__dirname, rel);
 
-const ManagementPlugin = new DynamicRemotePlugin({
+const ManagementPlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "targets",
-        label: "Targets",
-        component: { $codeRef: "TargetsPage.default" },
-        description: "View and manage deployment targets",
-        keywords: ["target", "deploy", "rollout"],
-      },
-    },
+    createModule({
+      id: "targets",
+      label: "Targets",
+      component: { $codeRef: "TargetsPage.default" },
+      description: "View and manage deployment targets",
+      keywords: ["target", "deploy", "rollout"],
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/management/management-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/management/management-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "management-plugin",
@@ -83,55 +83,45 @@ const ManagementPlugin = new DynamicRemotePlugin({
   },
 });
 
-const DayOnePlugin = new DynamicRemotePlugin({
+const DayOnePlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "day-one",
-        label: "Day One",
-        component: { $codeRef: "DayOnePage.default" },
-        description: "Initial setup and onboarding",
-        keywords: ["setup", "onboarding", "welcome"],
-        extensionPoints: {
-          steps: {
-            description: "Setup steps shown as cards on the Day One page",
-            type: "fleetshift.setup",
-          },
+    createModule({
+      id: "day-one",
+      label: "Day One",
+      component: { $codeRef: "DayOnePage.default" },
+      description: "Initial setup and onboarding",
+      keywords: ["setup", "onboarding", "welcome"],
+      extensionPoints: {
+        steps: {
+          description: "Setup steps shown as cards on the Day One page",
+          type: "fleetshift.setup",
         },
       },
-    },
-    {
-      type: "fleetshift.setup",
-      properties: {
-        id: "auth-setup",
-        label: "Authentication",
-        description:
-          "Configure authentication provider and backing store for your management engine.",
-        path: "auth",
-        component: { $codeRef: "InitialSetupForm.default" },
-        requires: [],
-        requiresAuth: false,
-      },
-    },
-    {
-      type: "fleetshift.setup",
-      properties: {
-        id: "cluster-deploy",
-        label: "Deploy Cluster",
-        description:
-          "Select a cluster provider and deploy your first managed cluster.",
-        path: "deploy",
-        component: { $codeRef: "SetupClusterDeploy.default" },
-        requires: ["signing-key-enrollment"],
-        requiresAuth: true,
-      },
-    },
+    }),
+    createSetup({
+      id: "auth-setup",
+      label: "Authentication",
+      description:
+        "Configure authentication provider and backing store for your management engine.",
+      path: "auth",
+      component: { $codeRef: "InitialSetupForm.default" },
+      requires: [],
+      requiresAuth: false,
+    }),
+    createSetup({
+      id: "cluster-deploy",
+      label: "Deploy Cluster",
+      description:
+        "Select a cluster provider and deploy your first managed cluster.",
+      path: "deploy",
+      component: { $codeRef: "SetupClusterDeploy.default" },
+      requires: ["signing-key-enrollment"],
+      requiresAuth: true,
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/day-one/day-one-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/day-one/day-one-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "day-one-plugin",
@@ -146,40 +136,33 @@ const DayOnePlugin = new DynamicRemotePlugin({
   },
 });
 
-const CorePlugin = new DynamicRemotePlugin({
+const CorePlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "clusters",
-        label: "Clusters",
-        component: { $codeRef: "ClustersModule.default" },
-        description: "View and manage your fleet of clusters",
-        keywords: ["cluster", "fleet", "manage"],
-      },
-    },
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "create-cluster",
-        label: "Create Cluster",
-        component: { $codeRef: "CreateClusterModule.default" },
-        description: "Launch the cluster creation wizard",
-        keywords: ["cluster", "create", "deploy", "provision", "wizard"],
-        searchResult: { $codeRef: "CreateClusterSearchResult.default" },
-        extensionPoints: {
-          providers: {
-            description: "Cluster providers available in the creation wizard",
-            type: "fleetshift.cluster-provider",
-          },
+    createModule({
+      id: "clusters",
+      label: "Clusters",
+      component: { $codeRef: "ClustersModule.default" },
+      description: "View and manage your fleet of clusters",
+      keywords: ["cluster", "fleet", "manage"],
+    }),
+    createModule({
+      id: "create-cluster",
+      label: "Create Cluster",
+      component: { $codeRef: "CreateClusterModule.default" },
+      description: "Launch the cluster creation wizard",
+      keywords: ["cluster", "create", "deploy", "provision", "wizard"],
+      searchResult: { $codeRef: "CreateClusterSearchResult.default" },
+      extensionPoints: {
+        providers: {
+          description: "Cluster providers available in the creation wizard",
+          type: "fleetshift.cluster-provider",
         },
       },
-    },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/core/core-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/core/core-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "core-plugin",
@@ -196,36 +179,29 @@ const CorePlugin = new DynamicRemotePlugin({
   },
 });
 
-const SigningPlugin = new DynamicRemotePlugin({
+const SigningPlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "signing-keys",
-        label: "Signing Keys",
-        component: { $codeRef: "SigningKeyEnrollment.default" },
-        description: "Manage signing keys for deployment verification",
-        keywords: ["signing", "key", "enrollment", "cosign"],
-      },
-    },
-    {
-      type: "fleetshift.setup",
-      properties: {
-        id: "signing-key-enrollment",
-        label: "Signing Key Enrollment",
-        description:
-          "Enroll signing keys for deployment verification and supply chain security.",
-        path: "enroll",
-        component: { $codeRef: "SigningKeyEnrollment.default" },
-        requires: ["auth-setup"],
-        requiresAuth: true,
-      },
-    },
+    createModule({
+      id: "signing-keys",
+      label: "Signing Keys",
+      component: { $codeRef: "SigningKeyEnrollment.default" },
+      description: "Manage signing keys for deployment verification",
+      keywords: ["signing", "key", "enrollment", "cosign"],
+    }),
+    createSetup({
+      id: "signing-key-enrollment",
+      label: "Signing Key Enrollment",
+      description:
+        "Enroll signing keys for deployment verification and supply chain security.",
+      path: "enroll",
+      component: { $codeRef: "SigningKeyEnrollment.default" },
+      requires: ["auth-setup"],
+      requiresAuth: true,
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/signing/signing-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/signing/signing-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "signing-plugin",
@@ -240,12 +216,11 @@ const SigningPlugin = new DynamicRemotePlugin({
   },
 });
 
-const RoutingPlugin = new DynamicRemotePlugin({
+const RoutingPlugin = new FleetshiftPlugin({
   extensions: [],
   sharedModules,
   entryScriptFilename: "plugins/routing/routing-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/routing/routing-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "routing-plugin",
@@ -260,34 +235,30 @@ const RoutingPlugin = new DynamicRemotePlugin({
   },
 });
 
-const GcpHcpPlugin = new DynamicRemotePlugin({
+const GcpHcpPlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.cluster-provider",
-      properties: {
-        id: "gcphcp",
-        label: "GCP Hosted Control Plane",
-        description:
-          "Create a managed OpenShift cluster on Google Cloud Platform.",
-        keywords: [
-          "gcp",
-          "google cloud",
-          "hosted control plane",
-          "managed",
-          "hcp",
-        ],
-        to: { pathname: "gcphcp" },
-        icon: { $codeRef: "GcpHcpProviderCard.GcpHcpIcon" },
-        card: { $codeRef: "GcpHcpProviderCard.default" },
-        wizard: { $codeRef: "CreateGcpHcpWizard.default" },
-        searchIcon: { $codeRef: "GcpHcpIcon.default" },
-      },
-    },
+    createClusterProvider({
+      id: "gcphcp",
+      label: "GCP Hosted Control Plane",
+      description:
+        "Create a managed OpenShift cluster on Google Cloud Platform.",
+      keywords: [
+        "gcp",
+        "google cloud",
+        "hosted control plane",
+        "managed",
+        "hcp",
+      ],
+      to: { pathname: "gcphcp" },
+      icon: { $codeRef: "GcpHcpProviderCard.GcpHcpIcon" },
+      card: { $codeRef: "GcpHcpProviderCard.default" },
+      wizard: { $codeRef: "CreateGcpHcpWizard.default" },
+      searchIcon: { $codeRef: "GcpHcpIcon.default" },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/gcphcp/gcphcp-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/gcphcp/gcphcp-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "gcphcp-plugin",
@@ -304,23 +275,19 @@ const GcpHcpPlugin = new DynamicRemotePlugin({
   },
 });
 
-const OverviewPlugin = new DynamicRemotePlugin({
+const OverviewPlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.module",
-      properties: {
-        id: "overview",
-        label: "Overview",
-        component: { $codeRef: "OverviewDashboard.default" },
-        description: "Fleet overview dashboard",
-        keywords: ["overview", "dashboard", "summary"],
-      },
-    },
+    createModule({
+      id: "overview",
+      label: "Overview",
+      component: { $codeRef: "OverviewDashboard.default" },
+      description: "Fleet overview dashboard",
+      keywords: ["overview", "dashboard", "summary"],
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/overview/overview-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/overview/overview-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "overview-plugin",
@@ -333,27 +300,23 @@ const OverviewPlugin = new DynamicRemotePlugin({
   },
 });
 
-const KindPlugin = new DynamicRemotePlugin({
+const KindPlugin = new FleetshiftPlugin({
   extensions: [
-    {
-      type: "fleetshift.cluster-provider",
-      properties: {
-        id: "kind",
-        label: "Kind",
-        description: "Create a local Kind cluster for development and testing.",
-        keywords: ["kind", "local", "development", "testing"],
-        to: { pathname: "kind" },
-        icon: { $codeRef: "KindProviderCard.KindIcon" },
-        card: { $codeRef: "KindProviderCard.default" },
-        wizard: { $codeRef: "CreateClusterWizard.default" },
-        searchIcon: { $codeRef: "KindIcon.default" },
-      },
-    },
+    createClusterProvider({
+      id: "kind",
+      label: "Kind",
+      description: "Create a local Kind cluster for development and testing.",
+      keywords: ["kind", "local", "development", "testing"],
+      to: { pathname: "kind" },
+      icon: { $codeRef: "KindProviderCard.KindIcon" },
+      card: { $codeRef: "KindProviderCard.default" },
+      wizard: { $codeRef: "CreateClusterWizard.default" },
+      searchIcon: { $codeRef: "KindIcon.default" },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/kind/kind-plugin.[contenthash].js",
   pluginManifestFilename: "plugins/kind/kind-plugin-manifest.json",
-  // @ts-ignore
   moduleFederationSettings: mfOverride,
   pluginMetadata: {
     name: "kind-plugin",
