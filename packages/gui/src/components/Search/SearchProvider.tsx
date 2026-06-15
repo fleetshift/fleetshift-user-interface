@@ -1,3 +1,4 @@
+import { useExtensionInstall } from "@fleetshift/common";
 import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
 import {
   createContext,
@@ -109,6 +110,7 @@ const SETTINGS: Omit<SearchEntry, "category" | "icon">[] = [
 
 export function SearchProvider({ children }: { children: ReactNode }) {
   const { pluginPages } = useAppConfig();
+  const { loaded: installLoaded, isInstalled } = useExtensionInstall();
   const [moduleExtensions, modulesLoaded] =
     useResolvedExtensions(isModuleExtension);
   const [cpExtensions, cpLoaded] = useResolvedExtensions(
@@ -125,7 +127,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const builtRef = useRef(false);
 
   useEffect(() => {
-    if (!modulesLoaded || !cpLoaded || !setupLoaded || builtRef.current) return;
+    if (
+      !modulesLoaded ||
+      !cpLoaded ||
+      !setupLoaded ||
+      !installLoaded ||
+      builtRef.current
+    )
+      return;
     builtRef.current = true;
 
     const db = createSearchDB();
@@ -151,6 +160,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
       const navId = `nav-${page.id}`;
       const pathname = `/${page.path}`;
+      const status = isInstalled(page.scope) ? "" : "not-enabled";
       inserts.push(
         insertEntry(db, {
           id: navId,
@@ -159,7 +169,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           category: "nav",
           pathname,
           icon: "CubesIcon",
-          status: "",
+          status,
           meta: page.path,
         }),
       );
@@ -171,7 +181,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         category: "nav",
         pathname,
         icon: "CubesIcon",
-        status: "",
+        status,
       });
     }
 
@@ -208,6 +218,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const globalFeatureId = `${page.pluginKey}.${id}`;
       const basePath = `/${page.path}`;
       const entryId = `ext-${globalFeatureId}`;
+      const moduleStatus = isInstalled(page.scope) ? "" : "not-enabled";
 
       inserts.push(
         insertEntry(db, {
@@ -217,7 +228,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           category: "nav",
           pathname: basePath,
           icon: "CubesIcon",
-          status: "",
+          status: moduleStatus,
           meta: keywords ? keywords.join(" ") : "",
         }),
       );
@@ -233,7 +244,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         category: "nav",
         pathname: basePath,
         icon: "CubesIcon",
-        status: "",
+        status: moduleStatus,
       });
 
       if (extensionPoints) {
@@ -324,6 +335,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     modulesLoaded,
     cpLoaded,
     setupLoaded,
+    installLoaded,
+    isInstalled,
     moduleExtensions,
     cpExtensions,
     setupExtensions,

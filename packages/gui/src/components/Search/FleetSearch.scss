@@ -83,5 +83,10 @@
     &--healthy {
       color: var(--pf-t--global--color--status--success--default);
     }
+
+    &--not-enabled {
+      color: var(--pf-t--global--color--nonstatus--gray--default);
+      font-style: italic;
+    }
   }
 }

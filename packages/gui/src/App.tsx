@@ -10,10 +10,12 @@ import { AppConfigProvider, useAppConfig } from "./contexts/AppConfigContext";
 import Routes from "./routes/Routes";
 
 const ScalprumShell = ({ children }: PropsWithChildren) => {
-  const { scalprumConfig, assetsHost, pluginPages } = useAppConfig();
+  const { scalprumConfig, assetsHost, pluginPages, navLayout } = useAppConfig();
 
   const pluginPagesRef = useRef(pluginPages);
   pluginPagesRef.current = pluginPages;
+  const navLayoutRef = useRef(navLayout);
+  navLayoutRef.current = navLayout;
 
   const api = useMemo(
     () => ({
@@ -24,6 +26,16 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
             (p) => p.scope === scope && p.module === module,
           );
           return page ? `/${page.path}` : undefined;
+        },
+        getNavPages: () => {
+          const pageMap = new Map(pluginPagesRef.current.map((p) => [p.id, p]));
+          return navLayoutRef.current
+            .filter(
+              (e): e is { type: "page"; pageId: string } => e.type === "page",
+            )
+            .map((e) => pageMap.get(e.pageId))
+            .filter(Boolean)
+            .map((p) => ({ id: p!.id, scope: p!.scope, title: p!.title }));
         },
         getClusterIdsForPlugin: () => [] as string[],
         getClusterName: (clusterId: string) => clusterId,

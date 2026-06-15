@@ -1,3 +1,4 @@
+import { useExtensionInstall } from "@fleetshift/common";
 import {
   Bullseye,
   EmptyState,
@@ -6,9 +7,12 @@ import {
 } from "@patternfly/react-core";
 import { CubesIcon } from "@patternfly/react-icons";
 import { ScalprumComponent, useScalprum } from "@scalprum/react-core";
+import { useCallback } from "react";
 
+import { useAppConfig } from "../contexts/AppConfigContext";
 import { useScope } from "../contexts/ScopeContext";
 import { pluginKeyFromName } from "../utils/extensions";
+import { ExtensionEnablePage } from "./ExtensionEnablePage";
 
 interface PluginPageProps {
   scope: string;
@@ -19,10 +23,18 @@ interface PluginPageProps {
 export const PluginPage = ({ scope, module, pluginKey }: PluginPageProps) => {
   const { config: scalprumConfig } = useScalprum();
   const { clusterIdsForPlugin } = useScope();
+  const { isInstalled, install, loaded: installLoaded } = useExtensionInstall();
+  const { pluginPages } = useAppConfig();
 
   const key = pluginKey ?? pluginKeyFromName(scope);
   const clusterIds = clusterIdsForPlugin(key);
   const isAvailable = scope in scalprumConfig;
+
+  const page = pluginPages.find((p) => p.scope === scope);
+
+  const handleInstall = useCallback(() => {
+    install(scope);
+  }, [install, scope]);
 
   if (!isAvailable) {
     return (
@@ -36,6 +48,24 @@ export const PluginPage = ({ scope, module, pluginKey }: PluginPageProps) => {
           not be enabled on any connected cluster.
         </EmptyStateBody>
       </EmptyState>
+    );
+  }
+
+  if (!installLoaded) {
+    return (
+      <Bullseye>
+        <Spinner size="xl" />
+      </Bullseye>
+    );
+  }
+
+  if (!isInstalled(scope)) {
+    return (
+      <ExtensionEnablePage
+        label={page?.title ?? scope}
+        description={`Enable ${page?.title ?? scope} to access its features.`}
+        onInstall={handleInstall}
+      />
     );
   }
 

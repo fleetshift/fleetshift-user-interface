@@ -1,4 +1,9 @@
 import {
+  CORE_EXTENSION_META,
+  orderByIds,
+  useNavOrder,
+} from "@fleetshift/common";
+import {
   Divider,
   Dropdown,
   DropdownItem,
@@ -107,6 +112,7 @@ const AppMasthead = () => {
 const AppNav = () => {
   const location = useLocation();
   const { pluginPages, navLayout } = useAppConfig();
+  const { order: savedOrder } = useNavOrder();
 
   const pageMap = useMemo(() => {
     const map = new Map<string, PluginPage>();
@@ -116,35 +122,54 @@ const AppNav = () => {
     return map;
   }, [pluginPages]);
 
-  const navItems = useMemo(() => {
-    const items: PluginPage[] = [];
+  const { mainItems, bottomItems } = useMemo(() => {
+    const all: PluginPage[] = [];
     for (const entry of navLayout) {
       if (entry.type === "page") {
         const page = pageMap.get(entry.pageId);
-        if (page) items.push(page);
+        if (page) all.push(page);
       }
     }
-    return items.sort((a, b) => a.title.localeCompare(b.title));
-  }, [navLayout, pageMap]);
+    const main: PluginPage[] = [];
+    const bottom: PluginPage[] = [];
+    for (const page of all) {
+      const meta = CORE_EXTENSION_META[page.scope];
+      if (meta?.navSection === "bottom") {
+        bottom.push(page);
+      } else {
+        main.push(page);
+      }
+    }
+    return {
+      mainItems: orderByIds(main, savedOrder, "title"),
+      bottomItems: orderByIds(bottom, savedOrder, "title"),
+    };
+  }, [navLayout, pageMap, savedOrder]);
+
+  const renderNavItem = (page: PluginPage) => {
+    const fullPath = `/${page.path}`;
+    return (
+      <NavItem
+        key={page.id}
+        isActive={
+          location.pathname === fullPath ||
+          location.pathname.startsWith(fullPath + "/")
+        }
+      >
+        <Link to={fullPath}>{page.title}</Link>
+      </NavItem>
+    );
+  };
 
   return (
     <Nav>
-      <NavList>
-        {navItems.map((page) => {
-          const fullPath = `/${page.path}`;
-          return (
-            <NavItem
-              key={page.id}
-              isActive={
-                location.pathname === fullPath ||
-                location.pathname.startsWith(fullPath + "/")
-              }
-            >
-              <Link to={fullPath}>{page.title}</Link>
-            </NavItem>
-          );
-        })}
-      </NavList>
+      <NavList>{mainItems.map(renderNavItem)}</NavList>
+      {bottomItems.length > 0 && (
+        <>
+          <Divider />
+          <NavList>{bottomItems.map(renderNavItem)}</NavList>
+        </>
+      )}
     </Nav>
   );
 };
