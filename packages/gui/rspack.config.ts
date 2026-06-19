@@ -52,6 +52,7 @@ const config: Configuration = {
         options: {
           jsc: {
             parser: { syntax: "typescript", tsx: true },
+            // TODO: enable reactCompiler: true when rspack >= 2.1.0
             transform: { react: { runtime: "automatic" } },
           },
           transformImport: pfTransformImport,
@@ -81,9 +82,9 @@ const config: Configuration = {
       name: "fleetshift_shell",
       remotes: {},
       shared: {
-        react: { singleton: true, requiredVersion: "^18" },
-        "react/jsx-runtime": { singleton: true, requiredVersion: "^18" },
-        "react-dom": { singleton: true, requiredVersion: "^18" },
+        react: { singleton: true, requiredVersion: "^19" },
+        "react/jsx-runtime": { singleton: true, requiredVersion: "^19" },
+        "react-dom": { singleton: true, requiredVersion: "^19" },
         "react-router-dom": { singleton: true, requiredVersion: "^7" },
         "@scalprum/core": { singleton: true },
         "@scalprum/react-core": { singleton: true },

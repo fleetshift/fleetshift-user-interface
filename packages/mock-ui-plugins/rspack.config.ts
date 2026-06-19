@@ -24,6 +24,7 @@ const swcLoaderRule = {
   options: {
     jsc: {
       parser: { syntax: "typescript" as const, tsx: true },
+      // TODO: enable reactCompiler: true when rspack >= 2.1.0
       transform: { react: { runtime: "automatic" as const } },
     },
     transformImport: pfTransformImport,
@@ -46,7 +47,7 @@ const sharedModules = {
     version: "*",
   },
   "react-router-dom": { singleton: true, requiredVersion: "*" },
-  "react/jsx-runtime": { singleton: true, requiredVersion: "^18" },
+  "react/jsx-runtime": { singleton: true, requiredVersion: "^19" },
   "oidc-client-ts": { singleton: true, requiredVersion: "*" },
   "react-oidc-context": { singleton: true, requiredVersion: "*" },
   ...pfSharedModules,
