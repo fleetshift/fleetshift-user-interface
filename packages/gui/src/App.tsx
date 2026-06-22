@@ -61,9 +61,16 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
         pluginLoaderOptions: {
           transformPluginManifest: (manifest) => {
             const newManifest = { ...manifest };
-            if (manifest.name === "routing-plugin") {
-              newManifest.loadScripts = manifest.loadScripts.map((script) =>
-                script.startsWith("http") ? script : `${assetsHost}/${script}`,
+            if (
+              manifest.name === "routing-plugin" &&
+              "loadScripts" in newManifest &&
+              Array.isArray(newManifest.loadScripts)
+            ) {
+              newManifest.loadScripts = newManifest.loadScripts.map(
+                (script: string) =>
+                  script.startsWith("http")
+                    ? script
+                    : `${assetsHost}/${script}`,
               );
             }
             return newManifest;
