@@ -11,6 +11,11 @@ FleetShift is a multi-cluster management UI that dynamically composes its interf
 - **Plugin-based extensibility** — all cluster-specific UI is delivered through plugins loaded at runtime via Module Federation. The shell is generic; plugins bring the domain knowledge.
 - **Multi-platform support** — must work with both vanilla Kubernetes and OpenShift clusters, detecting platform-specific capabilities (e.g. ConsolePlugins, Routes) where available.
 
+## Design
+
+- [Feature Contracts](./feature-contracts.md) — extension types, search indexing, feature graph
+- [Module Groups](./module-groups.md) — nested navigation, hierarchical search, grouped routes
+
 ## Non-Goals
 
 - **Authentication and authorization** — handled elsewhere in the platform, not a concern of this project. Any auth-related code in this repository (mock login, user switching, bearer tokens) exists purely for experimentation purposes and should not be taken as a design choice or requirement.
