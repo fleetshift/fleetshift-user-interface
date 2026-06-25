@@ -48,7 +48,10 @@ export function createIDBStore<T>(config: IDBStoreConfig<T>): TypedIDBStore<T> {
           config.upgrade(req.result, event.oldVersion);
         };
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => {
+          dbPromise = null;
+          reject(req.error);
+        };
       });
     }
     return dbPromise;

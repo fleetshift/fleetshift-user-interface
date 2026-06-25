@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createIDBStore } from "../idb/createIDBStore";
 
@@ -15,12 +15,6 @@ function makeStore<T>(name: string, validate?: (raw: unknown) => T | null) {
     validate,
   });
 }
-
-afterEach(() => {
-  // Reset global indexedDB between tests
-  const dbs = indexedDB.databases ? undefined : undefined;
-  void dbs;
-});
 
 describe("createIDBStore", () => {
   it("put + get round-trips a value", async () => {

@@ -25,6 +25,8 @@ export function useIDBValue<T>(
 
   useEffect(() => {
     let cancelled = false;
+    setValue(null);
+    setLoaded(false);
 
     function read() {
       store
