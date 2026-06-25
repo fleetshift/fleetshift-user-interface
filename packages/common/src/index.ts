@@ -13,6 +13,13 @@ export {
   getExtensionStore,
 } from "./extensionInstall.js";
 export type {
+  IDBStoreConfig,
+  TypedIDBStore,
+  UseIDBMapResult,
+  UseIDBValueResult,
+} from "./idb/index.js";
+export { createIDBStore, useIDBMap, useIDBValue } from "./idb/index.js";
+export type {
   NavLayoutEntry,
   NavLayoutGroup,
   NavLayoutOverride,

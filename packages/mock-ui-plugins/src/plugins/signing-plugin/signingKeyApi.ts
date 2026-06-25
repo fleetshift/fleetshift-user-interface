@@ -9,51 +9,29 @@
  * SignASN1 approach.
  */
 
-const DB_NAME = "fleetshift-signing";
-const STORE_NAME = "keys";
+import { createIDBStore } from "@fleetshift/common";
+
 const KEY_ID = "signing-key";
 
-// --- IndexedDB helpers ---
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore(STORE_NAME);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
+const signingStore = createIDBStore<CryptoKeyPair>({
+  db: "fleetshift-signing",
+  version: 1,
+  store: "keys",
+  upgrade(db) {
+    db.createObjectStore("keys");
+  },
+});
 
 async function storeKeyPair(keyPair: CryptoKeyPair): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(keyPair, KEY_ID);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await signingStore.put(KEY_ID, keyPair);
 }
 
 async function loadKeyPair(): Promise<CryptoKeyPair | null> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const req = tx.objectStore(STORE_NAME).get(KEY_ID);
-    req.onsuccess = () => resolve(req.result ?? null);
-    req.onerror = () => reject(req.error);
-  });
+  return signingStore.get(KEY_ID);
 }
 
 async function deleteKeyPair(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete(KEY_ID);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await signingStore.delete(KEY_ID);
 }
 
 // --- Key generation ---
