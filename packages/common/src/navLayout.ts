@@ -58,15 +58,14 @@ export function collectPageIds(layout: NavLayoutEntry[]): Set<string> {
 }
 
 /** Check whether stored data is the new NavLayoutOverride format. */
-export function isNavLayoutOverride(
-  data: StoredNavLayout,
-): data is NavLayoutOverride {
+export function isNavLayoutOverride(data: unknown): data is NavLayoutOverride {
   return (
     data !== null &&
     !Array.isArray(data) &&
     typeof data === "object" &&
     "version" in data &&
     data.version === 1 &&
+    "layout" in data &&
     Array.isArray(data.layout)
   );
 }
