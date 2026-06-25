@@ -1,4 +1,6 @@
+import { createIDBStore } from "./idb/createIDBStore.js";
 import type { NavLayoutOverride } from "./navLayout.js";
+import { isNavLayoutOverride } from "./navLayout.js";
 
 export interface CoreExtensionMeta {
   navSection: "main" | "bottom";
@@ -33,272 +35,81 @@ export const CORE_EXTENSION_META: Record<string, CoreExtensionMeta> = {
   "settings-plugin": { navSection: "bottom" },
 };
 
-// --- IndexedDB persistence ---
-// TODO: implement together
-const EXTENSION_DB_NAME = "ome-extenions";
+// --- IndexedDB stores via createIDBStore ---
+
+const EXTENSION_DB_NAME = "ome-extensions";
 const EXTENSION_DB_VERSION = 3;
 
-// extension DB stores
-const EXTENSIONS_INSTALL_STATE_KEY = "install-state";
-const NAV_ORDER_KEY = "nav-order";
-const NAV_LAYOUT_KEY = "nav-layout";
+const INSTALL_STATE_STORE = "install-state";
+const NAV_ORDER_STORE = "nav-order";
+const NAV_LAYOUT_STORE = "nav-layout";
 
-function openDb() {
-  const omeExtensionsReq = indexedDB.open(
-    EXTENSION_DB_NAME,
-    EXTENSION_DB_VERSION,
-  );
-  return new Promise<IDBDatabase>((res, rej) => {
-    omeExtensionsReq.onerror = () => {
-      // propagate error
-      return rej(omeExtensionsReq.error);
-    };
-
-    omeExtensionsReq.onupgradeneeded = (event) => {
-      const db = omeExtensionsReq.result;
-      const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
-      if (oldVersion < 1) {
-        db.createObjectStore(EXTENSIONS_INSTALL_STATE_KEY);
-      }
-      if (oldVersion < 2) {
-        db.createObjectStore(NAV_ORDER_KEY);
-      }
-      if (oldVersion < 3) {
-        db.createObjectStore(NAV_LAYOUT_KEY);
-      }
-    };
-
-    omeExtensionsReq.onsuccess = () => {
-      return res(omeExtensionsReq.result);
-    };
-  });
+function upgradeExtensionDb(db: IDBDatabase, oldVersion: number) {
+  if (oldVersion < 1) db.createObjectStore(INSTALL_STATE_STORE);
+  if (oldVersion < 2) db.createObjectStore(NAV_ORDER_STORE);
+  if (oldVersion < 3) db.createObjectStore(NAV_LAYOUT_STORE);
 }
 
-export class InvalidExtensionStateDBKeyError extends Error {
-  constructor(key: IDBValidKey) {
-    super(
-      `Invalid extension state DB key type: expected string, got: ${typeof key}; key value ${key}`,
-    );
-    this.name = "InvalidExtensionStateDBKeyError";
-  }
+const installStateStore = createIDBStore<boolean>({
+  db: EXTENSION_DB_NAME,
+  version: EXTENSION_DB_VERSION,
+  store: INSTALL_STATE_STORE,
+  upgrade: upgradeExtensionDb,
+  validate: (raw) => (typeof raw === "boolean" ? raw : null),
+});
+
+const navOrderStore = createIDBStore<string[]>({
+  db: EXTENSION_DB_NAME,
+  version: EXTENSION_DB_VERSION,
+  store: NAV_ORDER_STORE,
+  upgrade: upgradeExtensionDb,
+  validate: (raw) => (Array.isArray(raw) ? (raw as string[]) : null),
+});
+
+const navLayoutStore = createIDBStore<NavLayoutOverride>({
+  db: EXTENSION_DB_NAME,
+  version: EXTENSION_DB_VERSION,
+  store: NAV_LAYOUT_STORE,
+  upgrade: upgradeExtensionDb,
+  validate: (raw) => (isNavLayoutOverride(raw) ? raw : null),
+});
+
+// --- Public API ---
+
+export async function getInstallState(): Promise<Record<string, boolean>> {
+  return installStateStore.getAll();
 }
 
-export class InvalidExtensionStateDBValueError extends Error {
-  constructor(key: string, value: unknown) {
-    super(
-      `Invalid extension state value for key ${key}: expected boolean, got ${typeof value}; actual value: ${value}`,
-    );
-    this.name = "InvalidExtensionStateDBValueError";
-  }
+export async function setInstalled(
+  scope: string,
+  installed: boolean,
+): Promise<void> {
+  await installStateStore.put(scope, installed);
 }
 
-export async function getInstallState() {
-  try {
-    const db = await openDb();
-    return new Promise<Record<string, boolean>>((res, rej) => {
-      const tx = db.transaction(EXTENSIONS_INSTALL_STATE_KEY, "readonly");
-      const store = tx.objectStore(EXTENSIONS_INSTALL_STATE_KEY);
-      const cursorReq = store.openCursor();
-
-      const result: Record<string, boolean> = {};
-      cursorReq.onsuccess = () => {
-        const cursor = cursorReq.result;
-        if (cursor) {
-          const key = cursor.key;
-          const value = cursor.value;
-          if (typeof key !== "string") {
-            return rej(new InvalidExtensionStateDBKeyError(key));
-          }
-
-          if (typeof value !== "boolean") {
-            return rej(new InvalidExtensionStateDBValueError(key, value));
-          }
-
-          result[key] = value;
-          cursor.continue();
-        }
-      };
-
-      tx.onerror = () => {
-        return rej(tx.error);
-      };
-
-      tx.oncomplete = () => {
-        return res(result);
-      };
-    });
-  } catch (error) {
-    // should be some properr logging
-    console.error(error);
-    throw new Error("Unable to open extension DB");
+export async function initializeDefaults(): Promise<void> {
+  const existing = await installStateStore.getAll();
+  for (const [key, value] of Object.entries(CORE_EXTENSION_DEFAULTS)) {
+    if (!(key in existing)) {
+      await installStateStore.put(key, value);
+    }
   }
 }
-
-export async function setInstalled(scope: string, installed: boolean) {
-  if (typeof scope !== "string") {
-    throw new InvalidExtensionStateDBKeyError(scope);
-  }
-
-  if (typeof installed !== "boolean") {
-    throw new InvalidExtensionStateDBValueError(scope, installed);
-  }
-  try {
-    const db = await openDb();
-    return new Promise<void>((res, rej) => {
-      const tx = db.transaction(EXTENSIONS_INSTALL_STATE_KEY, "readwrite");
-      const store = tx.objectStore(EXTENSIONS_INSTALL_STATE_KEY);
-
-      // value goes frist into DB, then key
-      store.put(installed, scope);
-      tx.onerror = () => {
-        rej(tx.error);
-      };
-
-      tx.oncomplete = () => {
-        // we have no return value
-        res();
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
-}
-
-export async function initializeDefaults() {
-  try {
-    const db = await openDb();
-    return new Promise<void>((res, rej) => {
-      const tx = db.transaction(EXTENSIONS_INSTALL_STATE_KEY, "readwrite");
-      const store = tx.objectStore(EXTENSIONS_INSTALL_STATE_KEY);
-      const keysReq = store.getAllKeys();
-
-      keysReq.onsuccess = () => {
-        const existing = new Set(keysReq.result);
-        for (const [key, value] of Object.entries(CORE_EXTENSION_DEFAULTS)) {
-          if (!existing.has(key)) {
-            store.put(value, key);
-          }
-        }
-      };
-
-      tx.onerror = () => {
-        return rej(tx.error);
-      };
-
-      tx.oncomplete = () => {
-        return res();
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
-}
-
-const NAV_ORDER_ENTRY_KEY = "order";
-const NAV_LAYOUT_ENTRY_KEY = "layout";
 
 export async function getNavOrder(): Promise<string[] | null> {
-  try {
-    const db = await openDb();
-    return new Promise<string[] | null>((res, rej) => {
-      const tx = db.transaction(NAV_ORDER_KEY, "readonly");
-      const store = tx.objectStore(NAV_ORDER_KEY);
-      const req = store.get(NAV_ORDER_ENTRY_KEY);
-
-      req.onsuccess = () => {
-        const value = req.result;
-        if (!Array.isArray(value)) {
-          return res(null);
-        }
-        return res(value as string[]);
-      };
-
-      tx.onerror = () => {
-        return rej(tx.error);
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
+  return navOrderStore.get("order");
 }
 
 export async function setNavOrder(order: string[]): Promise<void> {
-  try {
-    const db = await openDb();
-    return new Promise<void>((res, rej) => {
-      const tx = db.transaction(NAV_ORDER_KEY, "readwrite");
-      const store = tx.objectStore(NAV_ORDER_KEY);
-      store.put(order, NAV_ORDER_ENTRY_KEY);
-
-      tx.onerror = () => {
-        rej(tx.error);
-      };
-
-      tx.oncomplete = () => {
-        res();
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
+  await navOrderStore.put("order", order);
 }
 
 export async function getNavLayout(): Promise<NavLayoutOverride | null> {
-  try {
-    const db = await openDb();
-    return new Promise<NavLayoutOverride | null>((res, rej) => {
-      const tx = db.transaction(NAV_LAYOUT_KEY, "readonly");
-      const store = tx.objectStore(NAV_LAYOUT_KEY);
-      const req = store.get(NAV_LAYOUT_ENTRY_KEY);
-
-      req.onsuccess = () => {
-        const value = req.result;
-        if (
-          value &&
-          typeof value === "object" &&
-          "version" in value &&
-          value.version === 1 &&
-          Array.isArray(value.layout)
-        ) {
-          return res(value as NavLayoutOverride);
-        }
-        return res(null);
-      };
-
-      tx.onerror = () => {
-        return rej(tx.error);
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
+  return navLayoutStore.get("layout");
 }
 
 export async function setNavLayout(override: NavLayoutOverride): Promise<void> {
-  try {
-    const db = await openDb();
-    return new Promise<void>((res, rej) => {
-      const tx = db.transaction(NAV_LAYOUT_KEY, "readwrite");
-      const store = tx.objectStore(NAV_LAYOUT_KEY);
-      store.put(override, NAV_LAYOUT_ENTRY_KEY);
-
-      tx.onerror = () => {
-        rej(tx.error);
-      };
-
-      tx.oncomplete = () => {
-        res();
-      };
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Unable to open extension DB");
-  }
+  await navLayoutStore.put("layout", override);
 }
 
 type ExtensionStore = {
@@ -324,73 +135,65 @@ export function getExtensionStore(): ExtensionStore {
     const navSubs = new Set<(order: string[] | null) => void>();
     const layoutSubs = new Set<(override: NavLayoutOverride | null) => void>();
 
-    function subscribe(cb: (state: Record<string, boolean>) => void) {
-      subs.add(cb);
-      return () => {
-        subs.delete(cb);
-      };
-    }
-
-    function subscribeNavOrder(cb: (order: string[] | null) => void) {
-      navSubs.add(cb);
-      return () => {
-        navSubs.delete(cb);
-      };
-    }
-
-    async function notify() {
+    async function notifyInstall() {
       const state = await getInstallState();
-      for (const cb of subs.values()) {
+      for (const cb of subs) {
         cb(state);
       }
     }
 
     async function notifyNavOrder() {
       const order = await getNavOrder();
-      for (const cb of navSubs.values()) {
+      for (const cb of navSubs) {
         cb(order);
       }
     }
 
-    function subscribeNavLayout(
-      cb: (override: NavLayoutOverride | null) => void,
-    ) {
-      layoutSubs.add(cb);
-      return () => {
-        layoutSubs.delete(cb);
-      };
-    }
-
     async function notifyNavLayout() {
       const layout = await getNavLayout();
-      for (const cb of layoutSubs.values()) {
+      for (const cb of layoutSubs) {
         cb(layout);
       }
     }
 
     extensionStore = {
-      init: async (...args) => {
-        await initializeDefaults(...args);
-        await notify();
+      init: async () => {
+        await initializeDefaults();
+        await notifyInstall();
       },
-      setInstalled: async (...args) => {
-        await setInstalled(...args);
-        await notify();
+      setInstalled: async (scope, installed) => {
+        await setInstalled(scope, installed);
+        await notifyInstall();
       },
       getInstallState,
-      subscribe,
+      subscribe(cb) {
+        subs.add(cb);
+        return () => {
+          subs.delete(cb);
+        };
+      },
       getNavOrder,
-      setNavOrder: async (...args) => {
-        await setNavOrder(...args);
+      setNavOrder: async (order) => {
+        await setNavOrder(order);
         await notifyNavOrder();
       },
-      subscribeNavOrder,
+      subscribeNavOrder(cb) {
+        navSubs.add(cb);
+        return () => {
+          navSubs.delete(cb);
+        };
+      },
       getNavLayout,
-      setNavLayout: async (...args) => {
-        await setNavLayout(...args);
+      setNavLayout: async (override) => {
+        await setNavLayout(override);
         await notifyNavLayout();
       },
-      subscribeNavLayout,
+      subscribeNavLayout(cb) {
+        layoutSubs.add(cb);
+        return () => {
+          layoutSubs.delete(cb);
+        };
+      },
     };
   }
 

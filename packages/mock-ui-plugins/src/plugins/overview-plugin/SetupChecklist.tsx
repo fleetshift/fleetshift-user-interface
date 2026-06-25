@@ -20,6 +20,8 @@ import {
 } from "@patternfly/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { getSetupProgressStore } from "../setup-plugin/setupProgress";
+
 const DISMISS_KEY = "fleetshift:setup-checklist-dismissed";
 
 const SETUP_STEPS = [
@@ -58,45 +60,27 @@ function useSetupProgressReadonly() {
 
   useEffect(() => {
     let cancelled = false;
-    const req = indexedDB.open("ome-setup-progress", 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains("steps")) {
-        db.createObjectStore("steps");
-      }
-    };
-    req.onsuccess = () => {
-      const db = req.result;
-      const tx = db.transaction("steps", "readonly");
-      const store = tx.objectStore("steps");
-      const cursor = store.openCursor();
-      const result: Record<string, boolean> = {};
+    const store = getSetupProgressStore();
 
-      cursor.onsuccess = () => {
-        const c = cursor.result;
-        if (c) {
-          if (typeof c.key === "string" && typeof c.value === "boolean") {
-            result[c.key] = c.value;
-          }
-          c.continue();
-        }
-      };
-      tx.oncomplete = () => {
+    store
+      .getProgress()
+      .then((state) => {
         if (!cancelled) {
-          setProgress(result);
+          setProgress(state);
           setLoaded(true);
         }
-      };
-      tx.onerror = () => {
+      })
+      .catch(() => {
         if (!cancelled) setLoaded(true);
-      };
-    };
-    req.onerror = () => {
-      if (!cancelled) setLoaded(true);
-    };
+      });
+
+    const unsub = store.subscribe((state) => {
+      if (!cancelled) setProgress(state);
+    });
 
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 
