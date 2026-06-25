@@ -1,3 +1,5 @@
+import type { NavLayoutOverride } from "./navLayout.js";
+
 export interface CoreExtensionMeta {
   navSection: "main" | "bottom";
   learnMoreUrl?: string;
@@ -34,11 +36,12 @@ export const CORE_EXTENSION_META: Record<string, CoreExtensionMeta> = {
 // --- IndexedDB persistence ---
 // TODO: implement together
 const EXTENSION_DB_NAME = "ome-extenions";
-const EXTENSION_DB_VERSION = 2;
+const EXTENSION_DB_VERSION = 3;
 
 // extension DB stores
 const EXTENSIONS_INSTALL_STATE_KEY = "install-state";
 const NAV_ORDER_KEY = "nav-order";
+const NAV_LAYOUT_KEY = "nav-layout";
 
 function openDb() {
   const omeExtensionsReq = indexedDB.open(
@@ -59,6 +62,9 @@ function openDb() {
       }
       if (oldVersion < 2) {
         db.createObjectStore(NAV_ORDER_KEY);
+      }
+      if (oldVersion < 3) {
+        db.createObjectStore(NAV_LAYOUT_KEY);
       }
     };
 
@@ -191,6 +197,7 @@ export async function initializeDefaults() {
 }
 
 const NAV_ORDER_ENTRY_KEY = "order";
+const NAV_LAYOUT_ENTRY_KEY = "layout";
 
 export async function getNavOrder(): Promise<string[] | null> {
   try {
@@ -240,6 +247,60 @@ export async function setNavOrder(order: string[]): Promise<void> {
   }
 }
 
+export async function getNavLayout(): Promise<NavLayoutOverride | null> {
+  try {
+    const db = await openDb();
+    return new Promise<NavLayoutOverride | null>((res, rej) => {
+      const tx = db.transaction(NAV_LAYOUT_KEY, "readonly");
+      const store = tx.objectStore(NAV_LAYOUT_KEY);
+      const req = store.get(NAV_LAYOUT_ENTRY_KEY);
+
+      req.onsuccess = () => {
+        const value = req.result;
+        if (
+          value &&
+          typeof value === "object" &&
+          "version" in value &&
+          value.version === 1 &&
+          Array.isArray(value.layout)
+        ) {
+          return res(value as NavLayoutOverride);
+        }
+        return res(null);
+      };
+
+      tx.onerror = () => {
+        return rej(tx.error);
+      };
+    });
+  } catch (error) {
+    console.error(error);
+    throw new Error("Unable to open extension DB");
+  }
+}
+
+export async function setNavLayout(override: NavLayoutOverride): Promise<void> {
+  try {
+    const db = await openDb();
+    return new Promise<void>((res, rej) => {
+      const tx = db.transaction(NAV_LAYOUT_KEY, "readwrite");
+      const store = tx.objectStore(NAV_LAYOUT_KEY);
+      store.put(override, NAV_LAYOUT_ENTRY_KEY);
+
+      tx.onerror = () => {
+        rej(tx.error);
+      };
+
+      tx.oncomplete = () => {
+        res();
+      };
+    });
+  } catch (error) {
+    console.error(error);
+    throw new Error("Unable to open extension DB");
+  }
+}
+
 type ExtensionStore = {
   init: typeof initializeDefaults;
   setInstalled: typeof setInstalled;
@@ -248,6 +309,11 @@ type ExtensionStore = {
   getNavOrder: typeof getNavOrder;
   setNavOrder: typeof setNavOrder;
   subscribeNavOrder: (listener: (order: string[] | null) => void) => () => void;
+  getNavLayout: typeof getNavLayout;
+  setNavLayout: typeof setNavLayout;
+  subscribeNavLayout: (
+    listener: (override: NavLayoutOverride | null) => void,
+  ) => () => void;
 };
 
 let extensionStore: ExtensionStore;
@@ -256,6 +322,7 @@ export function getExtensionStore(): ExtensionStore {
   if (!extensionStore) {
     const subs = new Set<(state: Record<string, boolean>) => void>();
     const navSubs = new Set<(order: string[] | null) => void>();
+    const layoutSubs = new Set<(override: NavLayoutOverride | null) => void>();
 
     function subscribe(cb: (state: Record<string, boolean>) => void) {
       subs.add(cb);
@@ -285,6 +352,22 @@ export function getExtensionStore(): ExtensionStore {
       }
     }
 
+    function subscribeNavLayout(
+      cb: (override: NavLayoutOverride | null) => void,
+    ) {
+      layoutSubs.add(cb);
+      return () => {
+        layoutSubs.delete(cb);
+      };
+    }
+
+    async function notifyNavLayout() {
+      const layout = await getNavLayout();
+      for (const cb of layoutSubs.values()) {
+        cb(layout);
+      }
+    }
+
     extensionStore = {
       init: async (...args) => {
         await initializeDefaults(...args);
@@ -302,6 +385,12 @@ export function getExtensionStore(): ExtensionStore {
         await notifyNavOrder();
       },
       subscribeNavOrder,
+      getNavLayout,
+      setNavLayout: async (...args) => {
+        await setNavLayout(...args);
+        await notifyNavLayout();
+      },
+      subscribeNavLayout,
     };
   }
 

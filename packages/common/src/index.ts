@@ -12,6 +12,19 @@ export {
   CORE_EXTENSION_META,
   getExtensionStore,
 } from "./extensionInstall.js";
+export type {
+  NavLayoutEntry,
+  NavLayoutGroup,
+  NavLayoutOverride,
+  NavLayoutPage,
+  NavLayoutSection,
+  StoredNavLayout,
+} from "./navLayout.js";
+export {
+  collectPageIds,
+  isNavLayoutOverride,
+  mergeLayout,
+} from "./navLayout.js";
 export { orderByIds } from "./orderByIds.js";
 export type { PluginLinkProps } from "./PluginLink.js";
 export { default as PluginLink } from "./PluginLink.js";
@@ -27,6 +40,7 @@ export type {
   User,
 } from "./types.js";
 export { default as useExtensionInstall } from "./useExtensionInstall.js";
+export { default as useNavLayout } from "./useNavLayout.js";
 export { default as useNavOrder } from "./useNavOrder.js";
 export type { PluginNavigateTo } from "./usePluginNavigate.js";
 export { default as usePluginNavigate } from "./usePluginNavigate.js";
