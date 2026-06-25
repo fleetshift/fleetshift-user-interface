@@ -59,7 +59,8 @@ export function useIDBValue<T>(
 
   const set = useCallback((v: T) => store.put(key, v), [store, key]);
 
-  return useMemo(() => ({ value, loaded, set }), [value, loaded, set]);
+  const result = useMemo(() => ({ value, loaded, set }), [value, loaded, set]);
+  return result;
 }
 
 /**
@@ -107,5 +108,6 @@ export function useIDBMap<T>(store: TypedIDBStore<T>): UseIDBMapResult<T> {
     };
   }, [store]);
 
-  return useMemo(() => ({ entries, loaded }), [entries, loaded]);
+  const result = useMemo(() => ({ entries, loaded }), [entries, loaded]);
+  return result;
 }

@@ -40,16 +40,20 @@ export const CORE_EXTENSION_META: Record<string, CoreExtensionMeta> = {
 const EXTENSION_DB_NAME = "ome-extensions";
 const EXTENSION_DB_VERSION = 3;
 
+const INSTALL_STATE_STORE = "install-state";
+const NAV_ORDER_STORE = "nav-order";
+const NAV_LAYOUT_STORE = "nav-layout";
+
 function upgradeExtensionDb(db: IDBDatabase, oldVersion: number) {
-  if (oldVersion < 1) db.createObjectStore("install-state");
-  if (oldVersion < 2) db.createObjectStore("nav-order");
-  if (oldVersion < 3) db.createObjectStore("nav-layout");
+  if (oldVersion < 1) db.createObjectStore(INSTALL_STATE_STORE);
+  if (oldVersion < 2) db.createObjectStore(NAV_ORDER_STORE);
+  if (oldVersion < 3) db.createObjectStore(NAV_LAYOUT_STORE);
 }
 
 const installStateStore = createIDBStore<boolean>({
   db: EXTENSION_DB_NAME,
   version: EXTENSION_DB_VERSION,
-  store: "install-state",
+  store: INSTALL_STATE_STORE,
   upgrade: upgradeExtensionDb,
   validate: (raw) => (typeof raw === "boolean" ? raw : null),
 });
@@ -57,7 +61,7 @@ const installStateStore = createIDBStore<boolean>({
 const navOrderStore = createIDBStore<string[]>({
   db: EXTENSION_DB_NAME,
   version: EXTENSION_DB_VERSION,
-  store: "nav-order",
+  store: NAV_ORDER_STORE,
   upgrade: upgradeExtensionDb,
   validate: (raw) => (Array.isArray(raw) ? (raw as string[]) : null),
 });
@@ -65,7 +69,7 @@ const navOrderStore = createIDBStore<string[]>({
 const navLayoutStore = createIDBStore<NavLayoutOverride>({
   db: EXTENSION_DB_NAME,
   version: EXTENSION_DB_VERSION,
-  store: "nav-layout",
+  store: NAV_LAYOUT_STORE,
   upgrade: upgradeExtensionDb,
   validate: (raw) => (isNavLayoutOverride(raw) ? raw : null),
 });
