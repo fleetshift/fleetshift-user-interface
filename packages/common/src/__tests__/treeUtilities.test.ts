@@ -121,12 +121,7 @@ describe("getDescendantIds", () => {
 
 describe("arrayMove", () => {
   it("moves element from one position to another", () => {
-    expect(arrayMove(["a", "b", "c", "d"], 0, 2)).toEqual([
-      "b",
-      "c",
-      "a",
-      "d",
-    ]);
+    expect(arrayMove(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"]);
   });
 
   it("does not mutate the original array", () => {
