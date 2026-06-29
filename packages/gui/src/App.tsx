@@ -44,6 +44,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
           }
           return result;
         },
+        getBackendLayout: () => navLayoutRef.current,
         getClusterIdsForPlugin: () => [] as string[],
         getClusterName: (clusterId: string) => clusterId,
         onClustersChange: () => () => {},

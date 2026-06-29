@@ -10,6 +10,7 @@
     "watch": "rspack build --watch"
   },
   "dependencies": {
+    "@dnd-kit/react": "^0.3.2",
     "@fleetshift/common": "*",
     "@patternfly/react-charts": "^8.5.1",
     "@patternfly/react-code-editor": "^6.5.1",

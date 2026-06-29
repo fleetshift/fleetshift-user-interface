@@ -1,6 +1,8 @@
 import "./TreeItem.scss";
 
 import { useSortable } from "@dnd-kit/react/sortable";
+import type { FlatNode } from "@fleetshift/common";
+import { INDENTATION } from "@fleetshift/common";
 import { Button } from "@patternfly/react-core";
 import {
   GripVerticalIcon,
@@ -8,9 +10,6 @@ import {
   TimesIcon,
   TrashIcon,
 } from "@patternfly/react-icons";
-
-import type { FlatNode } from "./utilities";
-import { INDENTATION } from "./utilities";
 
 interface TreeItemProps {
   node: FlatNode;

@@ -20,6 +20,7 @@ export type {
 } from "./idb/index.js";
 export { createIDBStore, useIDBMap, useIDBValue } from "./idb/index.js";
 export type {
+  FlatNode,
   NavLayoutEntry,
   NavLayoutGroup,
   NavLayoutOverride,
@@ -28,7 +29,13 @@ export type {
   StoredNavLayout,
 } from "./navLayout.js";
 export {
+  arrayMove,
+  buildLayout,
   collectPageIds,
+  flattenLayout,
+  getDescendantIds,
+  getProjection,
+  INDENTATION,
   isNavLayoutOverride,
   mergeLayout,
 } from "./navLayout.js";
