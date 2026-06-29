@@ -141,7 +141,7 @@ interface SortableSectionProps {
   nodes: FlatNode[];
   pageMap: Map<string, { title: string; scope: string }>;
   onReorder: (nodes: FlatNode[]) => void;
-  onResetItem: (pageId: string) => void;
+  onResetItem?: (pageId: string) => void;
 }
 
 function SortableSection({
@@ -221,7 +221,7 @@ function SortableSection({
                 index={index}
                 label={label}
                 onResetItem={
-                  node.kind === "page" && node.pageId
+                  onResetItem && node.kind === "page" && node.pageId
                     ? () => onResetItem(node.pageId!)
                     : undefined
                 }
@@ -352,7 +352,7 @@ const NavLayoutEditor = () => {
         nodes={mainNodes}
         pageMap={pageMap}
         onReorder={handleMainReorder}
-        onResetItem={handleResetItem}
+        onResetItem={override ? handleResetItem : undefined}
       />
 
       {bottomNodes.length > 0 && (
@@ -361,7 +361,7 @@ const NavLayoutEditor = () => {
           nodes={bottomNodes}
           pageMap={pageMap}
           onReorder={handleBottomReorder}
-          onResetItem={handleResetItem}
+          onResetItem={override ? handleResetItem : undefined}
         />
       )}
 

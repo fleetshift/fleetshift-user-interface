@@ -334,6 +334,58 @@ describe("normalizeOrder", () => {
   });
 });
 
+describe("orphaned children (stale parentId)", () => {
+  it("buildLayout promotes orphaned children to top-level pages", () => {
+    // Child points to a parent that doesn't exist in the node list
+    const nodes: FlatNode[] = [
+      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      {
+        id: "orphan",
+        kind: "page",
+        depth: 1,
+        parentId: "deleted-group",
+        pageId: "orphan",
+      },
+    ];
+    const layout = buildLayout(nodes);
+    expect(layout).toEqual([
+      { type: "page", pageId: "a" },
+      { type: "page", pageId: "orphan" },
+    ]);
+  });
+
+  it("normalizeOrder promotes orphaned children to depth 0", () => {
+    const nodes: FlatNode[] = [
+      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      {
+        id: "orphan",
+        kind: "page",
+        depth: 1,
+        parentId: "deleted-group",
+        pageId: "orphan",
+      },
+    ];
+    const result = normalizeOrder(nodes);
+    expect(result).toEqual([
+      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      {
+        id: "orphan",
+        kind: "page",
+        depth: 0,
+        parentId: null,
+        pageId: "orphan",
+      },
+    ]);
+  });
+
+  it("buildLayout throws on child node without pageId", () => {
+    const nodes: FlatNode[] = [
+      { id: "bad", kind: "page", depth: 0, parentId: null },
+    ];
+    expect(() => buildLayout(nodes)).toThrow(/missing pageId/);
+  });
+});
+
 describe("drag-end integration: group drag + normalizeOrder + buildLayout", () => {
   it("dragging a group produces correct layout with children", () => {
     // Full flow: arrayMove → getProjection → normalizeOrder → buildLayout

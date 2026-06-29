@@ -110,14 +110,31 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
  * during drag-and-drop — the children always stay with their container.
  */
 export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
+  // IDs of top-level nodes that can act as parents.
+  const containerIds = new Set(
+    nodes.filter((n) => !n.parentId).map((n) => n.id),
+  );
+  const hasValidParent = (node: FlatNode) =>
+    node.parentId !== null && containerIds.has(node.parentId);
+  const safePageId = (node: FlatNode): string => {
+    if (!node.pageId) {
+      throw new Error(
+        `Invalid child node "${node.id}" in nav layout — missing pageId`,
+      );
+    }
+    return node.pageId;
+  };
+
   // Pre-collect children per parentId (preserving relative order).
+  // Nodes whose parentId points to a missing container are treated as
+  // top-level rather than silently dropped.
   const childrenByParent = new Map<string, FlatNode[]>();
   for (const node of nodes) {
-    if (node.parentId) {
-      let list = childrenByParent.get(node.parentId);
+    if (hasValidParent(node)) {
+      let list = childrenByParent.get(node.parentId!);
       if (!list) {
         list = [];
-        childrenByParent.set(node.parentId, list);
+        childrenByParent.set(node.parentId!, list);
       }
       list.push(node);
     }
@@ -125,18 +142,18 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
 
   const result: NavLayoutEntry[] = [];
   for (const node of nodes) {
-    // Skip children — they are emitted with their parent container.
-    if (node.parentId) continue;
+    // Skip children with valid parents — emitted with their container.
+    if (hasValidParent(node)) continue;
 
     if (node.kind === "group" && node.groupMeta) {
       const children = (childrenByParent.get(node.id) ?? []).map((c) => ({
         type: "page" as const,
-        pageId: c.pageId!,
+        pageId: safePageId(c),
       }));
       result.push({ ...node.groupMeta, children });
     } else if (node.kind === "section") {
       const children = (childrenByParent.get(node.id) ?? []).map((c) => ({
-        pageId: c.pageId!,
+        pageId: safePageId(c),
       }));
       result.push({
         type: "section",
@@ -145,7 +162,7 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
         children,
       });
     } else {
-      result.push({ type: "page", pageId: node.pageId! });
+      result.push({ type: "page", pageId: safePageId(node) });
     }
   }
   return result;
@@ -179,13 +196,21 @@ export function arrayMove<T>(array: T[], from: number, to: number): T[] {
  * data model.
  */
 export function normalizeOrder(nodes: FlatNode[]): FlatNode[] {
+  // Only treat nodes whose parent actually exists as children.
+  // Orphaned nodes (stale parentId) become top-level instead of being dropped.
+  const containerIds = new Set(
+    nodes.filter((n) => !n.parentId).map((n) => n.id),
+  );
+  const hasValidParent = (node: FlatNode) =>
+    node.parentId !== null && containerIds.has(node.parentId);
+
   const childrenByParent = new Map<string, FlatNode[]>();
   for (const node of nodes) {
-    if (node.parentId) {
-      let list = childrenByParent.get(node.parentId);
+    if (hasValidParent(node)) {
+      let list = childrenByParent.get(node.parentId!);
       if (!list) {
         list = [];
-        childrenByParent.set(node.parentId, list);
+        childrenByParent.set(node.parentId!, list);
       }
       list.push(node);
     }
@@ -193,8 +218,9 @@ export function normalizeOrder(nodes: FlatNode[]): FlatNode[] {
 
   const result: FlatNode[] = [];
   for (const node of nodes) {
-    if (node.parentId) continue;
-    result.push(node);
+    if (hasValidParent(node)) continue;
+    // Orphaned children get promoted to top-level
+    result.push(node.parentId ? { ...node, depth: 0, parentId: null } : node);
     const children = childrenByParent.get(node.id);
     if (children) {
       result.push(...children);

@@ -59,6 +59,10 @@ function useNavLayout(): UseNavLayoutResult {
       if (layout) {
         setOverrideState(layout);
         setLegacyOrder(null);
+      } else {
+        // clearNavLayout() notifies with null — reset override state
+        // so the editor reflects the cleared layout immediately.
+        setOverrideState(null);
       }
     });
 
