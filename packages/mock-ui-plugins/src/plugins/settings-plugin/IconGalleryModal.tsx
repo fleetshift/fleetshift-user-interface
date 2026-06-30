@@ -157,12 +157,17 @@ function IconGalleryModal({
 
     let cancelled = false;
 
-    getOramaIndex().then((db) => {
-      if (!cancelled) {
-        oramaRef.current = db;
-        setIndexReady(true);
-      }
-    });
+    getOramaIndex()
+      .then((db) => {
+        if (!cancelled) {
+          oramaRef.current = db;
+          setIndexReady(true);
+        }
+      })
+      .catch(() => {
+        // Reset so a subsequent open can retry building the index.
+        indexPromise = null;
+      });
 
     return () => {
       cancelled = true;
