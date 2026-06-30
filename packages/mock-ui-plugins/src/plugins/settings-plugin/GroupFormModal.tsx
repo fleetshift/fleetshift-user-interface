@@ -15,7 +15,10 @@ import {
 } from "@patternfly/react-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import GroupIconPicker, { type GroupIconOption } from "./GroupIconPicker";
+import GroupIconPicker, {
+  findGroupIconOption,
+  type GroupIconOption,
+} from "./GroupIconPicker";
 
 export interface GroupFormData {
   name: string;
@@ -51,9 +54,7 @@ function GroupFormModal({
       setName(editGroup.label);
       setDescription(editGroup.description ?? "");
       setKeywords((editGroup.keywords ?? []).join(", "));
-      setIcon(
-        editGroup.icon ? ({ value: editGroup.icon } as GroupIconOption) : null,
-      );
+      setIcon(editGroup.icon ? findGroupIconOption(editGroup.icon) : null);
     } else {
       setName("");
       setDescription("");

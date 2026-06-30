@@ -115,4 +115,7 @@ function GroupIconPicker({ selected, onSelect }: GroupIconPickerProps) {
   );
 }
 
+export const findGroupIconOption = (value: string): GroupIconOption | null =>
+  ICON_OPTIONS.find((opt) => opt.value === value) ?? null;
+
 export default GroupIconPicker;
