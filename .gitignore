@@ -9,3 +9,4 @@ getting-started
 web
 .DS_Store
 .mf
+packages/common/src/generated/pf-icons.json

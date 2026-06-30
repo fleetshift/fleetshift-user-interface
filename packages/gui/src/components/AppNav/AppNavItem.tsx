@@ -47,8 +47,8 @@ const AppNavItem = ({ page, iconMap, iconOverride }: AppNavItemProps) => {
   const NavIcon = iconMap.get(page.title);
   const enabled = isInstalled(page.scope);
 
-  // Render priority: iconOverride ?? plugin-defined icon
-  const DisplayIcon = OverrideIcon ?? (enabled ? NavIcon : PuzzlePieceIcon);
+  // Uninstalled extensions always show puzzle icon (higher priority than overrides)
+  const DisplayIcon = enabled ? (OverrideIcon ?? NavIcon) : PuzzlePieceIcon;
 
   const link = (
     <Link to={fullPath} className={clsx("pf-v6-c-nav__link")}>

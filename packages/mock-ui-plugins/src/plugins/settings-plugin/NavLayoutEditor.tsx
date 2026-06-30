@@ -20,6 +20,10 @@ import {
 import {
   Button,
   Content,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
   Modal,
   ModalBody,
   ModalFooter,
@@ -27,17 +31,14 @@ import {
   Title,
 } from "@patternfly/react-core";
 import {
-  ImageIcon,
-  PencilAltIcon,
+  EllipsisVIcon,
   PlusCircleIcon,
   RhUiGripVerticalFillIcon,
-  TrashIcon,
-  UndoIcon,
 } from "@patternfly/react-icons";
 import { useScalprum } from "@scalprum/react-core";
 import clsx from "clsx";
 import { motion, type MotionValue } from "motion/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 
 import type { GroupFormData } from "./GroupFormModal";
 import GroupFormModal from "./GroupFormModal";
@@ -144,6 +145,14 @@ function TreeItem({
     node.kind === "group" &&
     node.groupMeta !== undefined &&
     isCustomGroup(node.groupMeta);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
+
+  const hasActions =
+    onSetIcon ||
+    (isUserGroup && onEditGroup) ||
+    (isUserGroup && onDeleteGroup) ||
+    (!isContainer && onResetItem);
 
   return (
     <motion.li
@@ -183,44 +192,72 @@ function TreeItem({
           {label}
         </span>
 
-        {onSetIcon && (
-          <Button
-            variant="plain"
-            size="sm"
-            aria-label={`Set icon for ${label}`}
-            onClick={onSetIcon}
-            icon={<ImageIcon />}
-          />
-        )}
-
-        {isUserGroup && onEditGroup && (
-          <Button
-            variant="plain"
-            size="sm"
-            aria-label={`Edit group ${label}`}
-            onClick={onEditGroup}
-            icon={<PencilAltIcon />}
-          />
-        )}
-
-        {isUserGroup && onDeleteGroup && (
-          <Button
-            variant="plain"
-            size="sm"
-            aria-label={`Delete group ${label}`}
-            onClick={onDeleteGroup}
-            icon={<TrashIcon />}
-          />
-        )}
-
-        {!isContainer && onResetItem && (
-          <Button
-            variant="plain"
-            size="sm"
-            aria-label={`Reset ${label} to default position`}
-            onClick={onResetItem}
-            icon={<UndoIcon />}
-          />
+        {hasActions && (
+          <Dropdown
+            isOpen={menuOpen}
+            onOpenChange={setMenuOpen}
+            id={menuId}
+            toggle={(toggleRef) => (
+              <MenuToggle
+                ref={toggleRef}
+                variant="plain"
+                onClick={() => setMenuOpen((prev) => !prev)}
+                isExpanded={menuOpen}
+                aria-label={`Actions for ${label}`}
+              >
+                <EllipsisVIcon />
+              </MenuToggle>
+            )}
+            popperProps={{ position: "end" }}
+          >
+            <DropdownList>
+              {onSetIcon && (
+                <DropdownItem
+                  key="icon"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onSetIcon();
+                  }}
+                >
+                  Set icon
+                </DropdownItem>
+              )}
+              {isUserGroup && onEditGroup && (
+                <DropdownItem
+                  key="edit"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEditGroup();
+                  }}
+                >
+                  Edit group
+                </DropdownItem>
+              )}
+              {!isContainer && onResetItem && (
+                <DropdownItem
+                  key="reset"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onResetItem();
+                  }}
+                >
+                  Reset position
+                </DropdownItem>
+              )}
+              {isUserGroup && onDeleteGroup && (
+                <DropdownItem
+                  key="delete"
+                  isDanger
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDeleteGroup();
+                  }}
+                >
+                  Delete group
+                </DropdownItem>
+              )}
+            </DropdownList>
+          </Dropdown>
         )}
       </div>
     </motion.li>
