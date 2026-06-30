@@ -29,6 +29,7 @@ const AppNavItem = ({ page, iconMap, iconOverride }: AppNavItemProps) => {
   );
 
   useEffect(() => {
+    let active = true;
     if (!iconOverride) {
       setOverrideIcon(null);
       return;
@@ -39,8 +40,11 @@ const AppNavItem = ({ page, iconMap, iconOverride }: AppNavItemProps) => {
       return;
     }
     loadPfIcon(iconOverride).then((comp) => {
-      setOverrideIcon(() => comp);
+      if (active) setOverrideIcon(() => comp);
     });
+    return () => {
+      active = false;
+    };
   }, [iconOverride]);
 
   const fullPath = `/${page.path}`;
