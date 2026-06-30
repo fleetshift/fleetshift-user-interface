@@ -1,3 +1,4 @@
+import { getExtensionStore } from "@fleetshift/common";
 import { AnimationsProvider } from "@patternfly/react-core";
 import { ScalprumProvider } from "@scalprum/react-core";
 import { PropsWithChildren, useMemo, useRef } from "react";
@@ -57,6 +58,7 @@ const ScalprumShell = ({ children }: PropsWithChildren) => {
           return result;
         },
         getBackendLayout: () => navLayoutRef.current,
+        extensionStore: getExtensionStore(),
         getClusterIdsForPlugin: () => [] as string[],
         getClusterName: (clusterId: string) => clusterId,
         onClustersChange: () => () => {},

@@ -185,6 +185,41 @@ export function arrayMove<T>(array: T[], from: number, to: number): T[] {
 }
 
 /**
+ * Move a group/section and its contiguous children as a single block.
+ *
+ * After `normalizeOrder`, children are always contiguous (immediately
+ * following their parent). This function extracts the parent + children
+ * as a block, removes it, adjusts the target index, and inserts the
+ * block at its new position.
+ *
+ * For non-container nodes, falls back to plain `arrayMove`.
+ */
+export function arrayMoveBlock(
+  nodes: FlatNode[],
+  from: number,
+  to: number,
+): FlatNode[] {
+  const source = nodes[from];
+  if (source.kind !== "group" && source.kind !== "section") {
+    return arrayMove(nodes, from, to);
+  }
+
+  let blockEnd = from + 1;
+  while (blockEnd < nodes.length && nodes[blockEnd].parentId === source.id) {
+    blockEnd++;
+  }
+  const blockLen = blockEnd - from;
+
+  const result = [...nodes];
+  const block = result.splice(from, blockLen);
+
+  const adjustedTo = to > from ? to - blockLen : to;
+  const insertAt = Math.max(0, Math.min(result.length, adjustedTo));
+  result.splice(insertAt, 0, ...block);
+  return result;
+}
+
+/**
  * Normalize a flat node list so children immediately follow their parent.
  *
  * After a drag operation, children may be scattered in the flat array

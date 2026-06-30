@@ -6,7 +6,7 @@ export type {
   PlacementStrategy,
 } from "./canonical.js";
 export { buildSignedInputEnvelope, hashIntent } from "./canonical.js";
-export type { CoreExtensionMeta } from "./extensionInstall.js";
+export type { CoreExtensionMeta, ExtensionStore } from "./extensionInstall.js";
 export {
   CORE_EXTENSION_DEFAULTS,
   CORE_EXTENSION_META,
@@ -30,6 +30,7 @@ export type {
 } from "./navLayout.js";
 export {
   arrayMove,
+  arrayMoveBlock,
   buildLayout,
   collectPageIds,
   flattenLayout,

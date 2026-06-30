@@ -1,3 +1,4 @@
+import type { ExtensionStore } from "./extensionInstall.js";
 import type { NavLayoutEntry } from "./navLayout.js";
 
 export interface NavPage {
@@ -12,5 +13,7 @@ export interface FleetShiftApi {
     getNavPages: () => NavPage[];
     /** Backend-defined navigation layout (before user overrides). */
     getBackendLayout: () => NavLayoutEntry[];
+    /** Shell-owned extension store — plugins use this instead of getExtensionStore(). */
+    extensionStore: ExtensionStore;
   };
 }

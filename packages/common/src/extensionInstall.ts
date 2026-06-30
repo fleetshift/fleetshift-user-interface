@@ -116,7 +116,7 @@ export async function clearNavLayout(): Promise<void> {
   await navLayoutStore.delete("layout");
 }
 
-type ExtensionStore = {
+export type ExtensionStore = {
   init: typeof initializeDefaults;
   setInstalled: typeof setInstalled;
   getInstallState: typeof getInstallState;

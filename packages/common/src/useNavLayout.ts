@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { ExtensionStore } from "./extensionInstall.js";
 import { getExtensionStore } from "./extensionInstall.js";
 import type { NavLayoutOverride } from "./navLayout.js";
 
@@ -23,12 +24,20 @@ export interface UseNavLayoutResult {
  * that wins. Otherwise falls back to the legacy `nav-order` store (flat
  * `string[]`) so existing users keep their ordering until they save from
  * the new editor.
+ *
+ * Accepts an optional `externalStore` so plugins can use the shell-owned
+ * store instance (from the Scalprum API) instead of the module-local
+ * singleton — avoids MF shared-scope issues where separate module copies
+ * produce separate subscription sets.
  */
-function useNavLayout(): UseNavLayoutResult {
+function useNavLayout(externalStore?: ExtensionStore): UseNavLayoutResult {
   const [loaded, setLoaded] = useState(false);
   const [override, setOverrideState] = useState<NavLayoutOverride | null>(null);
   const [legacyOrder, setLegacyOrder] = useState<string[] | null>(null);
-  const store = useMemo(() => getExtensionStore(), []);
+  const store = useMemo(
+    () => externalStore ?? getExtensionStore(),
+    [externalStore],
+  );
 
   useEffect(() => {
     let cancelled = false;

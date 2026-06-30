@@ -1,20 +1,14 @@
 import "./NavLayoutEditor.scss";
 
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/dom";
-import { DragDropProvider } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
 import type {
   FlatNode,
   FleetShiftApi,
   NavLayoutEntry,
 } from "@fleetshift/common";
 import {
-  arrayMove,
   buildLayout,
   CORE_EXTENSION_META,
   flattenLayout,
-  getProjection,
-  INDENTATION,
   mergeLayout,
   normalizeOrder,
   useNavLayout,
@@ -28,9 +22,14 @@ import {
   ModalHeader,
   Title,
 } from "@patternfly/react-core";
-import { GripVerticalIcon, UndoIcon } from "@patternfly/react-icons";
+import { RhUiGripVerticalFillIcon, UndoIcon } from "@patternfly/react-icons";
 import { useScalprum } from "@scalprum/react-core";
-import { useCallback, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
+import { motion, type MotionValue } from "motion/react";
+import { useCallback, useMemo, useState } from "react";
+
+import type { DragState } from "./useDragTree";
+import { useDragTree } from "./useDragTree";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,41 +75,83 @@ function splitNodes(
   return { main, bottom };
 }
 
+function computeDisplacement(
+  topIdx: number,
+  dragState: DragState | null,
+): number {
+  if (!dragState) return 0;
+  const S = dragState.sourceTopIndex;
+  const D = dragState.dropIndex;
+  const h = dragState.blockHeight;
+
+  if (D < S && topIdx >= D && topIdx < S) return h;
+  if (D > S + 1 && topIdx >= S + 1 && topIdx < D) return -h;
+  return 0;
+}
+
 // ---------------------------------------------------------------------------
 // TreeItem
 // ---------------------------------------------------------------------------
 
 interface TreeItemProps {
   node: FlatNode;
-  index: number;
   label: string;
+  isElevated: boolean;
+  isGhost: boolean;
+  isDragActive: boolean;
+  isKbDrag: boolean;
+  displacementY: number;
+  dragX?: MotionValue<number>;
+  dragY?: MotionValue<number>;
   onResetItem?: () => void;
 }
 
-function TreeItem({ node, index, label, onResetItem }: TreeItemProps) {
-  const { ref, handleRef, isDragSource } = useSortable({
-    id: node.id,
-    index,
-    data: { depth: node.depth, parentId: node.parentId, kind: node.kind },
-    transition: { idle: true },
-  });
-
+function TreeItem({
+  node,
+  label,
+  isElevated,
+  isGhost,
+  isDragActive,
+  isKbDrag,
+  displacementY,
+  dragX,
+  dragY,
+  onResetItem,
+}: TreeItemProps) {
   const isContainer = node.kind === "group" || node.kind === "section";
   const kindClass = isContainer ? "section" : "page";
 
   return (
-    <li
-      ref={ref}
-      className={`ome-settings-tree-item${isDragSource ? " ome-settings-tree-item--dragging" : ""}`}
-      // eslint-disable-next-line no-restricted-syntax -- dynamic: depth-based indentation
-      style={{ marginLeft: node.depth * INDENTATION }}
+    <motion.li
+      data-node-id={node.id}
+      className={clsx(
+        "ome-settings-tree-item",
+        node.depth === 1 && "ome-settings-tree-item--nested",
+        isElevated && "ome-settings-tree-item--elevated",
+        isGhost && !isElevated && "ome-settings-tree-item--ghost",
+      )}
+      layout={isKbDrag}
+      initial={false}
+      animate={isElevated && !isKbDrag ? undefined : { y: displacementY }}
+      style={isElevated && !isKbDrag ? { x: dragX, y: dragY } : undefined}
+      transition={
+        isDragActive
+          ? { type: "tween", duration: 0.15, ease: "easeInOut" }
+          : { duration: 0 }
+      }
     >
       <div
         className={`ome-settings-tree-item__row ome-settings-tree-item__row--${kindClass}`}
       >
-        <span ref={handleRef} className="ome-settings-tree-item__handle">
-          <GripVerticalIcon className="pf-v6-u-icon-color-subtle" />
-        </span>
+        <button
+          type="button"
+          data-drag-handle
+          className="ome-settings-tree-item__handle"
+          aria-label={`Reorder ${label}`}
+          aria-roledescription="sortable"
+        >
+          <RhUiGripVerticalFillIcon />
+        </button>
 
         <span
           className={`ome-settings-tree-item__label ome-settings-tree-item__label--${kindClass}`}
@@ -128,19 +169,29 @@ function TreeItem({ node, index, label, onResetItem }: TreeItemProps) {
           />
         )}
       </div>
-    </li>
+    </motion.li>
   );
 }
 
 // ---------------------------------------------------------------------------
-// SortableSection — one dnd-kit sortable list for main or bottom
+// SortableSection
 // ---------------------------------------------------------------------------
 
 interface SortableSectionProps {
   sectionLabel: string;
   nodes: FlatNode[];
   pageMap: Map<string, { title: string; scope: string }>;
-  onReorder: (nodes: FlatNode[]) => void;
+  dragState: DragState | null;
+  isKbDrag: boolean;
+  dragX: MotionValue<number>;
+  dragY: MotionValue<number>;
+  containerRef: React.RefObject<HTMLUListElement | null>;
+  onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
+  onPointerMove: (e: React.PointerEvent<HTMLElement>) => void;
+  onPointerUp: (e: React.PointerEvent<HTMLElement>) => void;
+  onPointerCancel: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  onBlur: (e: React.FocusEvent<HTMLElement>) => void;
   onResetItem?: (pageId: string) => void;
 }
 
@@ -148,88 +199,120 @@ function SortableSection({
   sectionLabel,
   nodes,
   pageMap,
-  onReorder,
+  dragState,
+  isKbDrag,
+  dragX,
+  dragY,
+  containerRef,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onKeyDown,
+  onBlur,
   onResetItem,
 }: SortableSectionProps) {
-  const initialDepthRef = useRef(0);
+  const parentTopIdxMap = new Map<string, number>();
+  const intraGroup =
+    dragState &&
+    dragState.dragParentId !== null &&
+    dragState.dropParentId === dragState.dragParentId
+      ? dragState.dragParentId
+      : null;
+  const nestingTarget =
+    dragState &&
+    dragState.dropParentId &&
+    dragState.dropParentId !== dragState.dragParentId
+      ? dragState.dropParentId
+      : null;
+  let topIdx = 0;
+  let siblingIdx = 0;
+  let nestChildIdx = 0;
 
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const id = String(event.operation.source?.id ?? "");
-      const node = nodes.find((n) => n.id === id);
-      initialDepthRef.current = node?.depth ?? 0;
-    },
-    [nodes],
-  );
+  const items: React.ReactNode[] = [];
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { source, target } = event.operation;
-      if (!target || !source) return;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    const label =
+      node.label ??
+      (node.pageId ? resolveLabel(node.pageId, pageMap) : node.id);
 
-      const sourceIndex =
-        "index" in source.sortable ? (source.sortable.index as number) : -1;
-      const targetIndex =
-        "index" in target.sortable ? (target.sortable.index as number) : -1;
+    if (node.depth === 0) {
+      parentTopIdxMap.set(node.id, topIdx);
+    }
 
-      if (sourceIndex === -1 || targetIndex === -1) return;
+    let effectiveIdx: number;
+    if (intraGroup) {
+      if (node.parentId === intraGroup) {
+        effectiveIdx = siblingIdx;
+        siblingIdx++;
+      } else {
+        effectiveIdx = -1;
+      }
+    } else {
+      effectiveIdx =
+        node.depth === 0
+          ? topIdx
+          : (parentTopIdxMap.get(node.parentId!) ?? topIdx);
+    }
 
-      let reordered = arrayMove(nodes, sourceIndex, targetIndex);
+    const isInDragBlock =
+      dragState?.dragId === node.id ||
+      (!!dragState?.isBlock && node.parentId === dragState.dragId);
 
-      // Apply depth projection based on drag offset
-      const draggedId = String(source.id);
-      const offsetX =
-        (event.operation.position?.current?.x ?? 0) -
-        (event.operation.position?.initial?.x ?? 0);
-      const projection = getProjection(
-        reordered,
-        draggedId,
-        offsetX,
-        initialDepthRef.current,
-      );
-      reordered = reordered.map((n) =>
-        n.id === draggedId
-          ? { ...n, depth: projection.depth, parentId: projection.parentId }
-          : n,
-      );
+    let displacementY: number;
+    if (isInDragBlock) {
+      displacementY = 0;
+    } else if (nestingTarget && node.parentId === nestingTarget) {
+      displacementY =
+        nestChildIdx >= dragState!.nestGap ? dragState!.blockHeight : 0;
+      nestChildIdx++;
+    } else if (effectiveIdx === -1) {
+      displacementY = 0;
+    } else {
+      displacementY = computeDisplacement(effectiveIdx, dragState);
+    }
 
-      // Normalize so children immediately follow their parent container.
-      // Without this, dragging a group leaves its children scattered at
-      // their old positions in the flat list.
-      reordered = normalizeOrder(reordered);
+    items.push(
+      <TreeItem
+        key={node.id}
+        node={node}
+        label={label}
+        isElevated={isInDragBlock}
+        isGhost={isInDragBlock}
+        isDragActive={!!dragState}
+        isKbDrag={isKbDrag}
+        displacementY={displacementY}
+        dragX={isInDragBlock ? dragX : undefined}
+        dragY={isInDragBlock ? dragY : undefined}
+        onResetItem={
+          onResetItem && node.kind === "page" && node.pageId
+            ? () => onResetItem(node.pageId!)
+            : undefined
+        }
+      />,
+    );
 
-      onReorder(reordered);
-    },
-    [nodes, onReorder],
-  );
+    if (node.depth === 0) topIdx++;
+  }
 
   return (
     <div>
       <div className="ome-settings-nav-editor__section-label">
         {sectionLabel}
       </div>
-      <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <ul className="ome-settings-nav-editor__tree-list">
-          {nodes.map((node, index) => {
-            const label =
-              node.label ??
-              (node.pageId ? resolveLabel(node.pageId, pageMap) : node.id);
-            return (
-              <TreeItem
-                key={node.id}
-                node={node}
-                index={index}
-                label={label}
-                onResetItem={
-                  onResetItem && node.kind === "page" && node.pageId
-                    ? () => onResetItem(node.pageId!)
-                    : undefined
-                }
-              />
-            );
-          })}
-        </ul>
-      </DragDropProvider>
+      <ul
+        ref={containerRef}
+        className="ome-settings-nav-editor__tree-list"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onKeyDown={onKeyDown}
+        onBlur={onBlur}
+      >
+        {items}
+      </ul>
     </div>
   );
 }
@@ -240,7 +323,9 @@ function SortableSection({
 
 const NavLayoutEditor = () => {
   const { api } = useScalprum<{ api: FleetShiftApi }>();
-  const { override, loaded, setOverride, clearOverride } = useNavLayout();
+  const { override, loaded, setOverride, clearOverride } = useNavLayout(
+    api.fleetshift.extensionStore,
+  );
   const [resetItemId, setResetItemId] = useState<string | null>(null);
   const [showFullReset, setShowFullReset] = useState(false);
 
@@ -275,7 +360,8 @@ const NavLayoutEditor = () => {
 
   const handleMainReorder = useCallback(
     (newMain: FlatNode[]) => {
-      const layout = buildLayout([...newMain, ...bottomNodes]);
+      const normalized = normalizeOrder(newMain);
+      const layout = buildLayout([...normalized, ...bottomNodes]);
       persistLayout(layout);
     },
     [bottomNodes, persistLayout],
@@ -283,11 +369,15 @@ const NavLayoutEditor = () => {
 
   const handleBottomReorder = useCallback(
     (newBottom: FlatNode[]) => {
-      const layout = buildLayout([...mainNodes, ...newBottom]);
+      const normalized = normalizeOrder(newBottom);
+      const layout = buildLayout([...mainNodes, ...normalized]);
       persistLayout(layout);
     },
     [mainNodes, persistLayout],
   );
+
+  const mainDrag = useDragTree(mainNodes, handleMainReorder);
+  const bottomDrag = useDragTree(bottomNodes, handleBottomReorder);
 
   const handleResetItem = useCallback((pageId: string) => {
     setResetItemId(pageId);
@@ -343,24 +433,45 @@ const NavLayoutEditor = () => {
         </Button>
       </div>
       <Content component="p">
-        Drag items to reorder the navigation sidebar. Items can be nested inside
-        groups by dragging them to the right.
+        Drag items to reorder the navigation sidebar. Groups move with their
+        children. Drag an item left to pull it out of a group, or right to nest
+        it.
       </Content>
 
       <SortableSection
         sectionLabel="Main"
-        nodes={mainNodes}
+        nodes={mainDrag.resolvedNodes}
         pageMap={pageMap}
-        onReorder={handleMainReorder}
+        dragState={mainDrag.dragState}
+        isKbDrag={mainDrag.isKbDrag}
+        dragX={mainDrag.dragX}
+        dragY={mainDrag.dragY}
+        containerRef={mainDrag.containerRef}
+        onPointerDown={mainDrag.handlePointerDown}
+        onPointerMove={mainDrag.handlePointerMove}
+        onPointerUp={mainDrag.handlePointerUp}
+        onPointerCancel={mainDrag.handlePointerCancel}
+        onKeyDown={mainDrag.handleKeyDown}
+        onBlur={mainDrag.handleBlur}
         onResetItem={override ? handleResetItem : undefined}
       />
 
       {bottomNodes.length > 0 && (
         <SortableSection
           sectionLabel="Bottom"
-          nodes={bottomNodes}
+          nodes={bottomDrag.resolvedNodes}
           pageMap={pageMap}
-          onReorder={handleBottomReorder}
+          dragState={bottomDrag.dragState}
+          isKbDrag={bottomDrag.isKbDrag}
+          dragX={bottomDrag.dragX}
+          dragY={bottomDrag.dragY}
+          containerRef={bottomDrag.containerRef}
+          onPointerDown={bottomDrag.handlePointerDown}
+          onPointerMove={bottomDrag.handlePointerMove}
+          onPointerUp={bottomDrag.handlePointerUp}
+          onPointerCancel={bottomDrag.handlePointerCancel}
+          onKeyDown={bottomDrag.handleKeyDown}
+          onBlur={bottomDrag.handleBlur}
           onResetItem={override ? handleResetItem : undefined}
         />
       )}

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { FlatNode, NavLayoutEntry } from "../navLayout";
 import {
   arrayMove,
+  arrayMoveBlock,
   buildLayout,
   flattenLayout,
   getDescendantIds,
@@ -383,6 +384,103 @@ describe("orphaned children (stale parentId)", () => {
       { id: "bad", kind: "page", depth: 0, parentId: null },
     ];
     expect(() => buildLayout(nodes)).toThrow(/missing pageId/);
+  });
+});
+
+describe("arrayMoveBlock", () => {
+  it("moves a group + children as a block forward", () => {
+    const nodes = flattenLayout(sampleLayout);
+    // Move core-group (index 1, block of 3: group + 2 children) past everything
+    const result = arrayMoveBlock(nodes, 1, nodes.length);
+    expect(result.map((n) => n.id)).toEqual([
+      "overview",
+      "sec-1",
+      "settings",
+      "core-group",
+      "clusters",
+      "nodes",
+    ]);
+  });
+
+  it("moves a group + children as a block backward", () => {
+    const nodes = flattenLayout(sampleLayout);
+    // Move sec-1 (index 4, block of 2) to before overview (index 0)
+    const result = arrayMoveBlock(nodes, 4, 0);
+    expect(result.map((n) => n.id)).toEqual([
+      "sec-1",
+      "settings",
+      "overview",
+      "core-group",
+      "clusters",
+      "nodes",
+    ]);
+  });
+
+  it("falls back to arrayMove for non-container nodes", () => {
+    const nodes = flattenLayout(sampleLayout);
+    const result = arrayMoveBlock(nodes, 0, 4);
+    // overview moved forward — same as arrayMove
+    expect(result.map((n) => n.id)).toEqual([
+      "core-group",
+      "clusters",
+      "nodes",
+      "sec-1",
+      "overview",
+      "settings",
+    ]);
+  });
+
+  it("does not mutate the original array", () => {
+    const nodes = flattenLayout(sampleLayout);
+    const ids = nodes.map((n) => n.id);
+    arrayMoveBlock(nodes, 1, 5);
+    expect(nodes.map((n) => n.id)).toEqual(ids);
+  });
+
+  it("handles moving group to same position (noop)", () => {
+    const nodes = flattenLayout(sampleLayout);
+    const result = arrayMoveBlock(nodes, 1, 1);
+    expect(result.map((n) => n.id)).toEqual(nodes.map((n) => n.id));
+  });
+
+  it("clamps target to array bounds", () => {
+    const nodes = flattenLayout(sampleLayout);
+    const result = arrayMoveBlock(nodes, 1, 100);
+    expect(result.map((n) => n.id)).toEqual([
+      "overview",
+      "sec-1",
+      "settings",
+      "core-group",
+      "clusters",
+      "nodes",
+    ]);
+  });
+});
+
+describe("arrayMoveBlock + buildLayout round-trip", () => {
+  it("block-moving a group preserves children in the layout", () => {
+    const nodes = flattenLayout(sampleLayout);
+    const moved = arrayMoveBlock(nodes, 1, 5);
+    const layout = buildLayout(moved);
+    expect(layout).toEqual([
+      { type: "page", pageId: "overview" },
+      {
+        type: "section",
+        id: "sec-1",
+        label: "Admin",
+        children: [{ pageId: "settings" }],
+      },
+      {
+        type: "group",
+        groupId: "core-group",
+        pluginKey: "core",
+        label: "Core",
+        children: [
+          { type: "page", pageId: "clusters" },
+          { type: "page", pageId: "nodes" },
+        ],
+      },
+    ]);
   });
 });
 
