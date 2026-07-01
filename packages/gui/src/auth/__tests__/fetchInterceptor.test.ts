@@ -1,9 +1,9 @@
+import type { RefObject } from "react";
+import type { AuthContextProps } from "react-oidc-context";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// We need to provide a window-like environment for this module
 const mockOriginalFetch = vi.fn().mockResolvedValue(new Response("ok"));
 
-// Set up a minimal window mock before importing
 const _origWindow = globalThis.window;
 
 beforeEach(() => {
@@ -17,8 +17,17 @@ afterEach(() => {
   globalThis.window = _origWindow as unknown as typeof globalThis.window;
 });
 
-// Dynamic import so the module picks up our mocked window
 const loadModule = () => import("../fetchInterceptor");
+
+function fakeAuthRef(token?: string): RefObject<AuthContextProps> {
+  return {
+    current: {
+      user: token
+        ? ({ access_token: token } as AuthContextProps["user"])
+        : null,
+    } as AuthContextProps,
+  };
+}
 
 describe("GUI fetchInterceptor", () => {
   beforeEach(() => {
@@ -27,9 +36,8 @@ describe("GUI fetchInterceptor", () => {
   });
 
   it("adds Authorization header to same-origin requests", async () => {
-    const { setAccessToken, installFetchInterceptor } = await loadModule();
-    setAccessToken("gui-token-abc");
-    installFetchInterceptor();
+    const { installFetchInterceptor } = await loadModule();
+    installFetchInterceptor(fakeAuthRef("gui-token-abc"));
 
     await window.fetch("http://localhost:3000/api/v1/clusters");
 
@@ -40,9 +48,8 @@ describe("GUI fetchInterceptor", () => {
   });
 
   it("adds Authorization header to relative path requests", async () => {
-    const { setAccessToken, installFetchInterceptor } = await loadModule();
-    setAccessToken("gui-token-abc");
-    installFetchInterceptor();
+    const { installFetchInterceptor } = await loadModule();
+    installFetchInterceptor(fakeAuthRef("gui-token-abc"));
 
     await window.fetch("/v1/clusters");
 
@@ -53,9 +60,8 @@ describe("GUI fetchInterceptor", () => {
   });
 
   it("does not add header for non-matching URLs", async () => {
-    const { setAccessToken, installFetchInterceptor } = await loadModule();
-    setAccessToken("gui-token-abc");
-    installFetchInterceptor();
+    const { installFetchInterceptor } = await loadModule();
+    installFetchInterceptor(fakeAuthRef("gui-token-abc"));
 
     await window.fetch("https://example.com/other");
 
@@ -65,17 +71,35 @@ describe("GUI fetchInterceptor", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
-  it("passes through unchanged when token is undefined", async () => {
-    const { setAccessToken, installFetchInterceptor } = await loadModule();
-    setAccessToken(undefined);
-    installFetchInterceptor();
+  it("does not add header when token is undefined", async () => {
+    const { installFetchInterceptor } = await loadModule();
+    installFetchInterceptor(fakeAuthRef(undefined));
 
     await window.fetch("http://localhost:3000/api/v1/clusters");
 
     expect(mockOriginalFetch).toHaveBeenCalled();
     const [, init] = mockOriginalFetch.mock.calls[0];
-    // init may be undefined — no Authorization header should be added
     const headers = new Headers(init?.headers);
     expect(headers.get("Authorization")).toBeNull();
+  });
+
+  it("picks up token changes via the ref", async () => {
+    const { installFetchInterceptor } = await loadModule();
+    const ref = fakeAuthRef(undefined);
+    installFetchInterceptor(ref);
+
+    await window.fetch("/v1/clusters");
+    const [, init1] = mockOriginalFetch.mock.calls[0];
+    expect(new Headers(init1?.headers).get("Authorization")).toBeNull();
+
+    (ref.current as AuthContextProps).user = {
+      access_token: "fresh-token",
+    } as AuthContextProps["user"];
+
+    await window.fetch("/v1/clusters");
+    const [, init2] = mockOriginalFetch.mock.calls[1];
+    expect(new Headers(init2?.headers).get("Authorization")).toBe(
+      "Bearer fresh-token",
+    );
   });
 });

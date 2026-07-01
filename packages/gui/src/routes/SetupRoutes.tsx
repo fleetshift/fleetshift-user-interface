@@ -138,11 +138,13 @@ const SetupRoutesInner = () => {
 };
 
 const SetupRoutes = () => (
-  <AppConfigProvider>
-    <ScalprumShell>
-      <SetupRoutesInner />
-    </ScalprumShell>
-  </AppConfigProvider>
+  <AuthProvider requireAuth={false}>
+    <AppConfigProvider>
+      <ScalprumShell>
+        <SetupRoutesInner />
+      </ScalprumShell>
+    </AppConfigProvider>
+  </AuthProvider>
 );
 
 export default SetupRoutes;

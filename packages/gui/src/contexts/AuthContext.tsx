@@ -15,13 +15,9 @@ import {
 
 import {
   installFetchInterceptor,
-  setAccessToken,
   setOnUnauthorized,
 } from "../auth/fetchInterceptor";
 import { fetchOidcConfig } from "../auth/oidcConfig";
-
-// Install the fetch interceptor once at module load
-installFetchInterceptor();
 
 export interface User {
   id: string;
@@ -64,7 +60,7 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
 
   // Keep the fetch interceptor token in sync
   useEffect(() => {
-    setAccessToken(accessToken);
+    installFetchInterceptor(oidcRef);
   }, [accessToken]);
 
   useEffect(() => {
@@ -78,8 +74,6 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
     // Prevent re-fetching for the same token
     if (fetchedForToken.current === accessToken) return;
     fetchedForToken.current = accessToken;
-
-    setAccessToken(accessToken);
 
     const profile = oidc.user!.profile as OidcProfile;
     const username = profile.preferred_username ?? "unknown";
@@ -108,6 +102,10 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
     oidcRef.current.signoutRedirect();
   }, []);
 
+  if (oidc.isLoading) {
+    return null;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -125,7 +123,13 @@ function KeycloakAuthInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  requireAuth = true,
+}: {
+  children: ReactNode;
+  requireAuth?: boolean;
+}) {
   const [oidcProps, setOidcProps] = useState<AuthProviderProps | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,12 +140,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   if (error) {
-    return (
-      <div className="ome-oidc-error">Failed to load OIDC config: {error}</div>
-    );
+    if (requireAuth) {
+      return (
+        <div className="ome-oidc-error">
+          Failed to load OIDC config: {error}
+        </div>
+      );
+    }
+    return <>{children}</>;
   }
 
   if (!oidcProps) return null;
+
+  if (!oidcProps.authority) {
+    return <>{children}</>;
+  }
 
   return (
     <OidcAuthProvider {...oidcProps}>

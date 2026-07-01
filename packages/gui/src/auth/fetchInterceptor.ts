@@ -1,25 +1,19 @@
-let _token: string | undefined;
+import type { RefObject } from "react";
+import type { AuthContextProps } from "react-oidc-context";
+
 let _onUnauthorized: (() => void) | undefined;
 
 const _originalFetch = window.fetch;
-
-export function setAccessToken(token: string | undefined) {
-  _token = token;
-}
 
 export function setOnUnauthorized(handler: () => void) {
   _onUnauthorized = handler;
 }
 
-export function installFetchInterceptor() {
+export function installFetchInterceptor(auth: RefObject<AuthContextProps>) {
   window.fetch = function patchedFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
-    if (!_token) {
-      return _originalFetch(input, init);
-    }
-
     const url =
       typeof input === "string"
         ? input
@@ -34,14 +28,14 @@ export function installFetchInterceptor() {
       return _originalFetch(input, init);
     }
 
+    const token = auth.current?.user?.access_token;
     const headers = new Headers(init?.headers);
-    if (!headers.has("Authorization")) {
-      headers.set("Authorization", `Bearer ${_token}`);
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
     return _originalFetch(input, { ...init, headers }).then((response) => {
       if (response.status === 401 && _onUnauthorized) {
-        console.warn("[auth] 401 from", url, "— triggering re-auth");
         _onUnauthorized();
       }
       return response;
