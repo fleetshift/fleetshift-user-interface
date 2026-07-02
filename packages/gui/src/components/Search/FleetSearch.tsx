@@ -20,6 +20,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -38,28 +39,29 @@ const KNOWN_CATEGORIES = ["nav", "cluster", "setting"];
 
 function LazyIcon({
   name,
-  fallback,
+  Fallback,
 }: {
   name: string;
-  fallback: ComponentType;
+  Fallback: ComponentType;
 }) {
-  const F = fallback;
-  const [IconC] = useState(() =>
-    name.length === 0
-      ? F
-      : lazy(() =>
-          loadPfIcon(name.replace("IconIcon", "Icon")).then((r) =>
-            r === null ? { default: fallback } : { default: r },
+  const IconC = useMemo(
+    () =>
+      name.length === 0
+        ? Fallback
+        : lazy(() =>
+            loadPfIcon(name.replace("IconIcon", "Icon")).then((r) =>
+              r === null ? { default: Fallback } : { default: r },
+            ),
           ),
-        ),
+    [name, Fallback],
   );
 
   if (name.length === 0) {
-    return <F />;
+    return <Fallback />;
   }
 
   return (
-    <Suspense fallback={<F />}>
+    <Suspense fallback={<Fallback />}>
       <IconC />
     </Suspense>
   );
@@ -72,8 +74,8 @@ function ResultIcon({
   name: string;
   IconComponent?: React.ComponentType;
 }) {
-  const fallback = IconComponent ?? SearchIcon;
-  return <LazyIcon name={name} fallback={fallback} />;
+  const Fallback = IconComponent ?? SearchIcon;
+  return <LazyIcon name={name} Fallback={Fallback} />;
 }
 
 function HighlightedText({ html }: { html: string }) {
