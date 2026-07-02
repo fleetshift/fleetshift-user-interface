@@ -31,11 +31,12 @@ import { useSearch } from "./SearchProvider";
 
 const CATEGORY_LABELS: Record<string, string> = {
   nav: "Pages",
+  "nav-group": "Custom groups",
   cluster: "Clusters",
   setting: "Settings",
 };
 
-const KNOWN_CATEGORIES = ["nav", "cluster", "setting"];
+const KNOWN_CATEGORIES = ["nav", "nav-group", "cluster", "setting"];
 
 const ICON_MAP: Record<string, React.ComponentType> = {
   CubesIcon,

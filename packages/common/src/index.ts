@@ -53,6 +53,7 @@ export {
   getCachedPfIcon,
   iconNameToFile,
   iconNameToKeywords,
+  iconSlugToName,
   loadPfIcon,
 } from "./pfIconLoader.js";
 export type { PluginLinkProps } from "./PluginLink.js";
