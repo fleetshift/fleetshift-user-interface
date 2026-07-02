@@ -1,4 +1,4 @@
-import type { NavLayoutEntry } from "@fleetshift/common";
+import type { NavLayoutEntry, NavLayoutMore } from "@fleetshift/common";
 import {
   CORE_EXTENSION_META,
   mergeLayout,
@@ -15,6 +15,7 @@ import { useAppConfig } from "../../contexts/AppConfigContext";
 import { isModuleExtension } from "../../extensions/isModuleExtension";
 import AppNavGroup from "./AppNavGroup";
 import AppNavItem from "./AppNavItem";
+import AppNavMore from "./AppNavMore";
 
 const isBottom = (scope: string) =>
   CORE_EXTENSION_META[scope]?.navSection === "bottom";
@@ -24,9 +25,10 @@ type TaggedEntry = NavLayoutEntry & { id: string; label: string };
 function splitBySection(
   entries: TaggedEntry[],
   pageMap: Map<string, PluginPage>,
-): { main: TaggedEntry[]; bottom: TaggedEntry[] } {
+): { main: TaggedEntry[]; bottom: TaggedEntry[]; more: NavLayoutMore | null } {
   const main: TaggedEntry[] = [];
   const bottom: TaggedEntry[] = [];
+  let more: NavLayoutMore | null = null;
   for (const entry of entries) {
     if (entry.type === "page") {
       const page = pageMap.get(entry.pageId);
@@ -38,9 +40,11 @@ function splitBySection(
     } else if (entry.type === "section") {
       // Sections default to main nav area
       main.push(entry);
+    } else if (entry.type === "more") {
+      more = entry as unknown as NavLayoutMore;
     }
   }
-  return { main, bottom };
+  return { main, bottom, more };
 }
 
 function tagEntries(
@@ -57,6 +61,8 @@ function tagEntries(
       result.push({ ...entry, id: entry.groupId, label: entry.label });
     } else if (entry.type === "section") {
       result.push({ ...entry, id: entry.id, label: entry.label });
+    } else if (entry.type === "more") {
+      result.push({ ...entry, id: "_more", label: "More" } as TaggedEntry);
     }
   }
   return result;
@@ -83,13 +89,13 @@ const AppNav = () => {
     return map;
   }, [pluginPages]);
 
-  const { mainEntries, bottomEntries } = useMemo(() => {
+  const { mainEntries, bottomEntries, moreEntry } = useMemo(() => {
     if (override) {
       // New path: merge backend layout with user override
       const merged = mergeLayout(navLayout, override);
       const tagged = tagEntries(merged, pageMap);
-      const { main, bottom } = splitBySection(tagged, pageMap);
-      return { mainEntries: main, bottomEntries: bottom };
+      const { main, bottom, more } = splitBySection(tagged, pageMap);
+      return { mainEntries: main, bottomEntries: bottom, moreEntry: more };
     }
 
     // Legacy path: flat string[] ordering via orderByIds
@@ -98,6 +104,7 @@ const AppNav = () => {
     return {
       mainEntries: orderByIds(main, legacyOrder, "label"),
       bottomEntries: orderByIds(bottom, legacyOrder, "label"),
+      moreEntry: null,
     };
   }, [navLayout, pageMap, override, legacyOrder]);
 
@@ -133,7 +140,12 @@ const AppNav = () => {
 
   return (
     <Nav>
-      <NavList>{mainEntries.map(renderEntry)}</NavList>
+      <NavList>
+        {mainEntries.map(renderEntry)}
+        {moreEntry && (
+          <AppNavMore more={moreEntry} pageMap={pageMap} iconMap={iconMap} />
+        )}
+      </NavList>
       {bottomEntries.length > 0 && (
         <>
           <Divider />

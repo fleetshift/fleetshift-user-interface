@@ -47,7 +47,23 @@ export interface NavLayoutSection {
   children: { pageId: string }[];
 }
 
-export type NavLayoutEntry = NavLayoutPage | NavLayoutGroup | NavLayoutSection;
+/**
+ * "More" bucket — hidden nav items tucked away in a collapsed section.
+ * Max one per layout, always last.
+ */
+export interface NavLayoutMore {
+  type: "more";
+  children: NavLayoutEntry[];
+}
+
+export type NavLayoutEntry =
+  | NavLayoutPage
+  | NavLayoutGroup
+  | NavLayoutSection
+  | NavLayoutMore;
+
+/** Fixed ID for the "More" hidden-items section in the nav and editor. */
+export const MORE_ENTRY_ID = "_more";
 
 /** Persisted override shape stored in IndexedDB (version-tagged). */
 export interface NavLayoutOverride {
@@ -338,7 +354,7 @@ export function getProjection(
 
 // --- helpers ---
 
-/** Collect every page ID referenced anywhere in a layout. */
+/** Collect every page ID referenced anywhere in a layout (including "more" children). */
 export function collectPageIds(layout: NavLayoutEntry[]): Set<string> {
   const ids = new Set<string>();
   for (const entry of layout) {
@@ -352,9 +368,34 @@ export function collectPageIds(layout: NavLayoutEntry[]): Set<string> {
       for (const child of entry.children) {
         ids.add(child.pageId);
       }
+    } else if (entry.type === "more") {
+      for (const id of collectPageIds(entry.children)) {
+        ids.add(id);
+      }
     }
   }
   return ids;
+}
+
+/**
+ * Split a layout into active entries and hidden ("more") children.
+ * The "more" entry (if any) is removed from the active list and its
+ * children are returned separately.
+ */
+export function extractMore(layout: NavLayoutEntry[]): {
+  active: NavLayoutEntry[];
+  more: NavLayoutEntry[];
+} {
+  const active: NavLayoutEntry[] = [];
+  let moreChildren: NavLayoutEntry[] = [];
+  for (const entry of layout) {
+    if (entry.type === "more") {
+      moreChildren = entry.children;
+    } else {
+      active.push(entry);
+    }
+  }
+  return { active, more: moreChildren };
 }
 
 /** Check whether stored data is the new NavLayoutOverride format. */
@@ -424,6 +465,11 @@ function dropRemoved(
     } else if (entry.type === "section") {
       const filtered = entry.children.filter((c) => !removedIds.has(c.pageId));
       result.push({ ...entry, children: filtered });
+    } else if (entry.type === "more") {
+      const filtered = dropRemoved(entry.children, removedIds);
+      if (filtered.length > 0) {
+        result.push({ ...entry, children: filtered });
+      }
     }
   }
   return result;
@@ -577,12 +623,26 @@ export function mergeLayout(
     if (!backendIds.has(id)) removedIds.add(id);
   }
 
-  // Step 1: drop removed pages from override
+  // Step 1: drop removed pages from override (handles "more" recursively)
   let merged = dropRemoved(override.layout, removedIds);
 
-  // Step 2: insert added pages
+  // Step 2: extract "more" entry before inserting added pages
+  // (added pages never auto-hide — they always go into the active part)
+  const moreIdx = merged.findIndex((e) => e.type === "more");
+  let moreEntry: NavLayoutMore | null = null;
+  if (moreIdx !== -1) {
+    moreEntry = merged[moreIdx] as NavLayoutMore;
+    merged = [...merged.slice(0, moreIdx), ...merged.slice(moreIdx + 1)];
+  }
+
+  // Step 3: insert added pages into active part only
   const backendGroupMap = buildBackendGroupMap(backend);
   merged = insertAdded(merged, addedIds, backendGroupMap);
+
+  // Step 4: re-append "more" if it still has children
+  if (moreEntry && moreEntry.children.length > 0) {
+    merged.push(moreEntry);
+  }
 
   return merged;
 }

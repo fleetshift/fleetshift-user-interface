@@ -3,11 +3,17 @@ import { describe, expect, it } from "vitest";
 import type {
   NavLayoutEntry,
   NavLayoutGroup,
+  NavLayoutMore,
   NavLayoutOverride,
   NavLayoutPage,
   NavLayoutSection,
 } from "../navLayout";
-import { collectPageIds, isNavLayoutOverride, mergeLayout } from "../navLayout";
+import {
+  collectPageIds,
+  extractMore,
+  isNavLayoutOverride,
+  mergeLayout,
+} from "../navLayout";
 
 const page = (id: string): NavLayoutPage => ({ type: "page", pageId: id });
 
@@ -32,6 +38,11 @@ const section = (
   type: "section",
   id,
   label,
+  children,
+});
+
+const more = (children: NavLayoutEntry[]): NavLayoutMore => ({
+  type: "more",
   children,
 });
 
@@ -276,5 +287,132 @@ describe("mergeLayout", () => {
     const result = mergeLayout(backend, userOverride);
     const s = result[0] as NavLayoutSection;
     expect(s.children).toEqual([{ pageId: "a" }]);
+  });
+
+  // --- "More" (hidden items) tests ---
+
+  it("preserves hidden items in more entry", () => {
+    const backend = [page("a"), page("b"), page("c")];
+    const userOverride = override([page("a"), more([page("b"), page("c")])]);
+    const result = mergeLayout(backend, userOverride);
+    expect(result).toEqual([page("a"), more([page("b"), page("c")])]);
+  });
+
+  it("drops removed pages from more entry", () => {
+    const backend = [page("a"), page("b")]; // "c" removed
+    const userOverride = override([page("a"), more([page("b"), page("c")])]);
+    const result = mergeLayout(backend, userOverride);
+    expect(result).toEqual([page("a"), more([page("b")])]);
+  });
+
+  it("removes more entry entirely when all hidden pages are removed", () => {
+    const backend = [page("a")]; // "b" and "c" removed
+    const userOverride = override([page("a"), more([page("b"), page("c")])]);
+    const result = mergeLayout(backend, userOverride);
+    expect(result).toEqual([page("a")]);
+  });
+
+  it("added pages go into active part, never into more", () => {
+    const backend = [page("a"), page("b"), page("new")]; // "new" added
+    const userOverride = override([page("a"), more([page("b")])]);
+    const result = mergeLayout(backend, userOverride);
+    // "new" should be appended to the active part, before "more"
+    expect(result[0]).toEqual(page("a"));
+    expect(result[1]).toEqual(page("new"));
+    const moreEntry = result[2] as NavLayoutMore;
+    expect(moreEntry.type).toBe("more");
+    expect(moreEntry.children).toEqual([page("b")]);
+  });
+
+  it("added pages go into backend group, not more", () => {
+    const backend = [group("g1", "core", "Core", [page("a"), page("b")])];
+    const userOverride = override([
+      group("g1", "core", "Core", [page("a")]),
+      more([page("x")]),
+    ]);
+    // "b" is new — should go into g1, not more
+    const result = mergeLayout(backend, userOverride);
+    const g = result[0] as NavLayoutGroup;
+    expect(g.children.map((c) => c.pageId)).toEqual(["a", "b"]);
+    // "x" was hidden but is now removed from backend
+    expect(result.length).toBe(1); // no more entry since "x" is removed
+  });
+
+  it("handles hidden groups inside more", () => {
+    const backend = [
+      page("a"),
+      group("g1", "core", "Core", [page("b"), page("c")]),
+    ];
+    const userOverride = override([
+      page("a"),
+      more([group("g1", "core", "Core", [page("b"), page("c")])]),
+    ]);
+    const result = mergeLayout(backend, userOverride);
+    expect(result[0]).toEqual(page("a"));
+    const moreEntry = result[1] as NavLayoutMore;
+    expect(moreEntry.type).toBe("more");
+    const hiddenGroup = moreEntry.children[0] as NavLayoutGroup;
+    expect(hiddenGroup.groupId).toBe("g1");
+    expect(hiddenGroup.children.map((c) => c.pageId)).toEqual(["b", "c"]);
+  });
+
+  it("drops removed pages from groups inside more", () => {
+    const backend = [page("a"), page("b")]; // "c" removed
+    const userOverride = override([
+      page("a"),
+      more([group("g1", "core", "Core", [page("b"), page("c")])]),
+    ]);
+    const result = mergeLayout(backend, userOverride);
+    const moreEntry = result[1] as NavLayoutMore;
+    const hiddenGroup = moreEntry.children[0] as NavLayoutGroup;
+    expect(hiddenGroup.children.map((c) => c.pageId)).toEqual(["b"]);
+  });
+});
+
+describe("collectPageIds — more", () => {
+  it("collects page IDs from more entry", () => {
+    const ids = collectPageIds([page("a"), more([page("b"), page("c")])]);
+    expect(ids).toEqual(new Set(["a", "b", "c"]));
+  });
+
+  it("collects page IDs from groups inside more", () => {
+    const ids = collectPageIds([
+      more([group("g1", "core", "Core", [page("x"), page("y")])]),
+    ]);
+    expect(ids).toEqual(new Set(["x", "y"]));
+  });
+});
+
+describe("extractMore", () => {
+  it("separates active entries from more children", () => {
+    const layout: NavLayoutEntry[] = [
+      page("a"),
+      page("b"),
+      more([page("c"), page("d")]),
+    ];
+    const result = extractMore(layout);
+    expect(result.active).toEqual([page("a"), page("b")]);
+    expect(result.more).toEqual([page("c"), page("d")]);
+  });
+
+  it("returns empty more when no more entry exists", () => {
+    const layout: NavLayoutEntry[] = [page("a"), page("b")];
+    const result = extractMore(layout);
+    expect(result.active).toEqual([page("a"), page("b")]);
+    expect(result.more).toEqual([]);
+  });
+
+  it("handles empty layout", () => {
+    const result = extractMore([]);
+    expect(result.active).toEqual([]);
+    expect(result.more).toEqual([]);
+  });
+
+  it("handles groups inside more", () => {
+    const hiddenGroup = group("g1", "core", "Core", [page("x")]);
+    const layout: NavLayoutEntry[] = [page("a"), more([hiddenGroup])];
+    const result = extractMore(layout);
+    expect(result.active).toEqual([page("a")]);
+    expect(result.more).toEqual([hiddenGroup]);
   });
 });

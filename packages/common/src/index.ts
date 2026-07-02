@@ -23,6 +23,7 @@ export type {
   FlatNode,
   NavLayoutEntry,
   NavLayoutGroup,
+  NavLayoutMore,
   NavLayoutOverride,
   NavLayoutPage,
   NavLayoutSection,
@@ -34,6 +35,7 @@ export {
   buildLayout,
   collectPageIds,
   CUSTOM_GROUP_PREFIX,
+  extractMore,
   flattenLayout,
   getDescendantIds,
   getProjection,
@@ -41,6 +43,7 @@ export {
   isCustomGroup,
   isNavLayoutOverride,
   mergeLayout,
+  MORE_ENTRY_ID,
   normalizeOrder,
   slugify,
 } from "./navLayout.js";
