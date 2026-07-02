@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 
 import { getCachedPfIcon, loadPfIcon } from "./pfIconLoader.js";
 
+/** PF icons accept at least className; keep narrow to avoid `any`. */
+type PfIconComponent = ComponentType<{ className?: string }>;
+
 interface DynamicPfIconProps {
   /** PascalCase PF icon name, e.g. "CogIcon". */
   name: string;
@@ -20,19 +23,19 @@ interface DynamicPfIconProps {
  * <DynamicPfIcon name="FolderOpenIcon" />
  */
 export default function DynamicPfIcon({ name, className }: DynamicPfIconProps) {
-  const [Icon, setIcon] = useState<ComponentType | null>(
-    () => getCachedPfIcon(name) ?? null,
+  const [Icon, setIcon] = useState<PfIconComponent | null>(
+    () => (getCachedPfIcon(name) as PfIconComponent | undefined) ?? null,
   );
 
   useEffect(() => {
     let active = true;
-    const cached = getCachedPfIcon(name);
+    const cached = getCachedPfIcon(name) as PfIconComponent | undefined;
     if (cached) {
       setIcon(() => cached);
       return;
     }
     loadPfIcon(name).then((comp) => {
-      if (active && comp) setIcon(() => comp);
+      if (active && comp) setIcon(() => comp as PfIconComponent);
     });
     return () => {
       active = false;
