@@ -206,6 +206,20 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Build lookup for page-level icon overrides from merged layout
+    const pageIconOverride = new Map<string, string>();
+    forEachEntry(mergedLayout, (entry) => {
+      if (entry.type === "page" && entry.iconOverride) {
+        pageIconOverride.set(entry.pageId, entry.iconOverride);
+      } else if (entry.type === "group") {
+        for (const child of entry.children) {
+          if (child.iconOverride) {
+            pageIconOverride.set(child.pageId, child.iconOverride);
+          }
+        }
+      }
+    });
+
     // Pages inside groups are indexed via module extensions below — skip them here
     const groupedPageIds = new Set(pageToGroup.keys());
 
@@ -219,6 +233,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const navId = `nav-${page.id}`;
       const pathname = `/${page.path}`;
       const status = isInstalled(page.scope) ? "" : "not-enabled";
+      const pageIcon = pageIconOverride.get(page.id);
+      const iconName = pageIcon ? iconSlugToName(pageIcon) : "CubesIcon";
       inserts.push(
         insertEntry(db, {
           id: navId,
@@ -226,11 +242,23 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           description: `Navigate to ${page.title}`,
           category: "nav",
           pathname,
-          icon: "CubesIcon",
+          icon: iconName,
           status,
           meta: page.path,
         }),
       );
+
+      // Load overridden icon component for search result rendering
+      if (pageIcon) {
+        const cached = getCachedPfIcon(iconName);
+        if (cached) {
+          iconMapRef.current.set(navId, cached);
+        } else {
+          loadPfIcon(iconName).then((comp) => {
+            if (!cancelled && comp) iconMapRef.current.set(navId, comp);
+          });
+        }
+      }
 
       featureParentRef.current.set(page.id, {
         id: navId,
@@ -238,7 +266,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         description: `Navigate to ${page.title}`,
         category: "nav",
         pathname,
-        icon: "CubesIcon",
+        icon: iconName,
         status,
       });
     }
@@ -282,6 +310,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const group = pageToGroup.get(page.id);
       const groupFeature = group ? `group.${group.groupId}` : undefined;
 
+      // Resolve icon: page iconOverride > extension icon > group icon > fallback
+      const extPageIcon = pageIconOverride.get(page.id);
+      let resolvedIconName = "";
+      if (extPageIcon) {
+        resolvedIconName = iconSlugToName(extPageIcon);
+      } else if (!icon && group && isCustomGroup(group) && group.icon) {
+        resolvedIconName = iconSlugToName(group.icon);
+      }
+
       inserts.push(
         insertEntry(db, {
           id: entryId,
@@ -289,7 +326,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           description: description ?? `Navigate to ${label}`,
           category: "nav",
           pathname: basePath,
-          icon: "",
+          icon: resolvedIconName,
           status: moduleStatus,
           meta: keywords ? keywords.join(" ") : "",
           feature: groupFeature,
@@ -298,6 +335,16 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
       if (icon) {
         iconMapRef.current.set(entryId, icon);
+      } else if (resolvedIconName) {
+        // Load the overridden or inherited icon component
+        const cached = getCachedPfIcon(resolvedIconName);
+        if (cached) {
+          iconMapRef.current.set(entryId, cached);
+        } else {
+          loadPfIcon(resolvedIconName).then((comp) => {
+            if (!cancelled && comp) iconMapRef.current.set(entryId, comp);
+          });
+        }
       }
       if (searchResult) {
         componentMapRef.current.set(entryId, searchResult);
