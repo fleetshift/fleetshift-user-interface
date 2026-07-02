@@ -150,12 +150,12 @@ export interface ResourceApi<Props = Record<string, unknown>> {
   get(resourceName: string): Promise<ResourceSearchResult<Props> | undefined>;
 
   /**
-   * Async generator that automatically follows `nextPageToken` and
-   * yields one page of results at a time.
+   * Fetch all pages of results and return a flat array.
+   * Automatically follows `nextPageToken` until exhausted.
    */
   searchAll(
     params?: Omit<SearchResourcesParams, "pageToken">,
-  ): AsyncGenerator<ResourceSearchResult<Props>[], void, undefined>;
+  ): Promise<ResourceSearchResult<Props>[]>;
 }
 
 /**
@@ -181,6 +181,92 @@ export interface ResourceApi<Props = Record<string, unknown>> {
  *
  * @param scope - Scope to search within (use `"-"` for global).
  */
+// ---------------------------------------------------------------------------
+// Generic REST API client
+// ---------------------------------------------------------------------------
+
+/**
+ * Generic REST client for non-search API calls (CRUD operations).
+ *
+ * Replaces per-plugin `makeRequest` / `mgmtFetch` wrappers with a shared,
+ * typed client that uses the same structured {@link ResourceApiError} error
+ * handling as the search client.
+ */
+export interface ApiClient {
+  /** GET `basePath + path` with optional query params. */
+  get<T>(path: string, params?: Record<string, string>): Promise<T>;
+  /** POST `basePath + path` with optional JSON body. */
+  post<T>(path: string, body?: unknown): Promise<T>;
+  /** PUT `basePath + path` with optional JSON body. */
+  put<T>(path: string, body?: unknown): Promise<T>;
+  /** PATCH `basePath + path` with optional JSON body. */
+  patch<T>(path: string, body?: unknown): Promise<T>;
+  /** DELETE `basePath + path`. */
+  delete<T>(path: string): Promise<T>;
+}
+
+async function apiRequest<T>(
+  basePath: string,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${basePath}${path}`, init);
+  if (!res.ok) {
+    const rpcStatus = (await res.json().catch(() => null)) as RpcStatus | null;
+    throw new ResourceApiError(res.status, rpcStatus);
+  }
+  return res.json() as Promise<T>;
+}
+
+function jsonInit(method: string, body?: unknown): RequestInit {
+  if (body == null) return { method };
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
+
+/**
+ * Create a generic REST client scoped to `basePath`.
+ *
+ * @example
+ * ```ts
+ * const mgmt = createApiClient("/v1");
+ * const deployments = await mgmt.get<ListDeploymentsResponse>("/deployments");
+ *
+ * const gcphcp = createApiClient("/apis/gcphcp.fleetshift.io/v1");
+ * const cluster = await gcphcp.post<GcpHcpCluster>(
+ *   "/clusters?cluster_id=my-cluster",
+ *   { spec },
+ * );
+ * ```
+ */
+export function createApiClient(basePath: string): ApiClient {
+  return {
+    get<T>(path: string, params?: Record<string, string>): Promise<T> {
+      const qs = params ? `?${new URLSearchParams(params).toString()}` : "";
+      return apiRequest<T>(basePath, `${path}${qs}`);
+    },
+    post<T>(path: string, body?: unknown): Promise<T> {
+      return apiRequest<T>(basePath, path, jsonInit("POST", body));
+    },
+    put<T>(path: string, body?: unknown): Promise<T> {
+      return apiRequest<T>(basePath, path, jsonInit("PUT", body));
+    },
+    patch<T>(path: string, body?: unknown): Promise<T> {
+      return apiRequest<T>(basePath, path, jsonInit("PATCH", body));
+    },
+    delete<T>(path: string): Promise<T> {
+      return apiRequest<T>(basePath, path, { method: "DELETE" });
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resource search API client
+// ---------------------------------------------------------------------------
+
 export function createResourceApi<Props = Record<string, unknown>>(
   scope: string,
 ): ResourceApi<Props> {
@@ -201,16 +287,18 @@ export function createResourceApi<Props = Record<string, unknown>>(
       return results[0];
     },
 
-    async *searchAll(params) {
+    async searchAll(params) {
+      const allResults: ResourceSearchResult<Props>[] = [];
       let pageToken: string | undefined;
       do {
         const response = await searchRequest<Props>(scope, {
           ...params,
           pageToken,
         });
-        yield response.results;
+        allResults.push(...response.results);
         pageToken = response.nextPageToken || undefined;
       } while (pageToken);
+      return allResults;
     },
   };
 }

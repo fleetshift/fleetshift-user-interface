@@ -4,7 +4,11 @@ import type {
   ResourceSearchResult,
   SearchResourcesResponse,
 } from "../resourceApi";
-import { createResourceApi, ResourceApiError } from "../resourceApi";
+import {
+  createApiClient,
+  createResourceApi,
+  ResourceApiError,
+} from "../resourceApi";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -191,7 +195,7 @@ describe("createResourceApi", () => {
   });
 
   describe("searchAll", () => {
-    it("yields pages and follows nextPageToken", async () => {
+    it("returns flat array following nextPageToken across pages", async () => {
       const page1: SearchResourcesResponse<TestProps> = {
         results: [makeResult({ name: "//a" })],
         nextPageToken: "page2",
@@ -217,31 +221,136 @@ describe("createResourceApi", () => {
         } as Response);
 
       const api = createResourceApi<TestProps>("-");
-      const pages: ResourceSearchResult<TestProps>[][] = [];
+      const results = await api.searchAll({ filter: 'collection == "x"' });
 
-      for await (const page of api.searchAll({ filter: 'collection == "x"' })) {
-        pages.push(page);
-      }
-
-      expect(pages).toHaveLength(2);
-      expect(pages[0]).toHaveLength(1);
-      expect(pages[1]).toHaveLength(1);
+      expect(results).toHaveLength(2);
+      expect(results[0].name).toBe("//a");
+      expect(results[1].name).toBe("//b");
 
       // Verify second call includes pageToken
       const { params } = parseRelativeUrl(spy.mock.calls[1][0] as string);
       expect(params.get("pageToken")).toBe("page2");
     });
 
-    it("yields a single page when nextPageToken is empty", async () => {
+    it("returns results from a single page when nextPageToken is empty", async () => {
       mockFetch({ results: [makeResult()], nextPageToken: "" });
       const api = createResourceApi("-");
-      const pages: unknown[][] = [];
 
-      for await (const page of api.searchAll()) {
-        pages.push(page);
-      }
+      const results = await api.searchAll();
 
-      expect(pages).toHaveLength(1);
+      expect(results).toHaveLength(1);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createApiClient
+// ---------------------------------------------------------------------------
+
+describe("createApiClient", () => {
+  it("GET appends query params", async () => {
+    const spy = mockFetch({ id: "1" });
+    const client = createApiClient("/v1");
+
+    const res = await client.get<{ id: string }>("/items", { foo: "bar" });
+
+    expect(res).toEqual({ id: "1" });
+    const calledUrl = spy.mock.calls[0][0] as string;
+    expect(calledUrl).toBe("/v1/items?foo=bar");
+  });
+
+  it("GET without params omits query string", async () => {
+    const spy = mockFetch({ ok: true });
+    const client = createApiClient("/api");
+
+    await client.get("/status");
+
+    expect(spy.mock.calls[0][0]).toBe("/api/status");
+  });
+
+  it("POST sends JSON body", async () => {
+    const spy = mockFetch({ name: "new" });
+    const client = createApiClient("/v1");
+
+    await client.post("/items", { name: "new" });
+
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/v1/items");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(init.body as string)).toEqual({ name: "new" });
+  });
+
+  it("POST without body omits Content-Type", async () => {
+    const spy = mockFetch({});
+    const client = createApiClient("/v1");
+
+    await client.post("/actions/trigger");
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(init.method).toBe("POST");
+    expect(init.headers).toBeUndefined();
+  });
+
+  it("PUT sends JSON body", async () => {
+    const spy = mockFetch({ updated: true });
+    const client = createApiClient("/v1");
+
+    await client.put("/items/1", { name: "updated" });
+
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/v1/items/1");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toEqual({ name: "updated" });
+  });
+
+  it("PATCH sends JSON body", async () => {
+    const spy = mockFetch({ patched: true });
+    const client = createApiClient("/v1");
+
+    await client.patch("/items/1", { name: "patched" });
+
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/v1/items/1");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ name: "patched" });
+  });
+
+  it("DELETE sends method only", async () => {
+    const spy = mockFetch({});
+    const client = createApiClient("/v1");
+
+    await client.delete("/items/1");
+
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/v1/items/1");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("throws ResourceApiError on non-OK response", async () => {
+    mockFetch({ code: 5, message: "Not found" }, 404);
+    const client = createApiClient("/v1");
+
+    await expect(client.get("/missing")).rejects.toThrow(ResourceApiError);
+    await expect(client.get("/missing")).rejects.toMatchObject({
+      status: 404,
+      rpcStatus: { code: 5, message: "Not found" },
+    });
+  });
+
+  it("throws ResourceApiError with null rpcStatus on unparseable body", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      json: () => Promise.reject(new SyntaxError("Unexpected token")),
+    } as unknown as Response);
+
+    const client = createApiClient("/v1");
+    const err = await client.get("/broken").catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ResourceApiError);
+    expect((err as ResourceApiError).status).toBe(500);
+    expect((err as ResourceApiError).rpcStatus).toBeNull();
   });
 });

@@ -60,6 +60,7 @@ export {
 export type { PluginLinkProps } from "./PluginLink.js";
 export { default as PluginLink } from "./PluginLink.js";
 export type {
+  ApiClient,
   Condition,
   ResourceApi,
   ResourceSearchResult,
@@ -67,7 +68,11 @@ export type {
   SearchResourcesParams,
   SearchResourcesResponse,
 } from "./resourceApi.js";
-export { createResourceApi, ResourceApiError } from "./resourceApi.js";
+export {
+  createApiClient,
+  createResourceApi,
+  ResourceApiError,
+} from "./resourceApi.js";
 export type { FleetShiftApi, NavPage } from "./scalprum.js";
 export type {
   ClusterProviderCardProps,
