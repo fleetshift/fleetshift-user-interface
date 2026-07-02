@@ -430,7 +430,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
 
     // Group parent entries: one per merged layout group so children link via `feature`.
-    // Custom groups get their own "nav-group" category with description/keywords/icon.
+    // Group parent entries: one per merged layout group so children link via `feature`.
     for (const group of groupsById.values()) {
       const custom = isCustomGroup(group);
       const groupFeatureId = `group.${group.groupId}`;
@@ -449,7 +449,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         group.label,
         ...(custom && group.keywords ? group.keywords : []),
       ].join(" ");
-      const category = custom ? "nav-group" : "nav";
+      const category = "nav";
       const iconName =
         custom && group.icon ? iconSlugToName(group.icon) : "CogIcon";
 
