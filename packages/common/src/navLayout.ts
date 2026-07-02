@@ -89,6 +89,8 @@ export interface FlatNode {
   pageId?: string;
   label?: string;
   groupMeta?: NavLayoutGroup;
+  /** Preserved from NavLayoutPage.iconOverride so flatten→build roundtrips keep it. */
+  iconOverride?: string;
 }
 
 export const INDENTATION = 36;
@@ -104,6 +106,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
         depth: 0,
         parentId: null,
         pageId: entry.pageId,
+        iconOverride: entry.iconOverride,
       });
     } else if (entry.type === "group") {
       result.push({
@@ -121,6 +124,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
           depth: 1,
           parentId: entry.groupId,
           pageId: child.pageId,
+          iconOverride: child.iconOverride,
         });
       }
     } else if (entry.type === "section") {
@@ -189,10 +193,14 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
     if (hasValidParent(node)) continue;
 
     if (node.kind === "group" && node.groupMeta) {
-      const children = (childrenByParent.get(node.id) ?? []).map((c) => ({
-        type: "page" as const,
-        pageId: safePageId(c),
-      }));
+      const children = (childrenByParent.get(node.id) ?? []).map((c) => {
+        const child: NavLayoutPage = {
+          type: "page" as const,
+          pageId: safePageId(c),
+        };
+        if (c.iconOverride) child.iconOverride = c.iconOverride;
+        return child;
+      });
       result.push({ ...node.groupMeta, children });
     } else if (node.kind === "section") {
       const children = (childrenByParent.get(node.id) ?? []).map((c) => ({
@@ -205,7 +213,9 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
         children,
       });
     } else {
-      result.push({ type: "page", pageId: safePageId(node) });
+      const page: NavLayoutPage = { type: "page", pageId: safePageId(node) };
+      if (node.iconOverride) page.iconOverride = node.iconOverride;
+      result.push(page);
     }
   }
   return result;

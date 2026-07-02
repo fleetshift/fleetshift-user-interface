@@ -9,8 +9,10 @@ import type {
   NavLayoutSection,
 } from "../navLayout";
 import {
+  buildLayout,
   collectPageIds,
   extractMore,
+  flattenLayout,
   isNavLayoutOverride,
   mergeLayout,
 } from "../navLayout";
@@ -380,6 +382,45 @@ describe("collectPageIds — more", () => {
       more([group("g1", "core", "Core", [page("x"), page("y")])]),
     ]);
     expect(ids).toEqual(new Set(["x", "y"]));
+  });
+});
+
+describe("flattenLayout / buildLayout — iconOverride roundtrip", () => {
+  it("preserves iconOverride on top-level pages", () => {
+    const layout: NavLayoutEntry[] = [
+      { type: "page", pageId: "a", iconOverride: "CogIcon" },
+      page("b"),
+    ];
+    const flat = flattenLayout(layout);
+    expect(flat[0].iconOverride).toBe("CogIcon");
+    expect(flat[1].iconOverride).toBeUndefined();
+    const rebuilt = buildLayout(flat);
+    expect(rebuilt[0]).toEqual({
+      type: "page",
+      pageId: "a",
+      iconOverride: "CogIcon",
+    });
+    expect(rebuilt[1]).toEqual(page("b"));
+  });
+
+  it("preserves iconOverride on group children", () => {
+    const layout: NavLayoutEntry[] = [
+      group("g1", "core", "Core", [
+        { type: "page", pageId: "a", iconOverride: "LockIcon" },
+        page("b"),
+      ]),
+    ];
+    const flat = flattenLayout(layout);
+    const childA = flat.find((n) => n.pageId === "a");
+    expect(childA?.iconOverride).toBe("LockIcon");
+    const rebuilt = buildLayout(flat);
+    const g = rebuilt[0] as NavLayoutGroup;
+    expect(g.children[0]).toEqual({
+      type: "page",
+      pageId: "a",
+      iconOverride: "LockIcon",
+    });
+    expect(g.children[1]).toEqual(page("b"));
   });
 });
 

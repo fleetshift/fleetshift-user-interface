@@ -425,6 +425,15 @@ function SortableSection({
 
     const isAfterDivider = hiddenDividerIndex >= 0 && i > hiddenDividerIndex;
 
+    // Hide/restore only supported for top-level pages, top-level groups,
+    // and group children. Sections and section children are not supported.
+    const isSection = node.kind === "section";
+    const isSectionChild =
+      node.depth === 1 &&
+      node.parentId !== null &&
+      nodes.some((n) => n.id === node.parentId && n.kind === "section");
+    const canHideRestore = !isSection && !isSectionChild;
+
     items.push(
       <TreeItem
         key={node.id}
@@ -459,12 +468,15 @@ function SortableSection({
             : undefined
         }
         onHideItem={
-          onHideItem && !isAfterDivider && node.id !== MORE_ENTRY_ID
+          onHideItem &&
+          !isAfterDivider &&
+          node.id !== MORE_ENTRY_ID &&
+          canHideRestore
             ? () => onHideItem(node.id)
             : undefined
         }
         onRestoreItem={
-          onRestoreItem && isAfterDivider
+          onRestoreItem && isAfterDivider && canHideRestore
             ? () => onRestoreItem(node.id)
             : undefined
         }
@@ -659,7 +671,7 @@ const NavLayoutEditor = () => {
 
   const handleHideItem = useCallback(
     (nodeId: string) => {
-      const currentLayout = override?.layout ?? effectiveLayout;
+      const currentLayout = effectiveLayout;
       const { active, more } = extractMore(currentLayout);
 
       // Find the entry to hide (could be a page or group at any depth)
@@ -701,12 +713,12 @@ const NavLayoutEditor = () => {
       ];
       persistLayout(layout);
     },
-    [override, effectiveLayout, persistLayout],
+    [effectiveLayout, persistLayout],
   );
 
   const handleRestoreItem = useCallback(
     (nodeId: string) => {
-      const currentLayout = override?.layout ?? effectiveLayout;
+      const currentLayout = effectiveLayout;
       const { active, more } = extractMore(currentLayout);
 
       // Find the entry to restore from hidden items
@@ -731,7 +743,7 @@ const NavLayoutEditor = () => {
       }
       persistLayout(layout);
     },
-    [override, effectiveLayout, persistLayout],
+    [effectiveLayout, persistLayout],
   );
 
   const handleResetItem = useCallback((pageId: string) => {

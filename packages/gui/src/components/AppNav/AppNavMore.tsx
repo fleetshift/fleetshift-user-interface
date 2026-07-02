@@ -1,4 +1,4 @@
-import type { NavLayoutMore } from "@fleetshift/common";
+import { MORE_ENTRY_ID, type NavLayoutMore } from "@fleetshift/common";
 import { NavExpandable } from "@patternfly/react-core";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
@@ -63,7 +63,7 @@ const AppNavMore = ({ more, pageMap, iconMap }: AppNavMoreProps) => {
   return (
     <NavExpandable
       title="More"
-      groupId="_more"
+      groupId={MORE_ENTRY_ID}
       isActive={hasActiveChild}
       isExpanded={hasActiveChild}
     >
