@@ -356,8 +356,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         description: description ?? `Navigate to ${label}`,
         category: "nav",
         pathname: basePath,
-        icon: "",
+        icon: resolvedIconName,
         status: moduleStatus,
+        feature: groupFeature,
       });
 
       if (extensionPoints) {
@@ -429,7 +430,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Group parent entries: one per merged layout group so children link via `feature`.
     // Group parent entries: one per merged layout group so children link via `feature`.
     for (const group of groupsById.values()) {
       const custom = isCustomGroup(group);
@@ -519,17 +519,16 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    for (const [, items] of Object.entries(results)) {
-      const resultIds = new Set(items.map((i) => i.id));
-      const needed = new Set<string>();
+    for (const items of Object.values(results)) {
+      const needed: string[] = [];
+      const seen = new Set<string>();
       for (const item of items) {
-        if (!item.feature) continue;
-        const parent = featureParentRef.current.get(item.feature);
-        if (parent && !resultIds.has(parent.id)) {
-          needed.add(item.feature);
-        }
+        if (item.feature) needed.push(item.feature);
       }
-      for (const featureId of needed) {
+      while (needed.length > 0) {
+        const featureId = needed.shift();
+        if (!featureId || seen.has(featureId)) continue;
+        seen.add(featureId);
         const parent = featureParentRef.current.get(featureId);
         if (!parent) continue;
         const targetCat = parent.category;
@@ -541,6 +540,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         const icon = iconMapRef.current.get(parentItem.id);
         if (icon) parentItem.IconComponent = icon;
         results[targetCat] = [parentItem, ...targetItems];
+        if (parentItem.feature) needed.push(parentItem.feature);
       }
     }
 
