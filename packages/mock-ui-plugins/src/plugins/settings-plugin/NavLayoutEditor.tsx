@@ -10,9 +10,12 @@ import {
   buildLayout,
   CORE_EXTENSION_META,
   CUSTOM_GROUP_PREFIX,
+  extractMore,
   flattenLayout,
   isCustomGroup,
   mergeLayout,
+  MORE_ENTRY_ID,
+  NodeKind,
   normalizeOrder,
   slugify,
   useNavLayout,
@@ -67,12 +70,12 @@ function splitNodes(
   const bottomContainerIds = new Set<string>();
   for (const node of nodes) {
     if (node.depth !== 0) continue;
-    if (node.kind === "page" && node.pageId) {
+    if (node.kind === NodeKind.Page && node.pageId) {
       const scope = pageMap.get(node.pageId)?.scope;
       if (scope && CORE_EXTENSION_META[scope]?.navSection === "bottom") {
         bottomContainerIds.add(node.id);
       }
-    } else if (node.kind === "group" && node.groupMeta) {
+    } else if (node.kind === NodeKind.Group && node.groupMeta) {
       const scope = `${node.groupMeta.pluginKey}-plugin`;
       if (CORE_EXTENSION_META[scope]?.navSection === "bottom") {
         bottomContainerIds.add(node.id);
@@ -113,6 +116,7 @@ interface TreeItemProps {
   label: string;
   isElevated: boolean;
   isGhost: boolean;
+  isHidden: boolean;
   isDragActive: boolean;
   isKbDrag: boolean;
   displacementY: number;
@@ -122,6 +126,8 @@ interface TreeItemProps {
   onEditGroup?: () => void;
   onDeleteGroup?: () => void;
   onSetIcon?: () => void;
+  onHideItem?: () => void;
+  onRestoreItem?: () => void;
 }
 
 function TreeItem({
@@ -129,6 +135,7 @@ function TreeItem({
   label,
   isElevated,
   isGhost,
+  isHidden,
   isDragActive,
   isKbDrag,
   displacementY,
@@ -138,18 +145,36 @@ function TreeItem({
   onEditGroup,
   onDeleteGroup,
   onSetIcon,
+  onHideItem,
+  onRestoreItem,
 }: TreeItemProps) {
-  const isContainer = node.kind === "group" || node.kind === "section";
+  const isDivider = node.id === MORE_ENTRY_ID;
+  const isContainer =
+    node.kind === NodeKind.Group || node.kind === NodeKind.Section;
   const kindClass = isContainer ? "section" : "page";
   const isUserGroup =
-    node.kind === "group" &&
+    node.kind === NodeKind.Group &&
     node.groupMeta !== undefined &&
     isCustomGroup(node.groupMeta);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
 
+  // Divider node — non-draggable "Hidden" label
+  if (isDivider) {
+    return (
+      <li
+        data-node-id={node.id}
+        className="ome-settings-tree-item ome-settings-tree-item--divider"
+      >
+        <div className="ome-settings-nav-editor__hidden-divider">Hidden</div>
+      </li>
+    );
+  }
+
   const hasActions =
     onSetIcon ||
+    onHideItem ||
+    onRestoreItem ||
     (isUserGroup && onEditGroup) ||
     (isUserGroup && onDeleteGroup) ||
     (!isContainer && onResetItem);
@@ -162,6 +187,7 @@ function TreeItem({
         node.depth === 1 && "ome-settings-tree-item--nested",
         isElevated && "ome-settings-tree-item--elevated",
         isGhost && !isElevated && "ome-settings-tree-item--ghost",
+        isHidden && !isElevated && "ome-settings-tree-item--hidden",
       )}
       layout={isKbDrag}
       initial={false}
@@ -244,6 +270,28 @@ function TreeItem({
                   Reset position
                 </DropdownItem>
               )}
+              {onHideItem && (
+                <DropdownItem
+                  key="hide"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onHideItem();
+                  }}
+                >
+                  Hide
+                </DropdownItem>
+              )}
+              {onRestoreItem && (
+                <DropdownItem
+                  key="restore"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRestoreItem();
+                  }}
+                >
+                  Restore
+                </DropdownItem>
+              )}
               {isUserGroup && onDeleteGroup && (
                 <DropdownItem
                   key="delete"
@@ -286,7 +334,11 @@ interface SortableSectionProps {
   onResetItem?: (pageId: string) => void;
   onEditGroup?: (groupId: string) => void;
   onDeleteGroup?: (groupId: string) => void;
-  onSetIcon?: (nodeId: string, kind: "page" | "group") => void;
+  onSetIcon?: (nodeId: string, kind: NodeKind.Page | NodeKind.Group) => void;
+  onHideItem?: (nodeId: string) => void;
+  onRestoreItem?: (nodeId: string) => void;
+  /** Index of the hidden divider in the nodes array (-1 = no divider). */
+  hiddenDividerIndex?: number;
 }
 
 function SortableSection({
@@ -308,6 +360,9 @@ function SortableSection({
   onEditGroup,
   onDeleteGroup,
   onSetIcon,
+  onHideItem,
+  onRestoreItem,
+  hiddenDividerIndex = -1,
 }: SortableSectionProps) {
   const parentTopIdxMap = new Map<string, number>();
   const intraGroup =
@@ -370,6 +425,17 @@ function SortableSection({
       displacementY = computeDisplacement(effectiveIdx, dragState);
     }
 
+    const isAfterDivider = hiddenDividerIndex >= 0 && i > hiddenDividerIndex;
+
+    // Hide/restore only supported for top-level pages, top-level groups,
+    // and group children. Sections and section children are not supported.
+    const isSection = node.kind === NodeKind.Section;
+    const isSectionChild =
+      node.depth === 1 &&
+      node.parentId !== null &&
+      nodes.some((n) => n.id === node.parentId && n.kind === NodeKind.Section);
+    const canHideRestore = !isSection && !isSectionChild;
+
     items.push(
       <TreeItem
         key={node.id}
@@ -377,29 +443,50 @@ function SortableSection({
         label={label}
         isElevated={isInDragBlock}
         isGhost={isInDragBlock}
+        isHidden={isAfterDivider && !isInDragBlock}
         isDragActive={!!dragState}
         isKbDrag={isKbDrag}
         displacementY={displacementY}
         dragX={isInDragBlock ? dragX : undefined}
         dragY={isInDragBlock ? dragY : undefined}
         onResetItem={
-          onResetItem && node.kind === "page" && node.pageId
+          onResetItem &&
+          node.kind === NodeKind.Page &&
+          node.pageId &&
+          !isAfterDivider
             ? () => onResetItem(node.pageId!)
             : undefined
         }
         onEditGroup={
-          onEditGroup && node.kind === "group"
+          onEditGroup && node.kind === NodeKind.Group && !isAfterDivider
             ? () => onEditGroup(node.id)
             : undefined
         }
         onDeleteGroup={
-          onDeleteGroup && node.kind === "group"
+          onDeleteGroup && node.kind === NodeKind.Group && !isAfterDivider
             ? () => onDeleteGroup(node.id)
             : undefined
         }
         onSetIcon={
-          onSetIcon
-            ? () => onSetIcon(node.id, node.kind === "group" ? "group" : "page")
+          onSetIcon && !isAfterDivider
+            ? () =>
+                onSetIcon(
+                  node.id,
+                  node.kind === NodeKind.Group ? NodeKind.Group : NodeKind.Page,
+                )
+            : undefined
+        }
+        onHideItem={
+          onHideItem &&
+          !isAfterDivider &&
+          node.id !== MORE_ENTRY_ID &&
+          canHideRestore
+            ? () => onHideItem(node.id)
+            : undefined
+        }
+        onRestoreItem={
+          onRestoreItem && isAfterDivider && canHideRestore
+            ? () => onRestoreItem(node.id)
             : undefined
         }
       />,
@@ -487,7 +574,7 @@ const NavLayoutEditor = () => {
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
   const [iconTarget, setIconTarget] = useState<{
     id: string;
-    kind: "page" | "group";
+    kind: NodeKind.Page | NodeKind.Group;
   } | null>(null);
 
   const backendLayout = useMemo(() => api.fleetshift.getBackendLayout(), [api]);
@@ -511,10 +598,28 @@ const NavLayoutEditor = () => {
     [effectiveLayout],
   );
 
-  const { mainNodes, bottomNodes } = useMemo(() => {
-    const allNodes = flattenLayout(effectiveLayout);
+  const { mainNodes, bottomNodes, hiddenDividerIndex } = useMemo(() => {
+    const { active, more } = extractMore(effectiveLayout);
+    const allNodes = flattenLayout(active);
     const { main, bottom } = splitNodes(allNodes, pageMap);
-    return { mainNodes: main, bottomNodes: bottom };
+
+    // Append hidden divider + hidden items to main nodes
+    const dividerNode: FlatNode = {
+      id: MORE_ENTRY_ID,
+      kind: NodeKind.Section,
+      depth: 0,
+      parentId: null,
+      label: "Hidden",
+    };
+    const hiddenNodes = flattenLayout(more);
+    const dividerIdx = main.length;
+    const combined = [...main, dividerNode, ...hiddenNodes];
+
+    return {
+      mainNodes: combined,
+      bottomNodes: bottom,
+      hiddenDividerIndex: dividerIdx,
+    };
   }, [effectiveLayout, pageMap]);
 
   const persistLayout = useCallback(
@@ -525,25 +630,130 @@ const NavLayoutEditor = () => {
   );
 
   const handleMainReorder = useCallback(
-    (newMain: FlatNode[]) => {
-      const normalized = normalizeOrder(newMain);
-      const layout = buildLayout([...normalized, ...bottomNodes]);
-      persistLayout(layout);
+    (newNodes: FlatNode[]) => {
+      // Split at the hidden divider to separate active from hidden items
+      const divIdx = newNodes.findIndex((n) => n.id === MORE_ENTRY_ID);
+      let activeNodes: FlatNode[];
+      let hiddenNodes: FlatNode[];
+      if (divIdx === -1) {
+        activeNodes = newNodes;
+        hiddenNodes = [];
+      } else {
+        activeNodes = newNodes.slice(0, divIdx);
+        hiddenNodes = newNodes.slice(divIdx + 1);
+      }
+
+      const normalizedActive = normalizeOrder(activeNodes);
+      const normalizedHidden = normalizeOrder(hiddenNodes);
+      const activeLayout = buildLayout([...normalizedActive, ...bottomNodes]);
+      const hiddenLayout = buildLayout(normalizedHidden);
+      if (hiddenLayout.length > 0) {
+        activeLayout.push({ type: "more", children: hiddenLayout });
+      }
+      persistLayout(activeLayout);
     },
     [bottomNodes, persistLayout],
   );
 
   const handleBottomReorder = useCallback(
     (newBottom: FlatNode[]) => {
+      // Reconstruct active main nodes (before divider) from current mainNodes
+      const divIdx = mainNodes.findIndex((n) => n.id === MORE_ENTRY_ID);
+      const activeMain = divIdx === -1 ? mainNodes : mainNodes.slice(0, divIdx);
+      const hiddenMain = divIdx === -1 ? [] : mainNodes.slice(divIdx + 1);
+
       const normalized = normalizeOrder(newBottom);
-      const layout = buildLayout([...mainNodes, ...normalized]);
-      persistLayout(layout);
+      const activeLayout = buildLayout([...activeMain, ...normalized]);
+      const hiddenLayout = buildLayout(hiddenMain);
+      if (hiddenLayout.length > 0) {
+        activeLayout.push({ type: "more", children: hiddenLayout });
+      }
+      persistLayout(activeLayout);
     },
     [mainNodes, persistLayout],
   );
 
   const mainDrag = useDragTree(mainNodes, handleMainReorder);
   const bottomDrag = useDragTree(bottomNodes, handleBottomReorder);
+
+  // --- Hide / Restore ---
+
+  const handleHideItem = useCallback(
+    (nodeId: string) => {
+      const currentLayout = effectiveLayout;
+      const { active, more } = extractMore(currentLayout);
+
+      // Find the entry to hide (could be a page or group at any depth)
+      let hiddenEntry: NavLayoutEntry | null = null;
+      const updatedActive: NavLayoutEntry[] = [];
+      for (const entry of active) {
+        if (
+          (entry.type === "page" && entry.pageId === nodeId) ||
+          (entry.type === "group" && entry.groupId === nodeId)
+        ) {
+          hiddenEntry = entry;
+        } else if (entry.type === "group") {
+          // Check if a child page is being hidden
+          const childIdx = entry.children.findIndex((c) => c.pageId === nodeId);
+          if (childIdx !== -1) {
+            hiddenEntry = {
+              type: "page",
+              pageId: entry.children[childIdx].pageId,
+              iconOverride: entry.children[childIdx].iconOverride,
+            };
+            updatedActive.push({
+              ...entry,
+              children: entry.children.filter((c) => c.pageId !== nodeId),
+            });
+          } else {
+            updatedActive.push(entry);
+          }
+        } else {
+          updatedActive.push(entry);
+        }
+      }
+
+      if (!hiddenEntry) return;
+
+      const updatedMore: NavLayoutEntry[] = [...more, hiddenEntry];
+      const layout: NavLayoutEntry[] = [
+        ...updatedActive,
+        { type: "more" as const, children: updatedMore },
+      ];
+      persistLayout(layout);
+    },
+    [effectiveLayout, persistLayout],
+  );
+
+  const handleRestoreItem = useCallback(
+    (nodeId: string) => {
+      const currentLayout = effectiveLayout;
+      const { active, more } = extractMore(currentLayout);
+
+      // Find the entry to restore from hidden items
+      let restoredEntry: NavLayoutEntry | null = null;
+      const updatedMore: NavLayoutEntry[] = [];
+      for (const entry of more) {
+        if (
+          (entry.type === "page" && entry.pageId === nodeId) ||
+          (entry.type === "group" && entry.groupId === nodeId)
+        ) {
+          restoredEntry = entry;
+        } else {
+          updatedMore.push(entry);
+        }
+      }
+
+      if (!restoredEntry) return;
+
+      const layout: NavLayoutEntry[] = [...active, restoredEntry];
+      if (updatedMore.length > 0) {
+        layout.push({ type: "more" as const, children: updatedMore });
+      }
+      persistLayout(layout);
+    },
+    [effectiveLayout, persistLayout],
+  );
 
   const handleResetItem = useCallback((pageId: string) => {
     setResetItemId(pageId);
@@ -552,26 +762,35 @@ const NavLayoutEditor = () => {
   const confirmResetItem = useCallback(() => {
     if (!resetItemId || !override) return;
 
-    const filtered = override.layout
-      .map((entry) => {
-        if (entry.type === "page" && entry.pageId === resetItemId) {
-          return null;
-        }
-        if (entry.type === "group") {
-          return {
-            ...entry,
-            children: entry.children.filter((c) => c.pageId !== resetItemId),
-          };
-        }
-        if (entry.type === "section") {
-          return {
-            ...entry,
-            children: entry.children.filter((c) => c.pageId !== resetItemId),
-          };
-        }
-        return entry;
-      })
-      .filter(Boolean) as NavLayoutEntry[];
+    const removeFromEntries = (entries: NavLayoutEntry[]): NavLayoutEntry[] =>
+      entries
+        .map((entry) => {
+          if (entry.type === "page" && entry.pageId === resetItemId) {
+            return null;
+          }
+          if (entry.type === "group") {
+            return {
+              ...entry,
+              children: entry.children.filter((c) => c.pageId !== resetItemId),
+            };
+          }
+          if (entry.type === "section") {
+            return {
+              ...entry,
+              children: entry.children.filter((c) => c.pageId !== resetItemId),
+            };
+          }
+          if (entry.type === "more") {
+            const filtered = removeFromEntries(entry.children);
+            return filtered.length > 0
+              ? { ...entry, children: filtered }
+              : null;
+          }
+          return entry;
+        })
+        .filter(Boolean) as NavLayoutEntry[];
+
+    const filtered = removeFromEntries(override.layout);
 
     const reconciled = mergeLayout(backendLayout, {
       version: 1,
@@ -631,7 +850,7 @@ const NavLayoutEditor = () => {
         });
         persistLayout(updated);
       } else {
-        // Create new group — append to layout with empty children
+        // Create new group — insert before "more" entry (if any)
         const newGroup: NavLayoutGroup = {
           type: "group",
           groupId,
@@ -642,7 +861,12 @@ const NavLayoutEditor = () => {
           keywords: data.keywords.length > 0 ? data.keywords : undefined,
           icon: data.icon || undefined,
         };
-        persistLayout([...currentLayout, newGroup]);
+        const { active, more } = extractMore(currentLayout);
+        const updated: NavLayoutEntry[] = [...active, newGroup];
+        if (more.length > 0) {
+          updated.push({ type: "more", children: more });
+        }
+        persistLayout(updated);
       }
 
       handleCloseGroupForm();
@@ -671,7 +895,7 @@ const NavLayoutEditor = () => {
   // --- Icon override ---
 
   const handleOpenIconGallery = useCallback(
-    (nodeId: string, kind: "page" | "group") => {
+    (nodeId: string, kind: NodeKind.Page | NodeKind.Group) => {
       setIconTarget({ id: nodeId, kind });
     },
     [],
@@ -680,24 +904,40 @@ const NavLayoutEditor = () => {
   const iconTargetCurrentIcon = useMemo(() => {
     if (!iconTarget) return null;
     const currentLayout = override?.layout ?? effectiveLayout;
-    if (iconTarget.kind === "group") {
-      const group = findGroup(currentLayout, iconTarget.id);
-      return group?.icon ?? null;
-    }
-    // Page: find iconOverride
-    for (const entry of currentLayout) {
-      if (entry.type === "page" && entry.pageId === iconTarget.id) {
-        return entry.iconOverride ?? null;
-      }
-      if (entry.type === "group") {
-        for (const child of entry.children) {
-          if (child.pageId === iconTarget.id) {
-            return child.iconOverride ?? null;
+
+    const searchEntries = (entries: NavLayoutEntry[]): string | null => {
+      if (iconTarget.kind === NodeKind.Group) {
+        for (const entry of entries) {
+          if (entry.type === "group" && entry.groupId === iconTarget.id) {
+            return entry.icon ?? null;
+          }
+          if (entry.type === "more") {
+            const found = searchEntries(entry.children);
+            if (found !== null) return found;
           }
         }
+        return null;
       }
-    }
-    return null;
+      for (const entry of entries) {
+        if (entry.type === "page" && entry.pageId === iconTarget.id) {
+          return entry.iconOverride ?? null;
+        }
+        if (entry.type === "group") {
+          for (const child of entry.children) {
+            if (child.pageId === iconTarget.id) {
+              return child.iconOverride ?? null;
+            }
+          }
+        }
+        if (entry.type === "more") {
+          const found = searchEntries(entry.children);
+          if (found !== null) return found;
+        }
+      }
+      return null;
+    };
+
+    return searchEntries(currentLayout);
   }, [iconTarget, override, effectiveLayout]);
 
   const handleSetIcon = useCallback(
@@ -705,35 +945,32 @@ const NavLayoutEditor = () => {
       if (!iconTarget) return;
       const currentLayout = override?.layout ?? effectiveLayout;
 
-      const updated = currentLayout.map((entry) => {
-        if (iconTarget.kind === "group") {
-          if (entry.type === "group" && entry.groupId === iconTarget.id) {
-            return {
-              ...entry,
-              icon: iconName || undefined,
-            };
+      const applyIcon = (entries: NavLayoutEntry[]): NavLayoutEntry[] =>
+        entries.map((entry) => {
+          if (iconTarget.kind === NodeKind.Group) {
+            if (entry.type === "group" && entry.groupId === iconTarget.id) {
+              return { ...entry, icon: iconName || undefined };
+            }
+          } else {
+            if (entry.type === "page" && entry.pageId === iconTarget.id) {
+              return { ...entry, iconOverride: iconName || undefined };
+            }
+            if (entry.type === "group") {
+              const updatedChildren = entry.children.map((child) =>
+                child.pageId === iconTarget.id
+                  ? { ...child, iconOverride: iconName || undefined }
+                  : child,
+              );
+              return { ...entry, children: updatedChildren };
+            }
           }
-        } else {
-          // Page icon override
-          if (entry.type === "page" && entry.pageId === iconTarget.id) {
-            return {
-              ...entry,
-              iconOverride: iconName || undefined,
-            };
+          if (entry.type === "more") {
+            return { ...entry, children: applyIcon(entry.children) };
           }
-          if (entry.type === "group") {
-            const updatedChildren = entry.children.map((child) =>
-              child.pageId === iconTarget.id
-                ? { ...child, iconOverride: iconName || undefined }
-                : child,
-            );
-            return { ...entry, children: updatedChildren };
-          }
-        }
-        return entry;
-      });
+          return entry;
+        });
 
-      persistLayout(updated);
+      persistLayout(applyIcon(currentLayout));
       setIconTarget(null);
     },
     [iconTarget, override, effectiveLayout, persistLayout],
@@ -775,7 +1012,7 @@ const NavLayoutEditor = () => {
       <Content component="p">
         Drag items to reorder the navigation sidebar. Groups move with their
         children. Drag an item left to pull it out of a group, or right to nest
-        it.
+        it. Drag items below the Hidden divider to hide them, or use the menu.
       </Content>
 
       <SortableSection
@@ -797,6 +1034,9 @@ const NavLayoutEditor = () => {
         onEditGroup={handleOpenEditGroup}
         onDeleteGroup={handleRequestDeleteGroup}
         onSetIcon={handleOpenIconGallery}
+        onHideItem={handleHideItem}
+        onRestoreItem={handleRestoreItem}
+        hiddenDividerIndex={hiddenDividerIndex}
       />
 
       {bottomNodes.length > 0 && (
