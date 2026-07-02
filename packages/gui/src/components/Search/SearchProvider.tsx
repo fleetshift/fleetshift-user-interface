@@ -162,6 +162,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!modulesLoaded || !cpLoaded || !installLoaded) return;
+    let cancelled = false;
 
     // Merge backend layout with user override so search reflects custom groups,
     // moved modules, and hidden ("more") items.
@@ -171,6 +172,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
     const db = createSearchDB();
     dbRef.current = db;
+    componentMapRef.current.clear();
+    iconMapRef.current.clear();
+    featureParentRef.current.clear();
 
     const inserts: ReturnType<typeof insertEntry>[] = [];
 
@@ -422,7 +426,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           iconMapRef.current.set(entryId, cached);
         } else {
           loadPfIcon(iconName).then((comp) => {
-            if (comp) iconMapRef.current.set(entryId, comp);
+            if (!cancelled && comp) iconMapRef.current.set(entryId, comp);
           });
         }
       }
@@ -439,6 +443,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
 
     Promise.all(inserts);
+    return () => {
+      cancelled = true;
+    };
   }, [
     modulesLoaded,
     cpLoaded,
@@ -465,7 +472,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    for (const [cat, items] of Object.entries(results)) {
+    for (const [, items] of Object.entries(results)) {
       const resultIds = new Set(items.map((i) => i.id));
       const needed = new Set<string>();
       for (const item of items) {
@@ -478,10 +485,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       for (const featureId of needed) {
         const parent = featureParentRef.current.get(featureId);
         if (!parent) continue;
+        const targetCat = parent.category;
+        const targetItems = results[targetCat] ?? [];
+        if (targetItems.some((i) => i.id === parent.id)) continue;
         const parentItem = { ...parent };
         const comp = componentMapRef.current.get(parentItem.id);
         if (comp) parentItem.Component = comp;
-        results[cat] = [parentItem, ...results[cat]];
+        const icon = iconMapRef.current.get(parentItem.id);
+        if (icon) parentItem.IconComponent = icon;
+        results[targetCat] = [parentItem, ...targetItems];
       }
     }
 
