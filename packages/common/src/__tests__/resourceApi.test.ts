@@ -4,7 +4,7 @@ import type {
   ResourceSearchResult,
   SearchResourcesResponse,
 } from "../resourceApi";
-import { createResourceApi } from "../resourceApi";
+import { createResourceApi, ResourceApiError } from "../resourceApi";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -104,11 +104,31 @@ describe("createResourceApi", () => {
       );
     });
 
-    it("throws on non-OK response", async () => {
-      mockFetch(null, 500);
+    it("throws ResourceApiError on non-OK response", async () => {
+      const rpcStatus = { code: 13, message: "Internal error", details: [] };
+      mockFetch(rpcStatus, 500);
       const api = createResourceApi("-");
 
-      await expect(api.search()).rejects.toThrow("500");
+      await expect(api.search()).rejects.toThrow(ResourceApiError);
+      await expect(api.search()).rejects.toMatchObject({
+        status: 500,
+        rpcStatus: { code: 13, message: "Internal error" },
+      });
+    });
+
+    it("throws ResourceApiError with null rpcStatus when body is unparseable", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: "Bad Gateway",
+        json: () => Promise.reject(new SyntaxError("Unexpected token")),
+      } as unknown as Response);
+      const api = createResourceApi("-");
+
+      const err = await api.search().catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ResourceApiError);
+      expect((err as ResourceApiError).status).toBe(502);
+      expect((err as ResourceApiError).rpcStatus).toBeNull();
     });
   });
 
@@ -156,15 +176,27 @@ describe("createResourceApi", () => {
       expect(params.get("filter")).toBe('name == "//svc/res/id"');
       expect(params.get("pageSize")).toBe("1");
     });
+
+    it("escapes quotes and backslashes in resource name", async () => {
+      const spy = mockFetch({ results: [], nextPageToken: "" });
+      const api = createResourceApi("-");
+
+      await api.get('//svc/res/"tricky\\name"');
+
+      const { params } = parseRelativeUrl(spy.mock.calls[0][0] as string);
+      expect(params.get("filter")).toBe(
+        'name == "//svc/res/\\"tricky\\\\name\\""',
+      );
+    });
   });
 
   describe("searchAll", () => {
     it("yields pages and follows nextPageToken", async () => {
-      const page1: SearchResourcesResponse = {
+      const page1: SearchResourcesResponse<TestProps> = {
         results: [makeResult({ name: "//a" })],
         nextPageToken: "page2",
       };
-      const page2: SearchResourcesResponse = {
+      const page2: SearchResourcesResponse<TestProps> = {
         results: [makeResult({ name: "//b" })],
         nextPageToken: "",
       };
@@ -184,8 +216,8 @@ describe("createResourceApi", () => {
           json: () => Promise.resolve(page2),
         } as Response);
 
-      const api = createResourceApi("-");
-      const pages: unknown[][] = [];
+      const api = createResourceApi<TestProps>("-");
+      const pages: ResourceSearchResult<TestProps>[][] = [];
 
       for await (const page of api.searchAll({ filter: 'collection == "x"' })) {
         pages.push(page);

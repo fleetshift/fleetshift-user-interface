@@ -1,5 +1,3 @@
-import { makeRequest } from "./api.js";
-
 /**
  * Base URL for the resource search API.
  * Matches the OpenAPI spec: `/apis/fleetshift.io/v1/{scope}:searchResources`
@@ -103,13 +101,22 @@ function buildSearchUrl(scope: string, params?: SearchResourcesParams): string {
   return qs ? `${path}?${qs}` : path;
 }
 
+/** Escape a value for embedding in a CEL string literal (backslash + double-quote). */
+function escapeCelString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 async function searchRequest<Props>(
   scope: string,
   params?: SearchResourcesParams,
 ): Promise<SearchResourcesResponse<Props>> {
-  return makeRequest<SearchResourcesResponse<Props>>(
-    buildSearchUrl(scope, params),
-  );
+  const url = buildSearchUrl(scope, params);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const rpcStatus = (await res.json().catch(() => null)) as RpcStatus | null;
+    throw new ResourceApiError(res.status, rpcStatus);
+  }
+  return res.json() as Promise<SearchResourcesResponse<Props>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +195,7 @@ export function createResourceApi<Props = Record<string, unknown>>(
 
     async get(resourceName) {
       const { results } = await searchRequest<Props>(scope, {
-        filter: `name == "${resourceName}"`,
+        filter: `name == "${escapeCelString(resourceName)}"`,
         pageSize: 1,
       });
       return results[0];
