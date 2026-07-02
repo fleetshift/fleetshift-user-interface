@@ -1,4 +1,5 @@
 import type { FlatNode } from "@fleetshift/common";
+import { NodeKind } from "@fleetshift/common";
 
 export interface DragState {
   dragId: string;
@@ -117,7 +118,10 @@ export function resolveDepthAndParent(
   if (!prevSlot) return { depth: 0, parentId: null };
 
   const prevNode = nodes[prevSlot.flatIndex];
-  if (prevNode && (prevNode.kind === "group" || prevNode.kind === "section")) {
+  if (
+    prevNode &&
+    (prevNode.kind === NodeKind.Group || prevNode.kind === NodeKind.Section)
+  ) {
     return { depth: 1, parentId: prevNode.id };
   }
 
@@ -247,7 +251,10 @@ export function computeKbMove(
   const result = [...nodes];
   const [item] = result.splice(flatIdx, 1);
 
-  if (targetNode.kind === "group" || targetNode.kind === "section") {
+  if (
+    targetNode.kind === NodeKind.Group ||
+    targetNode.kind === NodeKind.Section
+  ) {
     if (delta === 1) {
       result.splice(target, 0, {
         ...item,

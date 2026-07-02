@@ -8,6 +8,7 @@ import {
   flattenLayout,
   getDescendantIds,
   getProjection,
+  NodeKind,
   normalizeOrder,
 } from "../navLayout";
 
@@ -38,39 +39,39 @@ describe("flattenLayout", () => {
 
     expect(nodes[0]).toMatchObject({
       id: "overview",
-      kind: "page",
+      kind: NodeKind.Page,
       depth: 0,
       parentId: null,
     });
     expect(nodes[1]).toMatchObject({
       id: "core-group",
-      kind: "group",
+      kind: NodeKind.Group,
       depth: 0,
       parentId: null,
       label: "Core",
     });
     expect(nodes[2]).toMatchObject({
       id: "clusters",
-      kind: "page",
+      kind: NodeKind.Page,
       depth: 1,
       parentId: "core-group",
     });
     expect(nodes[3]).toMatchObject({
       id: "nodes",
-      kind: "page",
+      kind: NodeKind.Page,
       depth: 1,
       parentId: "core-group",
     });
     expect(nodes[4]).toMatchObject({
       id: "sec-1",
-      kind: "section",
+      kind: NodeKind.Section,
       depth: 0,
       parentId: null,
       label: "Admin",
     });
     expect(nodes[5]).toMatchObject({
       id: "settings",
-      kind: "page",
+      kind: NodeKind.Page,
       depth: 1,
       parentId: "sec-1",
     });
@@ -90,8 +91,8 @@ describe("buildLayout", () => {
 
   it("handles top-level pages without containers", () => {
     const nodes: FlatNode[] = [
-      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
-      { id: "b", kind: "page", depth: 0, parentId: null, pageId: "b" },
+      { id: "a", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "a" },
+      { id: "b", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "b" },
     ];
     const layout = buildLayout(nodes);
     expect(layout).toEqual([
@@ -112,14 +113,14 @@ describe("buildLayout", () => {
     const nodes: FlatNode[] = [
       {
         id: "core-group",
-        kind: "group",
+        kind: NodeKind.Group,
         depth: 0,
         parentId: null,
         groupMeta,
       },
       {
         id: "clusters",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "core-group",
         pageId: "clusters",
@@ -127,14 +128,14 @@ describe("buildLayout", () => {
       // A top-level page interrupting the group:
       {
         id: "overview",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 0,
         parentId: null,
         pageId: "overview",
       },
       {
         id: "nodes",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "core-group",
         pageId: "nodes",
@@ -165,21 +166,21 @@ describe("buildLayout", () => {
     const nodes: FlatNode[] = [
       {
         id: "signing",
-        kind: "group",
+        kind: NodeKind.Group,
         depth: 0,
         parentId: null,
         groupMeta,
       },
       {
         id: "signing-policies",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "signing",
         pageId: "signing-policies",
       },
       {
         id: "signing-keys",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "signing",
         pageId: "signing-keys",
@@ -296,22 +297,22 @@ describe("normalizeOrder", () => {
     const nodes: FlatNode[] = [
       {
         id: "page-x",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 0,
         parentId: null,
         pageId: "page-x",
       },
       {
         id: "child-b",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "g",
         pageId: "child-b",
       },
-      { id: "g", kind: "group", depth: 0, parentId: null, groupMeta },
+      { id: "g", kind: NodeKind.Group, depth: 0, parentId: null, groupMeta },
       {
         id: "child-a",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "g",
         pageId: "child-a",
@@ -328,8 +329,8 @@ describe("normalizeOrder", () => {
 
   it("handles top-level-only lists", () => {
     const nodes: FlatNode[] = [
-      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
-      { id: "b", kind: "page", depth: 0, parentId: null, pageId: "b" },
+      { id: "a", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "a" },
+      { id: "b", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "b" },
     ];
     expect(normalizeOrder(nodes)).toEqual(nodes);
   });
@@ -339,10 +340,10 @@ describe("orphaned children (stale parentId)", () => {
   it("buildLayout promotes orphaned children to top-level pages", () => {
     // Child points to a parent that doesn't exist in the node list
     const nodes: FlatNode[] = [
-      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      { id: "a", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "a" },
       {
         id: "orphan",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "deleted-group",
         pageId: "orphan",
@@ -357,10 +358,10 @@ describe("orphaned children (stale parentId)", () => {
 
   it("normalizeOrder promotes orphaned children to depth 0", () => {
     const nodes: FlatNode[] = [
-      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      { id: "a", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "a" },
       {
         id: "orphan",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 1,
         parentId: "deleted-group",
         pageId: "orphan",
@@ -368,10 +369,10 @@ describe("orphaned children (stale parentId)", () => {
     ];
     const result = normalizeOrder(nodes);
     expect(result).toEqual([
-      { id: "a", kind: "page", depth: 0, parentId: null, pageId: "a" },
+      { id: "a", kind: NodeKind.Page, depth: 0, parentId: null, pageId: "a" },
       {
         id: "orphan",
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 0,
         parentId: null,
         pageId: "orphan",
@@ -381,7 +382,7 @@ describe("orphaned children (stale parentId)", () => {
 
   it("buildLayout throws on child node without pageId", () => {
     const nodes: FlatNode[] = [
-      { id: "bad", kind: "page", depth: 0, parentId: null },
+      { id: "bad", kind: NodeKind.Page, depth: 0, parentId: null },
     ];
     expect(() => buildLayout(nodes)).toThrow(/missing pageId/);
   });

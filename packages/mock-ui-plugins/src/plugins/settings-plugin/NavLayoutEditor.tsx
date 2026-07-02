@@ -15,6 +15,7 @@ import {
   isCustomGroup,
   mergeLayout,
   MORE_ENTRY_ID,
+  NodeKind,
   normalizeOrder,
   slugify,
   useNavLayout,
@@ -69,12 +70,12 @@ function splitNodes(
   const bottomContainerIds = new Set<string>();
   for (const node of nodes) {
     if (node.depth !== 0) continue;
-    if (node.kind === "page" && node.pageId) {
+    if (node.kind === NodeKind.Page && node.pageId) {
       const scope = pageMap.get(node.pageId)?.scope;
       if (scope && CORE_EXTENSION_META[scope]?.navSection === "bottom") {
         bottomContainerIds.add(node.id);
       }
-    } else if (node.kind === "group" && node.groupMeta) {
+    } else if (node.kind === NodeKind.Group && node.groupMeta) {
       const scope = `${node.groupMeta.pluginKey}-plugin`;
       if (CORE_EXTENSION_META[scope]?.navSection === "bottom") {
         bottomContainerIds.add(node.id);
@@ -148,10 +149,11 @@ function TreeItem({
   onRestoreItem,
 }: TreeItemProps) {
   const isDivider = node.id === MORE_ENTRY_ID;
-  const isContainer = node.kind === "group" || node.kind === "section";
+  const isContainer =
+    node.kind === NodeKind.Group || node.kind === NodeKind.Section;
   const kindClass = isContainer ? "section" : "page";
   const isUserGroup =
-    node.kind === "group" &&
+    node.kind === NodeKind.Group &&
     node.groupMeta !== undefined &&
     isCustomGroup(node.groupMeta);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -332,7 +334,7 @@ interface SortableSectionProps {
   onResetItem?: (pageId: string) => void;
   onEditGroup?: (groupId: string) => void;
   onDeleteGroup?: (groupId: string) => void;
-  onSetIcon?: (nodeId: string, kind: "page" | "group") => void;
+  onSetIcon?: (nodeId: string, kind: NodeKind.Page | NodeKind.Group) => void;
   onHideItem?: (nodeId: string) => void;
   onRestoreItem?: (nodeId: string) => void;
   /** Index of the hidden divider in the nodes array (-1 = no divider). */
@@ -427,11 +429,11 @@ function SortableSection({
 
     // Hide/restore only supported for top-level pages, top-level groups,
     // and group children. Sections and section children are not supported.
-    const isSection = node.kind === "section";
+    const isSection = node.kind === NodeKind.Section;
     const isSectionChild =
       node.depth === 1 &&
       node.parentId !== null &&
-      nodes.some((n) => n.id === node.parentId && n.kind === "section");
+      nodes.some((n) => n.id === node.parentId && n.kind === NodeKind.Section);
     const canHideRestore = !isSection && !isSectionChild;
 
     items.push(
@@ -448,23 +450,30 @@ function SortableSection({
         dragX={isInDragBlock ? dragX : undefined}
         dragY={isInDragBlock ? dragY : undefined}
         onResetItem={
-          onResetItem && node.kind === "page" && node.pageId && !isAfterDivider
+          onResetItem &&
+          node.kind === NodeKind.Page &&
+          node.pageId &&
+          !isAfterDivider
             ? () => onResetItem(node.pageId!)
             : undefined
         }
         onEditGroup={
-          onEditGroup && node.kind === "group" && !isAfterDivider
+          onEditGroup && node.kind === NodeKind.Group && !isAfterDivider
             ? () => onEditGroup(node.id)
             : undefined
         }
         onDeleteGroup={
-          onDeleteGroup && node.kind === "group" && !isAfterDivider
+          onDeleteGroup && node.kind === NodeKind.Group && !isAfterDivider
             ? () => onDeleteGroup(node.id)
             : undefined
         }
         onSetIcon={
           onSetIcon && !isAfterDivider
-            ? () => onSetIcon(node.id, node.kind === "group" ? "group" : "page")
+            ? () =>
+                onSetIcon(
+                  node.id,
+                  node.kind === NodeKind.Group ? NodeKind.Group : NodeKind.Page,
+                )
             : undefined
         }
         onHideItem={
@@ -565,7 +574,7 @@ const NavLayoutEditor = () => {
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
   const [iconTarget, setIconTarget] = useState<{
     id: string;
-    kind: "page" | "group";
+    kind: NodeKind.Page | NodeKind.Group;
   } | null>(null);
 
   const backendLayout = useMemo(() => api.fleetshift.getBackendLayout(), [api]);
@@ -597,7 +606,7 @@ const NavLayoutEditor = () => {
     // Append hidden divider + hidden items to main nodes
     const dividerNode: FlatNode = {
       id: MORE_ENTRY_ID,
-      kind: "section",
+      kind: NodeKind.Section,
       depth: 0,
       parentId: null,
       label: "Hidden",
@@ -886,7 +895,7 @@ const NavLayoutEditor = () => {
   // --- Icon override ---
 
   const handleOpenIconGallery = useCallback(
-    (nodeId: string, kind: "page" | "group") => {
+    (nodeId: string, kind: NodeKind.Page | NodeKind.Group) => {
       setIconTarget({ id: nodeId, kind });
     },
     [],
@@ -897,7 +906,7 @@ const NavLayoutEditor = () => {
     const currentLayout = override?.layout ?? effectiveLayout;
 
     const searchEntries = (entries: NavLayoutEntry[]): string | null => {
-      if (iconTarget.kind === "group") {
+      if (iconTarget.kind === NodeKind.Group) {
         for (const entry of entries) {
           if (entry.type === "group" && entry.groupId === iconTarget.id) {
             return entry.icon ?? null;
@@ -938,7 +947,7 @@ const NavLayoutEditor = () => {
 
       const applyIcon = (entries: NavLayoutEntry[]): NavLayoutEntry[] =>
         entries.map((entry) => {
-          if (iconTarget.kind === "group") {
+          if (iconTarget.kind === NodeKind.Group) {
             if (entry.type === "group" && entry.groupId === iconTarget.id) {
               return { ...entry, icon: iconName || undefined };
             }

@@ -44,6 +44,7 @@ export {
   isNavLayoutOverride,
   mergeLayout,
   MORE_ENTRY_ID,
+  NodeKind,
   normalizeOrder,
   slugify,
 } from "./navLayout.js";

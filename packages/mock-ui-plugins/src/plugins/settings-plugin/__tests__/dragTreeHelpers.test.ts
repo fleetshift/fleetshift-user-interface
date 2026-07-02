@@ -1,22 +1,23 @@
 import type { FlatNode } from "@fleetshift/common";
+import { NodeKind } from "@fleetshift/common";
 import { describe, expect, it } from "vitest";
 
 import { computeKbMove, getBlockLength } from "../dragTreeHelpers";
 
 function page(id: string, depth = 0, parentId: string | null = null): FlatNode {
-  return { id, kind: "page", depth, parentId, pageId: id };
+  return { id, kind: NodeKind.Page, depth, parentId, pageId: id };
 }
 
 function group(id: string, children: FlatNode[]): FlatNode[] {
   return [
-    { id, kind: "group", depth: 0, parentId: null },
+    { id, kind: NodeKind.Group, depth: 0, parentId: null },
     ...children.map((c) => ({ ...c, depth: 1, parentId: id })),
   ];
 }
 
 function section(id: string, children: FlatNode[]): FlatNode[] {
   return [
-    { id, kind: "section", depth: 0, parentId: null, label: id },
+    { id, kind: NodeKind.Section, depth: 0, parentId: null, label: id },
     ...children.map((c) => ({ ...c, depth: 1, parentId: id })),
   ];
 }
@@ -116,7 +117,12 @@ describe("computeKbMove (entering groups)", () => {
   });
 
   it("entering an empty group", () => {
-    const g: FlatNode = { id: "g", kind: "group", depth: 0, parentId: null };
+    const g: FlatNode = {
+      id: "g",
+      kind: NodeKind.Group,
+      depth: 0,
+      parentId: null,
+    };
     const nodes = [page("a"), g, page("b")];
     const result = computeKbMove(nodes, "a", false, 1, 1)!;
     expect(result.map((n) => n.id)).toEqual(["g", "a", "b"]);

@@ -1,5 +1,5 @@
 import type { FlatNode } from "@fleetshift/common";
-import { INDENTATION } from "@fleetshift/common";
+import { INDENTATION, NodeKind } from "@fleetshift/common";
 import { useMotionValue } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -77,8 +77,8 @@ export function useDragTree(
       if (idx === -1) return;
 
       const isBlock =
-        resolvedNodes[idx].kind === "group" ||
-        resolvedNodes[idx].kind === "section";
+        resolvedNodes[idx].kind === NodeKind.Group ||
+        resolvedNodes[idx].kind === NodeKind.Section;
       const blockLength = getBlockLength(resolvedNodes, idx);
       const dragParentId = resolvedNodes[idx].parentId;
 
@@ -402,7 +402,8 @@ export function useDragTree(
         e.preventDefault();
 
         const node = resolvedNodes[idx];
-        const isBlock = node.kind === "group" || node.kind === "section";
+        const isBlock =
+          node.kind === NodeKind.Group || node.kind === NodeKind.Section;
         const blockLength = getBlockLength(resolvedNodes, idx);
 
         kbDragRef.current = {

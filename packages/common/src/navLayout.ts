@@ -81,9 +81,16 @@ export type StoredNavLayout = NavLayoutOverride | string[] | null;
 
 // --- tree utilities (used by NavLayoutEditor + gui NavLayoutTree) ---
 
+/** Node kind enum — eliminates magic strings for FlatNode.kind values. */
+export enum NodeKind {
+  Page = "page",
+  Group = "group",
+  Section = "section",
+}
+
 export interface FlatNode {
   id: string;
-  kind: "page" | "group" | "section";
+  kind: NodeKind;
   depth: number;
   parentId: string | null;
   pageId?: string;
@@ -102,7 +109,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
     if (entry.type === "page") {
       result.push({
         id: entry.pageId,
-        kind: "page",
+        kind: NodeKind.Page,
         depth: 0,
         parentId: null,
         pageId: entry.pageId,
@@ -111,7 +118,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
     } else if (entry.type === "group") {
       result.push({
         id: entry.groupId,
-        kind: "group",
+        kind: NodeKind.Group,
         depth: 0,
         parentId: null,
         label: entry.label,
@@ -120,7 +127,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
       for (const child of entry.children) {
         result.push({
           id: child.pageId,
-          kind: "page",
+          kind: NodeKind.Page,
           depth: 1,
           parentId: entry.groupId,
           pageId: child.pageId,
@@ -130,7 +137,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
     } else if (entry.type === "section") {
       result.push({
         id: entry.id,
-        kind: "section",
+        kind: NodeKind.Section,
         depth: 0,
         parentId: null,
         label: entry.label,
@@ -138,7 +145,7 @@ export function flattenLayout(layout: NavLayoutEntry[]): FlatNode[] {
       for (const child of entry.children) {
         result.push({
           id: child.pageId,
-          kind: "page",
+          kind: NodeKind.Page,
           depth: 1,
           parentId: entry.id,
           pageId: child.pageId,
@@ -192,7 +199,7 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
     // Skip children with valid parents — emitted with their container.
     if (hasValidParent(node)) continue;
 
-    if (node.kind === "group" && node.groupMeta) {
+    if (node.kind === NodeKind.Group && node.groupMeta) {
       const children = (childrenByParent.get(node.id) ?? []).map((c) => {
         const child: NavLayoutPage = {
           type: "page" as const,
@@ -202,7 +209,7 @@ export function buildLayout(nodes: FlatNode[]): NavLayoutEntry[] {
         return child;
       });
       result.push({ ...node.groupMeta, children });
-    } else if (node.kind === "section") {
+    } else if (node.kind === NodeKind.Section) {
       const children = (childrenByParent.get(node.id) ?? []).map((c) => ({
         pageId: safePageId(c),
       }));
@@ -332,8 +339,8 @@ export function getProjection(
 
   if (
     !activeItem ||
-    activeItem.kind === "group" ||
-    activeItem.kind === "section"
+    activeItem.kind === NodeKind.Group ||
+    activeItem.kind === NodeKind.Section
   ) {
     return { depth: 0, parentId: null };
   }
@@ -346,7 +353,7 @@ export function getProjection(
   let parentId: string | null = null;
 
   if (prev) {
-    if (prev.kind === "group" || prev.kind === "section") {
+    if (prev.kind === NodeKind.Group || prev.kind === NodeKind.Section) {
       maxDepth = 1;
       parentId = prev.id;
     } else if (prev.depth === 1 && prev.parentId) {
