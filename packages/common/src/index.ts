@@ -20,29 +20,7 @@ export type {
   UseIDBValueResult,
 } from "./idb/index.js";
 export { createIDBStore, useIDBMap, useIDBValue } from "./idb/index.js";
-export type {
-  AuthMethod,
-  AuthMethodType,
-  CreateSignerEnrollmentRequest,
-  Deployment,
-  DeploymentManifest,
-  DeploymentManifestStrategy,
-  DeploymentPlacementStrategy,
-  DeploymentState,
-  FederatedIdentity,
-  ListDeploymentsResponse,
-  ManifestStrategyType,
-  OIDCConfig,
-  PlacementStrategyType,
-  Provenance,
-  RegistrySubjectMapping,
-  ResumeDeploymentRequest,
-  RolloutStrategy,
-  RolloutStrategyType,
-  Signature,
-  SignerEnrollment,
-  TargetSelector,
-} from "./managementTypes.js";
+export * from "./managementTypes.js";
 export type {
   FlatNode,
   NavLayoutEntry,
@@ -82,20 +60,7 @@ export {
 } from "./pfIconLoader.js";
 export type { PluginLinkProps } from "./PluginLink.js";
 export { default as PluginLink } from "./PluginLink.js";
-export type {
-  ApiClient,
-  Condition,
-  ResourceApi,
-  ResourceSearchResult,
-  RpcStatus,
-  SearchResourcesParams,
-  SearchResourcesResponse,
-} from "./resourceApi.js";
-export {
-  createApiClient,
-  createResourceApi,
-  ResourceApiError,
-} from "./resourceApi.js";
+export * from "./resourceApi.js";
 export type { FleetShiftApi, NavPage } from "./scalprum.js";
 export type {
   ClusterProviderCardProps,

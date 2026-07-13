@@ -12,6 +12,8 @@
  * ```
  */
 
+import type { OutputConstraint } from "./canonical.js";
+
 // ---------------------------------------------------------------------------
 // Shared / cross-service
 // ---------------------------------------------------------------------------
@@ -107,11 +109,6 @@ export type RolloutStrategyType = "TYPE_UNSPECIFIED" | "TYPE_IMMEDIATE";
 
 export interface RolloutStrategy {
   type: RolloutStrategyType;
-}
-
-export interface OutputConstraint {
-  name: string;
-  expression: string;
 }
 
 /** Detached signature over a canonical content hash. */
