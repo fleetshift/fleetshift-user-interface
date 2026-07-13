@@ -21,6 +21,29 @@ export type {
 } from "./idb/index.js";
 export { createIDBStore, useIDBMap, useIDBValue } from "./idb/index.js";
 export type {
+  AuthMethod,
+  AuthMethodType,
+  CreateSignerEnrollmentRequest,
+  Deployment,
+  DeploymentManifest,
+  DeploymentManifestStrategy,
+  DeploymentPlacementStrategy,
+  DeploymentState,
+  FederatedIdentity,
+  ListDeploymentsResponse,
+  ManifestStrategyType,
+  OIDCConfig,
+  PlacementStrategyType,
+  Provenance,
+  RegistrySubjectMapping,
+  ResumeDeploymentRequest,
+  RolloutStrategy,
+  RolloutStrategyType,
+  Signature,
+  SignerEnrollment,
+  TargetSelector,
+} from "./managementTypes.js";
+export type {
   FlatNode,
   NavLayoutEntry,
   NavLayoutGroup,

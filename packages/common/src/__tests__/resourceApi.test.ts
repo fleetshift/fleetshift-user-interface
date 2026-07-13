@@ -240,6 +240,26 @@ describe("createResourceApi", () => {
 
       expect(results).toHaveLength(1);
     });
+
+    it("throws on repeated nextPageToken to prevent infinite loop", async () => {
+      const page: SearchResourcesResponse<TestProps> = {
+        results: [makeResult({ name: "//a" })],
+        nextPageToken: "same-token",
+      };
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: () => Promise.resolve(page),
+      } as Response);
+
+      const api = createResourceApi<TestProps>("-");
+
+      await expect(api.searchAll()).rejects.toThrow(
+        /Cyclic pagination detected.*same-token/,
+      );
+    });
   });
 });
 
@@ -325,6 +345,20 @@ describe("createApiClient", () => {
     const [url, init] = spy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/v1/items/1");
     expect(init.method).toBe("DELETE");
+  });
+
+  it("DELETE returns undefined on 204 No Content", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 204,
+      statusText: "No Content",
+      json: () => Promise.reject(new SyntaxError("Unexpected end of input")),
+    } as unknown as Response);
+
+    const client = createApiClient("/v1");
+    const result = await client.delete("/items/1");
+
+    expect(result).toBeUndefined();
   });
 
   it("throws ResourceApiError on non-OK response", async () => {

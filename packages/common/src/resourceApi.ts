@@ -201,8 +201,8 @@ export interface ApiClient {
   put<T>(path: string, body?: unknown): Promise<T>;
   /** PATCH `basePath + path` with optional JSON body. */
   patch<T>(path: string, body?: unknown): Promise<T>;
-  /** DELETE `basePath + path`. */
-  delete<T>(path: string): Promise<T>;
+  /** DELETE `basePath + path`. Returns `undefined` for 204 No Content. */
+  delete<T = void>(path: string): Promise<T>;
 }
 
 async function apiRequest<T>(
@@ -215,6 +215,7 @@ async function apiRequest<T>(
     const rpcStatus = (await res.json().catch(() => null)) as RpcStatus | null;
     throw new ResourceApiError(res.status, rpcStatus);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -290,6 +291,7 @@ export function createResourceApi<Props = Record<string, unknown>>(
     async searchAll(params) {
       const allResults: ResourceSearchResult<Props>[] = [];
       let pageToken: string | undefined;
+      const seenTokens = new Set<string>();
       do {
         const response = await searchRequest<Props>(scope, {
           ...params,
@@ -297,6 +299,12 @@ export function createResourceApi<Props = Record<string, unknown>>(
         });
         allResults.push(...response.results);
         pageToken = response.nextPageToken || undefined;
+        if (pageToken && seenTokens.has(pageToken)) {
+          throw new Error(
+            `Cyclic pagination detected: repeated nextPageToken "${pageToken}"`,
+          );
+        }
+        if (pageToken) seenTokens.add(pageToken);
       } while (pageToken);
       return allResults;
     },
