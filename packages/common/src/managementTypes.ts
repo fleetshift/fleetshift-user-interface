@@ -83,11 +83,9 @@ export interface DeploymentManifest {
   raw: string;
 }
 
-export interface DeploymentManifestStrategy {
-  type: ManifestStrategyType;
-  /** Manifests to deliver verbatim. Required when type is TYPE_INLINE. */
-  manifests?: DeploymentManifest[];
-}
+export type DeploymentManifestStrategy =
+  | { type: "TYPE_UNSPECIFIED"; manifests?: DeploymentManifest[] }
+  | { type: "TYPE_INLINE"; manifests: DeploymentManifest[] };
 
 export type PlacementStrategyType =
   | "TYPE_UNSPECIFIED"
