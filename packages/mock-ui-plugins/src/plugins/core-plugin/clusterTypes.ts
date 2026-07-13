@@ -37,6 +37,7 @@ const STATE_LABELS: Record<
 
 const DEFAULT_STATE_LABEL = { text: "Unknown", color: "grey" } as const;
 
+const HEALTHY_STATES = new Set(["ACTIVE", "RUNNING"]);
 const FAILURE_STATES = new Set(["ERROR", "DEGRADED", "FAILED"]);
 const TRANSIENT_STATES = new Set(["CREATING", "DELETING", "PROVISIONING"]);
 
@@ -77,6 +78,13 @@ export function serviceLabel(service: string): string {
   return SERVICE_LABELS[service] ?? service;
 }
 
+export function isHealthyState(state: string | undefined): boolean {
+  return !!state && HEALTHY_STATES.has(state);
+}
+
 export function buildAddonBasePath(service: string): string {
+  if (!Object.prototype.hasOwnProperty.call(SERVICE_LABELS, service)) {
+    throw new Error(`Unsupported cluster service: ${service}`);
+  }
   return `/apis/${service}/v1`;
 }
