@@ -1,14 +1,18 @@
 import {
   Form,
   FormGroup,
+  FormHelperText,
   FormSelect,
   FormSelectOption,
+  HelperText,
+  HelperTextItem,
   TextInput,
 } from "@patternfly/react-core";
 
 import type { GcpHcpFormData } from "./CreateGcpHcpWizard";
 
 const CLUSTER_ID_PATTERN = /^[a-z][-a-z0-9]*$/;
+const CLUSTER_ID_MAX_LENGTH = 15;
 
 interface ClusterDetailsStepProps {
   formData: GcpHcpFormData;
@@ -22,34 +26,40 @@ export default function ClusterDetailsStep({
   formData,
   onChange,
 }: ClusterDetailsStepProps) {
+  const trimmedId = formData.clusterId.trim();
+  const idTooLong = trimmedId.length > CLUSTER_ID_MAX_LENGTH;
+  const idPatternInvalid =
+    trimmedId.length > 0 && !CLUSTER_ID_PATTERN.test(trimmedId);
+  const idValidated = !trimmedId
+    ? "default"
+    : idTooLong || idPatternInvalid
+      ? "error"
+      : "default";
+
   return (
     <Form>
-      <FormGroup
-        label="Cluster ID"
-        isRequired
-        fieldId="cluster-id"
-        // helperText="Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens."
-        // helperTextInvalid="Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens."
-        // validated={
-        //   !formData.clusterId.trim() || CLUSTER_ID_PATTERN.test(formData.clusterId.trim())
-        //     ? "default"
-        //     : "error"
-        // }
-      >
+      <FormGroup label="Cluster ID" isRequired fieldId="cluster-id">
         <TextInput
           id="cluster-id"
           isRequired
           value={formData.clusterId}
           onChange={(_e, val) => onChange("clusterId", val)}
           placeholder="my-hcp-cluster"
-          validated={
-            !formData.clusterId.trim()
-              ? "default"
-              : CLUSTER_ID_PATTERN.test(formData.clusterId.trim())
-                ? "default"
-                : "error"
-          }
+          validated={idValidated}
         />
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem
+              variant={idValidated === "error" ? "error" : "default"}
+            >
+              {idTooLong
+                ? `Must be ${CLUSTER_ID_MAX_LENGTH} characters or less (currently ${trimmedId.length}).`
+                : idPatternInvalid
+                  ? "Must start with a lowercase letter and contain only lowercase letters, digits, and hyphens."
+                  : `Lowercase letters, digits, and hyphens. Max ${CLUSTER_ID_MAX_LENGTH} characters.`}
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
 
       <FormGroup label="Endpoint access" isRequired fieldId="endpoint-access">
