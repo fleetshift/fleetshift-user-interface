@@ -52,7 +52,7 @@ export type DeploymentState =
   | "STATE_PAUSED_AUTH";
 
 export interface Manifest {
-  resourceType: string;
+  manifestType: string;
   raw: string;
 }
 
