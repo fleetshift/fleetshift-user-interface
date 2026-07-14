@@ -15,6 +15,7 @@ FleetShift is a multi-cluster management UI that dynamically composes its interf
 
 - [Feature Contracts](./feature-contracts.md) — extension types, search indexing, feature graph
 - [Module Groups](./module-groups.md) — nested navigation, hierarchical search, grouped routes
+- [Extension Validation](./extension-validation.md) — runtime trust boundary for cross-plugin extensions
 
 ## Non-Goals
 
