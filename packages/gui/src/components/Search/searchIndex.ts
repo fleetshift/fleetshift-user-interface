@@ -6,7 +6,7 @@ import { highlightText } from "./highlightUtils";
 
 export type { SearchEntry };
 
-export type SearchCategory = "nav" | "nav-group" | "cluster" | "setting";
+export type SearchCategory = "nav" | "nav-group" | "setting";
 
 export interface SearchResultItem {
   id: string;
@@ -19,6 +19,13 @@ export interface SearchResultItem {
   feature?: string;
   IconComponent?: React.ComponentType;
   Component?: React.ComponentType<{ title: string; description: string }>;
+  pluginLink?: {
+    scope: string;
+    module: string;
+    to?: string;
+    search?: string;
+  };
+  descriptionNode?: React.ReactNode;
 }
 
 export type GroupedResults = Record<string, SearchResultItem[]>;

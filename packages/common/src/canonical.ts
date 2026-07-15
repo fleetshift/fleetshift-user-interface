@@ -12,7 +12,7 @@ export interface ManifestStrategy {
 }
 
 export interface Manifest {
-  resourceType: string;
+  manifestType: string;
   content: unknown;
 }
 
@@ -74,7 +74,7 @@ function marshalManifestStrategy(
   const out: Record<string, unknown> = { type: ms.type };
   if (ms.manifests && ms.manifests.length > 0) {
     out.manifests = ms.manifests.map((m) => ({
-      resource_type: m.resourceType,
+      manifest_type: m.manifestType,
       content: m.content,
     }));
   }

@@ -141,12 +141,12 @@ export default function CreateClusterWizard({
             type: "inline",
             manifests: [
               {
-                resourceType: "api.kind.cluster",
+                manifestType: "api.kind.cluster",
                 content: JSON.parse(specJson),
               },
             ],
           },
-          { type: "all" },
+          { type: "static", targets: ["kind-local"] },
           validUntilDate,
           [],
           expectedGeneration,
@@ -163,9 +163,9 @@ export default function CreateClusterWizard({
         deployment: {
           manifestStrategy: {
             type: "TYPE_INLINE",
-            manifests: [{ resourceType: "api.kind.cluster", raw: rawBase64 }],
+            manifests: [{ manifestType: "api.kind.cluster", raw: rawBase64 }],
           },
-          placementStrategy: { type: "TYPE_ALL" },
+          placementStrategy: { type: "TYPE_STATIC", targetIds: ["kind-local"] },
         },
         userSignature,
         validUntil,

@@ -5,6 +5,7 @@ import {
   createOnboardingAction,
   createPfModuleReplacementPlugin,
   createPfTransformImport,
+  createSearchResultRenderer,
   createSetup,
   FleetshiftPlugin,
   getDynamicModules,
@@ -214,6 +215,13 @@ const GcpHcpPlugin = new FleetshiftPlugin({
       form: { $codeRef: "GcpHcpConnectionForm.default" },
       overviewCta: "Integrate your first addon",
     }),
+    createSearchResultRenderer({
+      id: "gcphcp-cluster-renderer",
+      label: "GCP HCP Cluster",
+      resourceType: "gcphcp.fleetshift.io/Cluster",
+      resolve: { $codeRef: "GcpHcpSearchResult.resolveGcpHcpCluster" },
+      icon: { $codeRef: "GcpHcpSearchResult.GcpHcpClusterIcon" },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/gcphcp/gcphcp-plugin.[contenthash].js",
@@ -235,6 +243,9 @@ const GcpHcpPlugin = new FleetshiftPlugin({
       ),
       GcpHcpConnectionForm: p(
         "./src/plugins/gcphcp-plugin/GcpHcpConnectionForm.tsx",
+      ),
+      GcpHcpSearchResult: p(
+        "./src/plugins/gcphcp-plugin/GcpHcpSearchResult.tsx",
       ),
     },
   },
@@ -280,6 +291,13 @@ const KindPlugin = new FleetshiftPlugin({
       wizard: { $codeRef: "CreateClusterWizard.default" },
       searchIcon: { $codeRef: "KindIcon.default" },
     }),
+    createSearchResultRenderer({
+      id: "kind-cluster-renderer",
+      label: "Kind Cluster",
+      resourceType: "kind.fleetshift.io/Cluster",
+      resolve: { $codeRef: "KindSearchResult.resolveKindCluster" },
+      icon: { $codeRef: "KindSearchResult.KindClusterIcon" },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/kind/kind-plugin.[contenthash].js",
@@ -294,6 +312,7 @@ const KindPlugin = new FleetshiftPlugin({
         "./src/plugins/kind-plugin/CreateClusterWizard.tsx",
       ),
       KindIcon: p("./src/plugins/kind-plugin/KindIcon.tsx"),
+      KindSearchResult: p("./src/plugins/kind-plugin/KindSearchResult.tsx"),
     },
   },
 });

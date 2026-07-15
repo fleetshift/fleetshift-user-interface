@@ -24,7 +24,7 @@ describe("buildSignedInputEnvelope", () => {
     const ms: ManifestStrategy = {
       type: "inline",
       manifests: [
-        { resourceType: "api.kind.cluster", content: { name: "c1" } },
+        { manifestType: "api.kind.cluster", content: { name: "c1" } },
       ],
     };
     const ps: PlacementStrategy = { type: "static", targets: ["target-a"] };
@@ -38,7 +38,7 @@ describe("buildSignedInputEnvelope", () => {
     );
 
     expect(env).toBe(
-      '{"content":{"deployment_id":"my-dep","manifest_strategy":{"type":"inline","manifests":[{"resource_type":"api.kind.cluster","content":{"name":"c1"}}]},"placement_strategy":{"type":"static","targets":["target-a"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":1}',
+      '{"content":{"deployment_id":"my-dep","manifest_strategy":{"type":"inline","manifests":[{"manifest_type":"api.kind.cluster","content":{"name":"c1"}}]},"placement_strategy":{"type":"static","targets":["target-a"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":1}',
     );
   });
 
@@ -104,8 +104,8 @@ describe("buildSignedInputEnvelope", () => {
     const ms: ManifestStrategy = {
       type: "inline",
       manifests: [
-        { resourceType: "Deployment", content: { replicas: 3 } },
-        { resourceType: "Service", content: { port: 80 } },
+        { manifestType: "Deployment", content: { replicas: 3 } },
+        { manifestType: "Service", content: { port: 80 } },
       ],
     };
     const ps: PlacementStrategy = { type: "static", targets: ["t1", "t2"] };
@@ -119,7 +119,7 @@ describe("buildSignedInputEnvelope", () => {
     );
 
     expect(env).toBe(
-      '{"content":{"deployment_id":"dep-3","manifest_strategy":{"type":"inline","manifests":[{"resource_type":"Deployment","content":{"replicas":3}},{"resource_type":"Service","content":{"port":80}}]},"placement_strategy":{"type":"static","targets":["t1","t2"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":2}',
+      '{"content":{"deployment_id":"dep-3","manifest_strategy":{"type":"inline","manifests":[{"manifest_type":"Deployment","content":{"replicas":3}},{"manifest_type":"Service","content":{"port":80}}]},"placement_strategy":{"type":"static","targets":["t1","t2"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":2}',
     );
   });
 
@@ -127,7 +127,7 @@ describe("buildSignedInputEnvelope", () => {
     const ms: ManifestStrategy = {
       type: "inline",
       manifests: [
-        { resourceType: "api.kind.cluster", content: { name: "test-cluster" } },
+        { manifestType: "api.kind.cluster", content: { name: "test-cluster" } },
       ],
     };
     const ps: PlacementStrategy = { type: "static", targets: ["t1", "t2"] };
@@ -148,10 +148,10 @@ describe("buildSignedInputEnvelope", () => {
 describe("hashIntent", () => {
   it("vector 1: matches Go SHA-256 hash", async () => {
     const envelope =
-      '{"content":{"deployment_id":"my-dep","manifest_strategy":{"type":"inline","manifests":[{"resource_type":"api.kind.cluster","content":{"name":"c1"}}]},"placement_strategy":{"type":"static","targets":["target-a"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":1}';
+      '{"content":{"deployment_id":"my-dep","manifest_strategy":{"type":"inline","manifests":[{"manifest_type":"api.kind.cluster","content":{"name":"c1"}}]},"placement_strategy":{"type":"static","targets":["target-a"]}},"output_constraints":[],"valid_until":1773230400,"expected_generation":1}';
     const hash = await hashIntent(envelope);
     expect(toHex(hash)).toBe(
-      "d95d55ee0e33b260de77a6da91b7a70794cf08ebbe9ec17283570768a3d497ac",
+      "8e7a7e339e2a7fbc90f309f840af484cb995337c5618aef0ae7fe981fa199d88",
     );
   });
 

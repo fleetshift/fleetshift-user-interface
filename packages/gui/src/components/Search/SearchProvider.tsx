@@ -39,73 +39,6 @@ interface SearchContextValue {
 
 const SearchContext = createContext<SearchContextValue | null>(null);
 
-const MOCK_CLUSTERS: Omit<SearchEntry, "category" | "icon">[] = [
-  {
-    id: "cl-1",
-    title: "prod-east-1",
-    description: "Production cluster in US East",
-    pathname: "/clusters/prod-east-1",
-    status: "healthy",
-    meta: "4.20.5 Production aws us-east-1",
-  },
-  {
-    id: "cl-2",
-    title: "prod-west-2",
-    description: "Production cluster in US West",
-    pathname: "/clusters/prod-west-2",
-    status: "degraded",
-    meta: "4.17.12 Production aws us-west-2",
-  },
-  {
-    id: "cl-3",
-    title: "prod-eu-1",
-    description: "Production cluster in EU Frankfurt",
-    pathname: "/clusters/prod-eu-1",
-    status: "healthy",
-    meta: "4.20.5 Production on-prem eu-central",
-  },
-  {
-    id: "cl-4",
-    title: "dev-central-1",
-    description: "Development cluster",
-    pathname: "/clusters/dev-central-1",
-    status: "healthy",
-    meta: "4.20.5 Development on-prem us-central",
-  },
-  {
-    id: "cl-5",
-    title: "dev-sandbox",
-    description: "Development sandbox cluster",
-    pathname: "/clusters/dev-sandbox",
-    status: "healthy",
-    meta: "4.14.38 Development on-prem us-east-1",
-  },
-  {
-    id: "cl-6",
-    title: "edge-retail-nyc",
-    description: "Edge cluster at NYC retail location",
-    pathname: "/clusters/edge-retail-nyc",
-    status: "healthy",
-    meta: "4.17.12 Edge on-prem nyc",
-  },
-  {
-    id: "cl-7",
-    title: "edge-retail-chi",
-    description: "Edge cluster at Chicago retail",
-    pathname: "/clusters/edge-retail-chi",
-    status: "critical",
-    meta: "4.14.38 Edge on-prem chicago",
-  },
-  {
-    id: "cl-8",
-    title: "infra-hub",
-    description: "Infrastructure hub cluster",
-    pathname: "/clusters/infra-hub",
-    status: "healthy",
-    meta: "4.20.5 Infrastructure on-prem us-central",
-  },
-];
-
 const SETTINGS: Omit<SearchEntry, "category" | "icon">[] = [
   {
     id: "set-debug",
@@ -269,16 +202,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         icon: iconName,
         status,
       });
-    }
-
-    for (const cluster of MOCK_CLUSTERS) {
-      inserts.push(
-        insertEntry(db, {
-          ...cluster,
-          category: "cluster",
-          icon: "ServerIcon",
-        }),
-      );
     }
 
     for (const setting of SETTINGS) {

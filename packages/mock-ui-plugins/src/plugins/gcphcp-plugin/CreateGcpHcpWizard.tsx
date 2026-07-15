@@ -71,10 +71,11 @@ export default function CreateGcpHcpWizard({
   const handleSubmit = useCallback(async () => {
     if (
       !formData.clusterId.trim() ||
-      !/^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim())
+      !/^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim()) ||
+      formData.clusterId.trim().length > 15
     ) {
       setError(
-        "Cluster ID must start with a lowercase letter and contain only lowercase letters, digits, and hyphens.",
+        "Cluster ID must be 15 characters or less, start with a lowercase letter, and contain only lowercase letters, digits, and hyphens.",
       );
       return;
     }
@@ -122,6 +123,7 @@ export default function CreateGcpHcpWizard({
 
   const isStep1Valid =
     /^[a-z][-a-z0-9]*$/.test(formData.clusterId.trim()) &&
+    formData.clusterId.trim().length <= 15 &&
     formData.releaseVersion.trim().length > 0;
 
   const isStep2Valid = formData.nodepools.every(

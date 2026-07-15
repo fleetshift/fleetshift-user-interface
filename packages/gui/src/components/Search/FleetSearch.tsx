@@ -1,6 +1,6 @@
 import "./FleetSearch.scss";
 
-import { loadPfIcon } from "@fleetshift/common";
+import { loadPfIcon, PluginLink } from "@fleetshift/common";
 import {
   Divider,
   Menu,
@@ -26,16 +26,17 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 
+import { useInventorySearch } from "../../hooks/useInventorySearch";
 import type { GroupedResults, SearchResultItem } from "./searchIndex";
 import { useSearch } from "./SearchProvider";
 
 const CATEGORY_LABELS: Record<string, string> = {
+  resources: "Resources",
   nav: "Pages",
-  cluster: "Clusters",
   setting: "Settings",
 };
 
-const KNOWN_CATEGORIES = ["nav", "cluster", "setting"];
+const KNOWN_CATEGORIES = ["resources", "nav", "setting"];
 
 function LazyIcon({
   name,
@@ -98,6 +99,37 @@ function getLinkComponent(to: string) {
   return cached;
 }
 
+type PluginLinkInfo = {
+  scope: string;
+  module: string;
+  to?: string;
+  search?: string;
+};
+const pluginLinkComponentCache = new Map<
+  string,
+  React.ForwardRefExoticComponent<React.RefAttributes<HTMLAnchorElement>>
+>();
+function getPluginLinkComponent(link: PluginLinkInfo) {
+  const key = `${link.scope}::${link.module}::${link.to ?? ""}::${link.search ?? ""}`;
+  let cached = pluginLinkComponentCache.get(key);
+  if (!cached) {
+    cached = forwardRef<
+      HTMLAnchorElement,
+      React.HTMLAttributes<HTMLAnchorElement>
+    >((props, ref) => (
+      <PluginLink
+        scope={link.scope}
+        module={link.module}
+        to={link.search ? { pathname: link.to, search: link.search } : link.to}
+        {...props}
+        ref={ref}
+      />
+    ));
+    pluginLinkComponentCache.set(key, cached);
+  }
+  return cached;
+}
+
 function totalCount(results: GroupedResults): number {
   let count = 0;
   for (const items of Object.values(results)) count += items.length;
@@ -121,6 +153,7 @@ const EMPTY: GroupedResults = {};
 
 const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   const { query } = useSearch();
+  const { search: inventorySearch } = useInventorySearch();
   const [searchValue, setSearchValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<GroupedResults>(EMPTY);
@@ -153,14 +186,17 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
         return;
       }
       const id = ++requestIdRef.current;
-      const r = await query(value);
+      const [invEntoryResults, r] = await Promise.all([
+        inventorySearch(value),
+        query(value),
+      ]);
       if (id !== requestIdRef.current) return;
-      setResults(r);
+      setResults({ ...r, resources: invEntoryResults });
       const hasResults = totalCount(r) > 0;
       setIsOpen(hasResults);
       onStateChange?.(hasResults);
     },
-    [query, onStateChange],
+    [query, onStateChange, inventorySearch],
   );
 
   const handleClear = useCallback(() => {
@@ -245,6 +281,43 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
         </div>
       );
     }
+
+    if (item.pluginLink) {
+      return (
+        <MenuItem
+          key={item.id}
+          icon={
+            <ResultIcon name={item.icon} IconComponent={item.IconComponent} />
+          }
+          description={item.descriptionNode ?? item.description}
+          component={getPluginLinkComponent(item.pluginLink)}
+          onClick={clearSearch}
+        >
+          <HighlightedText html={item.title} />
+          {item.status && (
+            <span
+              className={`ome-search__status ome-search__status--${item.status}`}
+            >
+              {item.status}
+            </span>
+          )}
+        </MenuItem>
+      );
+    }
+
+    if (!item.pathname) {
+      return (
+        <MenuItem
+          key={item.id}
+          icon={<ResultIcon name={item.icon} />}
+          description={item.description}
+          isDisabled
+        >
+          <HighlightedText html={item.title} />
+        </MenuItem>
+      );
+    }
+
     return (
       <MenuItem
         key={item.id}
