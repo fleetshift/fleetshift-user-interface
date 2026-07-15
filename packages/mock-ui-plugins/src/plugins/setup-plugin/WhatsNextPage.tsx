@@ -31,6 +31,7 @@ type OnboardingActionExtension = Extension<
     card: CodeRef<ComponentType<OnboardingActionCardProps>>;
     form: CodeRef<ComponentType<OnboardingActionFormProps>>;
     overviewCta?: string;
+    category?: string;
   }
 >;
 
@@ -56,6 +57,15 @@ const WhatsNextPage = ({ onSetupNext, onSetupSkip }: WhatsNextPageProps) => {
   const isSetup = !!(onSetupNext || onSetupSkip);
   const actionId = searchParams.get("action");
   const completed = searchParams.get("completed");
+  const categoryFilter = searchParams.get("category");
+
+  const filteredExtensions = useMemo(
+    () =>
+      categoryFilter
+        ? extensions.filter((e) => e.properties.category === categoryFilter)
+        : extensions,
+    [extensions, categoryFilter],
+  );
 
   const activeExt = useMemo(
     () =>
@@ -69,21 +79,31 @@ const WhatsNextPage = ({ onSetupNext, onSetupSkip }: WhatsNextPageProps) => {
   const handleComplete = useCallback(
     (id: string, label: string) => {
       setStepComplete(id, true);
-      setSearchParams({ action: id, completed: label }, { replace: true });
+      setSearchParams(
+        {
+          ...(categoryFilter ? { category: categoryFilter } : {}),
+          action: id,
+          completed: label,
+        },
+        { replace: true },
+      );
     },
-    [setStepComplete, setSearchParams],
+    [setStepComplete, setSearchParams, categoryFilter],
   );
 
   const openForm = useCallback(
     (id: string) => {
-      setSearchParams({ action: id });
+      setSearchParams({
+        ...(categoryFilter ? { category: categoryFilter } : {}),
+        action: id,
+      });
     },
-    [setSearchParams],
+    [setSearchParams, categoryFilter],
   );
 
   const backToCatalog = useCallback(() => {
-    setSearchParams({});
-  }, [setSearchParams]);
+    setSearchParams(categoryFilter ? { category: categoryFilter } : {});
+  }, [setSearchParams, categoryFilter]);
 
   const toolbar = (onSetupNext || onSetupSkip) && (
     <div className="ome-setup-whats-next__toolbar">
@@ -160,19 +180,25 @@ const WhatsNextPage = ({ onSetupNext, onSetupSkip }: WhatsNextPageProps) => {
     );
   }
 
+  const catalogTitle = isSetup
+    ? "What do you want to do next?"
+    : categoryFilter === "fleetshift.cluster-provider"
+      ? "Cluster Providers"
+      : "Extensions";
+
   return (
     <div className="ome-setup-whats-next">
       <div className="ome-setup-whats-next__body">
         <div className="ome-setup-whats-next__inner">
           <Title headingLevel="h1" className="ome-setup-whats-next__title">
-            {isSetup ? "What do you want to do next?" : "Extensions"}
+            {catalogTitle}
           </Title>
           <Content component="p" className="pf-v6-u-mb-lg">
             Configure addons and integrations for your fleet.
           </Content>
 
           <div className="ome-setup-whats-next__catalog">
-            {extensions.map((ext) => {
+            {filteredExtensions.map((ext) => {
               const CardComponent = ext.properties.card;
               return (
                 <CardComponent
