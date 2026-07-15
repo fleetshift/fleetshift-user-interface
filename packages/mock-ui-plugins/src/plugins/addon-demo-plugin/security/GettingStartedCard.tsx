@@ -193,7 +193,9 @@ export default function GettingStartedCard() {
               popperProps={{ position: "right" }}
             >
               <DropdownList>
-                <DropdownItem key="hide">Hide getting started</DropdownItem>
+                <DropdownItem key="hide" onClick={() => setIsExpanded(false)}>
+                  Hide getting started
+                </DropdownItem>
               </DropdownList>
             </Dropdown>
           ),
@@ -205,6 +207,15 @@ export default function GettingStartedCard() {
           gap={{ default: "gapMd" }}
           className="ome-addon-security__getting-started-header"
           onClick={() => setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
           style={{ cursor: "pointer" }}
         >
           <FlexItem>

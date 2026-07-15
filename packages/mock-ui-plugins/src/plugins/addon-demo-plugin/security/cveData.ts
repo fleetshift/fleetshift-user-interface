@@ -1,6 +1,11 @@
+export type CveSeverity = "critical" | "important" | "moderate" | "low";
+export type CveStatus = "new" | "deferred" | "false-positive";
+
 export interface CveRow {
   id: string;
   cve: string;
+  severity: CveSeverity;
+  status: CveStatus;
   imagesBySeverity: {
     critical: number;
     important: number;
@@ -20,6 +25,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "1",
     cve: "CVE-2026-39830",
+    severity: "critical",
+    status: "new",
     imagesBySeverity: { critical: 81, important: 0, moderate: 0, low: 0 },
     topCvss: 9.1,
     topCvssVersion: "V3",
@@ -32,6 +39,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "2",
     cve: "CVE-2026-46595",
+    severity: "critical",
+    status: "new",
     imagesBySeverity: { critical: 81, important: 0, moderate: 0, low: 0 },
     topCvss: 9.9,
     topCvssVersion: "V3",
@@ -45,6 +54,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "3",
     cve: "CVE-2026-46594",
+    severity: "critical",
+    status: "new",
     imagesBySeverity: { critical: 81, important: 0, moderate: 0, low: 0 },
     topCvss: 10.0,
     topCvssVersion: "V3",
@@ -57,6 +68,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "4",
     cve: "CVE-2026-46593",
+    severity: "critical",
+    status: "deferred",
     imagesBySeverity: { critical: 81, important: 0, moderate: 0, low: 0 },
     topCvss: 9.8,
     topCvssVersion: "V3",
@@ -69,6 +82,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "5",
     cve: "CVE-2026-46592",
+    severity: "critical",
+    status: "new",
     imagesBySeverity: { critical: 81, important: 0, moderate: 0, low: 0 },
     topCvss: 9.7,
     topCvssVersion: "V3",
@@ -82,6 +97,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "6",
     cve: "CVE-2026-46591",
+    severity: "critical",
+    status: "new",
     imagesBySeverity: { critical: 74, important: 12, moderate: 0, low: 0 },
     topCvss: 9.5,
     topCvssVersion: "V3",
@@ -94,6 +111,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "7",
     cve: "CVE-2026-46590",
+    severity: "important",
+    status: "new",
     imagesBySeverity: { critical: 68, important: 15, moderate: 3, low: 0 },
     topCvss: 9.4,
     topCvssVersion: "V3",
@@ -106,6 +125,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "8",
     cve: "CVE-2026-46589",
+    severity: "important",
+    status: "deferred",
     imagesBySeverity: { critical: 62, important: 20, moderate: 5, low: 0 },
     topCvss: 9.3,
     topCvssVersion: "V3",
@@ -118,6 +139,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "9",
     cve: "CVE-2026-46588",
+    severity: "important",
+    status: "new",
     imagesBySeverity: { critical: 55, important: 22, moderate: 8, low: 1 },
     topCvss: 9.1,
     topCvssVersion: "V3",
@@ -130,6 +153,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "10",
     cve: "CVE-2026-46587",
+    severity: "moderate",
+    status: "false-positive",
     imagesBySeverity: { critical: 49, important: 18, moderate: 10, low: 2 },
     topCvss: 8.9,
     topCvssVersion: "V3",
@@ -142,6 +167,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "11",
     cve: "CVE-2026-46586",
+    severity: "moderate",
+    status: "new",
     imagesBySeverity: { critical: 42, important: 25, moderate: 6, low: 3 },
     topCvss: 8.8,
     topCvssVersion: "V3",
@@ -154,6 +181,8 @@ export const CVE_DATA: CveRow[] = [
   {
     id: "12",
     cve: "CVE-2026-46585",
+    severity: "low",
+    status: "deferred",
     imagesBySeverity: { critical: 38, important: 28, moderate: 12, low: 4 },
     topCvss: 8.6,
     topCvssVersion: "V3",

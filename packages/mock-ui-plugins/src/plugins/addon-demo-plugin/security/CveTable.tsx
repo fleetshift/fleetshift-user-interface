@@ -86,8 +86,11 @@ export default function CveTable() {
     () =>
       CVE_DATA.filter(
         (row) =>
-          !filters.name ||
-          row.cve.toLowerCase().includes(filters.name.toLowerCase()),
+          (!filters.name ||
+            row.cve.toLowerCase().includes(filters.name.toLowerCase())) &&
+          (filters.severity.length === 0 ||
+            filters.severity.includes(row.severity)) &&
+          (filters.status.length === 0 || filters.status.includes(row.status)),
       ),
     [filters],
   );

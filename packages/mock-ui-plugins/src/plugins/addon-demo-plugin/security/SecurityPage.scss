@@ -17,6 +17,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
 
   &::after {
     position: absolute;
@@ -165,12 +166,12 @@
     background-color: #E0D7F6 !important;
 
     .pf-v6-svg {
-      color: var(lt);
-      fill: var(lt);
+      color: #6753ac;
+      fill: #6753ac;
     }
 
     .pf-v6-c-alert__title {
-      color: var(lt);
+      color: #6753ac;
     }
   }
 
