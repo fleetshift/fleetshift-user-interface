@@ -70,12 +70,19 @@ export function useClusterResources(
         parts.push(`resource.observation.kind == "${kind}"`);
       }
       const filter = parts.join(" && ");
-      const { resources: results } = await k8sApi.search({
-        filter,
-        pageSize: 200,
-      });
-      if (id !== requestIdRef.current) return;
-      setResources(results);
+      const all: ResourceResult<K8sObjectResource>[] = [];
+      let pageToken: string | undefined;
+      do {
+        const response = await k8sApi.search({
+          filter,
+          pageSize: 200,
+          pageToken,
+        });
+        if (id !== requestIdRef.current) return;
+        all.push(...response.resources);
+        pageToken = response.nextPageToken || undefined;
+      } while (pageToken);
+      setResources(all);
     } catch (e) {
       if (id !== requestIdRef.current) return;
       setError(e instanceof Error ? e.message : "Failed to load resources");
