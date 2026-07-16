@@ -1,5 +1,3 @@
-import "./GcpHcpConnectionForm.scss";
-
 import type { OnboardingActionFormProps } from "@fleetshift/common";
 import {
   Button,
@@ -86,142 +84,132 @@ export default function GcpHcpConnectionForm({
           <Title headingLevel="h1" className="ome-setup-whats-next__title">
             GCP Hosted Control Plane
           </Title>
-          <div className="ome-gcphcp-connection-form__grid">
-            <Form>
-              <FormSection title="GCP Project">
-                <FormGroup
-                  label="Project ID"
+          <Form>
+            <FormSection title="GCP Project">
+              <FormGroup label="Project ID" isRequired fieldId="gcp-project-id">
+                <TextInput
+                  id="gcp-project-id"
                   isRequired
-                  fieldId="gcp-project-id"
+                  value={form.projectId}
+                  onChange={(_e, v) => update("projectId", v)}
+                  placeholder="my-gcp-project"
+                />
+              </FormGroup>
+              <FormGroup label="Region" isRequired fieldId="gcp-region">
+                <Select
+                  id="gcp-region"
+                  isOpen={regionOpen}
+                  onOpenChange={setRegionOpen}
+                  onSelect={(_e, val) => {
+                    update("region", val as string);
+                    setRegionOpen(false);
+                  }}
+                  selected={form.region}
+                  toggle={(toggleRef) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setRegionOpen((prev) => !prev)}
+                      isExpanded={regionOpen}
+                      isFullWidth
+                    >
+                      {form.region}
+                    </MenuToggle>
+                  )}
                 >
-                  <TextInput
-                    id="gcp-project-id"
-                    isRequired
-                    value={form.projectId}
-                    onChange={(_e, v) => update("projectId", v)}
-                    placeholder="my-gcp-project"
-                  />
-                </FormGroup>
-                <FormGroup label="Region" isRequired fieldId="gcp-region">
-                  <Select
-                    id="gcp-region"
-                    isOpen={regionOpen}
-                    onOpenChange={setRegionOpen}
-                    onSelect={(_e, val) => {
-                      update("region", val as string);
-                      setRegionOpen(false);
-                    }}
-                    selected={form.region}
-                    toggle={(toggleRef) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        onClick={() => setRegionOpen((prev) => !prev)}
-                        isExpanded={regionOpen}
-                        isFullWidth
-                      >
-                        {form.region}
-                      </MenuToggle>
-                    )}
-                  >
-                    <SelectList>
-                      {GCP_REGIONS.map((r) => (
-                        <SelectOption key={r} value={r}>
-                          {r}
-                        </SelectOption>
-                      ))}
-                    </SelectList>
-                  </Select>
-                </FormGroup>
-              </FormSection>
+                  <SelectList>
+                    {GCP_REGIONS.map((r) => (
+                      <SelectOption key={r} value={r}>
+                        {r}
+                      </SelectOption>
+                    ))}
+                  </SelectList>
+                </Select>
+              </FormGroup>
+            </FormSection>
 
-              <FormSection title="Workforce Identity">
-                <FormGroup
-                  label="Workforce Pool"
+            <FormSection title="Workforce Identity">
+              <FormGroup
+                label="Workforce Pool"
+                isRequired
+                fieldId="gcp-workforce-pool"
+              >
+                <TextInput
+                  id="gcp-workforce-pool"
                   isRequired
-                  fieldId="gcp-workforce-pool"
-                >
-                  <TextInput
-                    id="gcp-workforce-pool"
-                    isRequired
-                    value={form.workforcePool}
-                    onChange={(_e, v) => update("workforcePool", v)}
-                    placeholder="locations/global/workforcePools/my-pool"
-                  />
-                </FormGroup>
-                <FormGroup
-                  label="Workforce Provider"
+                  value={form.workforcePool}
+                  onChange={(_e, v) => update("workforcePool", v)}
+                  placeholder="locations/global/workforcePools/my-pool"
+                />
+              </FormGroup>
+              <FormGroup
+                label="Workforce Provider"
+                isRequired
+                fieldId="gcp-workforce-provider"
+              >
+                <TextInput
+                  id="gcp-workforce-provider"
                   isRequired
-                  fieldId="gcp-workforce-provider"
-                >
-                  <TextInput
-                    id="gcp-workforce-provider"
-                    isRequired
-                    value={form.workforceProvider}
-                    onChange={(_e, v) => update("workforceProvider", v)}
-                    placeholder="locations/global/workforcePools/my-pool/providers/my-provider"
-                  />
-                </FormGroup>
-                <FormGroup
-                  label="Broker Service Account Email"
+                  value={form.workforceProvider}
+                  onChange={(_e, v) => update("workforceProvider", v)}
+                  placeholder="locations/global/workforcePools/my-pool/providers/my-provider"
+                />
+              </FormGroup>
+              <FormGroup
+                label="Broker Service Account Email"
+                isRequired
+                fieldId="gcp-broker-sa"
+              >
+                <TextInput
+                  id="gcp-broker-sa"
                   isRequired
-                  fieldId="gcp-broker-sa"
-                >
-                  <TextInput
-                    id="gcp-broker-sa"
-                    isRequired
-                    type="password"
-                    value={form.brokerSaEmail}
-                    onChange={(_e, v) => update("brokerSaEmail", v)}
-                    placeholder="broker@my-project.iam.gserviceaccount.com"
-                  />
-                </FormGroup>
-              </FormSection>
-            </Form>
+                  value={form.brokerSaEmail}
+                  onChange={(_e, v) => update("brokerSaEmail", v)}
+                  placeholder="broker@my-project.iam.gserviceaccount.com"
+                />
+              </FormGroup>
+            </FormSection>
 
-            <Form>
-              <FormSection title="Gateway">
-                <FormGroup
-                  label="Gateway URL"
+            <FormSection title="Gateway">
+              <FormGroup
+                label="Gateway URL"
+                isRequired
+                fieldId="gcp-gateway-url"
+              >
+                <TextInput
+                  id="gcp-gateway-url"
                   isRequired
-                  fieldId="gcp-gateway-url"
-                >
-                  <TextInput
-                    id="gcp-gateway-url"
-                    isRequired
-                    value={form.gatewayUrl}
-                    onChange={(_e, v) => update("gatewayUrl", v)}
-                    placeholder="https://gateway.example.com"
-                  />
-                </FormGroup>
-                <FormGroup
-                  label="Gateway Audience"
+                  value={form.gatewayUrl}
+                  onChange={(_e, v) => update("gatewayUrl", v)}
+                  placeholder="https://gateway.example.com"
+                />
+              </FormGroup>
+              <FormGroup
+                label="Gateway Audience"
+                isRequired
+                fieldId="gcp-gateway-audience"
+              >
+                <TextInput
+                  id="gcp-gateway-audience"
                   isRequired
-                  fieldId="gcp-gateway-audience"
-                >
-                  <TextInput
-                    id="gcp-gateway-audience"
-                    isRequired
-                    type="password"
-                    value={form.gatewayAudience}
-                    onChange={(_e, v) => update("gatewayAudience", v)}
-                    placeholder="https://gateway.example.com"
-                  />
-                </FormGroup>
-              </FormSection>
+                  value={form.gatewayAudience}
+                  onChange={(_e, v) => update("gatewayAudience", v)}
+                  placeholder="https://gateway.example.com"
+                />
+              </FormGroup>
+            </FormSection>
 
-              <FormSection title="FleetShift Target">
-                <FormGroup label="Target ID" isRequired fieldId="gcp-target-id">
-                  <TextInput
-                    id="gcp-target-id"
-                    isRequired
-                    value={form.targetId}
-                    onChange={(_e, v) => update("targetId", v)}
-                    placeholder="my-target"
-                  />
-                </FormGroup>
-              </FormSection>
-            </Form>
-          </div>
+            <FormSection title="FleetShift Target">
+              <FormGroup label="Target ID" isRequired fieldId="gcp-target-id">
+                <TextInput
+                  id="gcp-target-id"
+                  isRequired
+                  value={form.targetId}
+                  onChange={(_e, v) => update("targetId", v)}
+                  placeholder="my-target"
+                />
+              </FormGroup>
+            </FormSection>
+          </Form>
         </div>
       </div>
       <div className="ome-setup-whats-next__toolbar">
