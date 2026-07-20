@@ -303,6 +303,7 @@ const GcpHcpPlugin = new FleetshiftPlugin({
       title: "Events",
       eventKey: "events",
       priority: 50,
+      service: "gcphcp.fleetshift.io",
       component: { $codeRef: "GcpHcpDeliveryEventsTab.default" },
     }),
   ],

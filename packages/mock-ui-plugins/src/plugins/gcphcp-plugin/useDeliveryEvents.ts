@@ -80,9 +80,16 @@ export function useDeliveryEvents(
         if (cid && !event.deliveryId.includes(cid)) return;
 
         setEvents((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.message === event.message) return prev;
-          return [...prev, event];
+          const isDuplicate = prev.some(
+            (e) =>
+              e.deliveryId === event.deliveryId &&
+              e.timestamp === event.timestamp,
+          );
+          if (isDuplicate) return prev;
+          const next = [...prev, event];
+          return next.length > MAX_PERSISTED
+            ? next.slice(-MAX_PERSISTED)
+            : next;
         });
       } catch {
         // ignore malformed messages
@@ -109,18 +116,25 @@ export function useDeliveryEvents(
     connect();
     return () => {
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
-      wsRef.current?.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+      }
       wsRef.current = null;
     };
   }, [connect]);
 
-  useEffect(() => {
-    persistEvents(clusterId, events);
-  }, [clusterId, events]);
+  const prevClusterIdRef = useRef(clusterId);
 
   useEffect(() => {
-    setEvents(loadPersistedEvents(clusterId));
-  }, [clusterId]);
+    if (prevClusterIdRef.current !== clusterId) {
+      prevClusterIdRef.current = clusterId;
+      setEvents(loadPersistedEvents(clusterId));
+      return;
+    }
+    persistEvents(clusterId, events);
+  }, [clusterId, events]);
 
   return { events, connected };
 }

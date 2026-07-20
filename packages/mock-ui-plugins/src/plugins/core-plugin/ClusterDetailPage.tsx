@@ -65,6 +65,7 @@ interface ResolvedTab {
   title: string;
   eventKey: string;
   priority: number;
+  service?: string;
   Component: ComponentType<ClusterDetailTabProps>;
 }
 
@@ -308,6 +309,7 @@ export default function ClusterDetailPage() {
         title: string;
         eventKey: string;
         priority?: number;
+        service?: string;
         component: ComponentType<ClusterDetailTabProps>;
       };
       tabs.push({
@@ -315,6 +317,7 @@ export default function ClusterDetailPage() {
         title: p.title,
         eventKey: p.eventKey,
         priority: p.priority ?? 100,
+        service: p.service,
         Component: p.component,
       });
     }
@@ -502,19 +505,21 @@ export default function ClusterDetailPage() {
             <OverviewTab result={result} service={service} />
           </div>
         </Tab>
-        {resolvedTabs.map((tab) => (
-          <Tab
-            key={tab.eventKey}
-            eventKey={tab.eventKey}
-            title={<TabTitleText>{tab.title}</TabTitleText>}
-            mountOnEnter
-            unmountOnExit
-          >
-            <div className="pf-v6-u-pt-md">
-              <tab.Component clusterId={clusterId} />
-            </div>
-          </Tab>
-        ))}
+        {resolvedTabs
+          .filter((tab) => !tab.service || tab.service === service)
+          .map((tab) => (
+            <Tab
+              key={tab.eventKey}
+              eventKey={tab.eventKey}
+              title={<TabTitleText>{tab.title}</TabTitleText>}
+              mountOnEnter
+              unmountOnExit
+            >
+              <div className="pf-v6-u-pt-md">
+                <tab.Component clusterId={clusterId} />
+              </div>
+            </Tab>
+          ))}
       </Tabs>
 
       <Modal

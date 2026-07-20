@@ -12,6 +12,7 @@ export type ClusterDetailTabExtras = {
   title: string;
   eventKey: string;
   priority?: number;
+  service?: string;
 };
 
 export type ClusterDetailTabProperties = BaseExtensionProperties &
