@@ -1,115 +1,68 @@
+import "./delivery-events.scss";
+
+import type { ClusterDetailTabProps } from "@fleetshift/common";
 import {
-  EmptyState,
-  EmptyStateBody,
   Label,
+  SearchInput,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
 } from "@patternfly/react-core";
-import { LogViewer, LogViewerSearch } from "@patternfly/react-log-viewer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
-interface DeliveryEvent {
-  type: string;
-  deliveryId: string;
-  eventKind: string;
-  message: string;
-  timestamp: number;
-}
+import EventLogTerminal from "./EventLogTerminal";
+import { useAutoScroll } from "./useAutoScroll";
+import { useDeliveryEvents } from "./useDeliveryEvents";
 
 function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleTimeString();
 }
 
-export default function GcpHcpDeliveryEventsTab() {
-  const [events, setEvents] = useState<DeliveryEvent[]>([]);
-  const [wsConnected, setWsConnected] = useState(false);
-  const logViewerRef = useRef<{ scrollToBottom: () => void }>(null);
+export default function GcpHcpDeliveryEventsTab({
+  clusterId,
+}: ClusterDetailTabProps) {
+  const { events, connected } = useDeliveryEvents(clusterId);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${proto}//${window.location.host}/api/ui/events/ws`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
-
-    ws.onmessage = (e) => {
-      try {
-        const event: DeliveryEvent = JSON.parse(e.data);
-        if (event.deliveryId?.includes("gcphcp")) {
-          setEvents((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.message === event.message) return prev;
-            return [...prev, event];
-          });
-        }
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    return () => ws.close();
-  }, []);
-
-  useEffect(() => {
-    logViewerRef.current?.scrollToBottom();
-  }, [events.length]);
-
-  const logData = useMemo(
+  const lines = useMemo(
     () =>
-      events.length > 0
-        ? events
-            .map(
-              (ev) =>
-                `[${formatTimestamp(ev.timestamp)}] [${ev.eventKind}] ${ev.message}`,
-            )
-            .join("\n")
-        : "Waiting for delivery events...",
+      events.map(
+        (ev) =>
+          `[${formatTimestamp(ev.timestamp)}] [${ev.eventKind}] ${ev.message}`,
+      ),
     [events],
   );
 
-  if (events.length === 0 && !wsConnected) {
-    return (
-      <EmptyState titleText="No events" headingLevel="h2">
-        <EmptyStateBody>
-          WebSocket is not connected. Events will appear here when the
-          connection is re-established.
-        </EmptyStateBody>
-      </EmptyState>
-    );
-  }
+  const { containerRef } = useAutoScroll([lines.length]);
 
   return (
-    <LogViewer
-      data={logData}
-      hasLineNumbers
-      isTextWrapped
-      height={400}
-      theme="dark"
-      scrollToRow={events.length || undefined}
-      innerRef={logViewerRef}
-      toolbar={
-        <Toolbar>
-          <ToolbarContent>
-            <ToolbarGroup>
-              <ToolbarItem>
-                <LogViewerSearch
-                  placeholder="Search events..."
-                  minSearchChars={2}
-                />
-              </ToolbarItem>
-            </ToolbarGroup>
-            <ToolbarItem align={{ default: "alignEnd" }}>
-              <Label color={wsConnected ? "green" : "red"} isCompact>
-                {wsConnected ? "Live" : "Disconnected"}
-              </Label>
+    <div>
+      <Toolbar>
+        <ToolbarContent>
+          <ToolbarGroup>
+            <ToolbarItem>
+              <SearchInput
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(_e, val) => setSearchTerm(val)}
+                onClear={() => setSearchTerm("")}
+                aria-label="Search delivery events"
+              />
             </ToolbarItem>
-          </ToolbarContent>
-        </Toolbar>
-      }
-    />
+          </ToolbarGroup>
+          <ToolbarItem align={{ default: "alignEnd" }}>
+            <Label color={connected ? "green" : "red"} isCompact>
+              {connected ? "Live" : "Disconnected"}
+            </Label>
+          </ToolbarItem>
+        </ToolbarContent>
+      </Toolbar>
+      <EventLogTerminal
+        lines={lines}
+        searchTerm={searchTerm}
+        containerRef={containerRef}
+      />
+    </div>
   );
 }

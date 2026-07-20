@@ -297,6 +297,15 @@ const GcpHcpPlugin = new FleetshiftPlugin({
       resolve: { $codeRef: "GcpHcpSearchResult.resolveGcpHcpCluster" },
       icon: { $codeRef: "GcpHcpSearchResult.GcpHcpClusterIcon" },
     }),
+    createClusterDetailTab({
+      id: "gcphcp-events",
+      label: "Events",
+      title: "Events",
+      eventKey: "events",
+      priority: 50,
+      service: "gcphcp.fleetshift.io",
+      component: { $codeRef: "GcpHcpDeliveryEventsTab.default" },
+    }),
   ],
   sharedModules,
   entryScriptFilename: "plugins/gcphcp/gcphcp-plugin.[contenthash].js",
@@ -321,6 +330,9 @@ const GcpHcpPlugin = new FleetshiftPlugin({
       ),
       GcpHcpSearchResult: p(
         "./src/plugins/gcphcp-plugin/GcpHcpSearchResult.tsx",
+      ),
+      GcpHcpDeliveryEventsTab: p(
+        "./src/plugins/gcphcp-plugin/GcpHcpDeliveryEventsTab.tsx",
       ),
     },
   },

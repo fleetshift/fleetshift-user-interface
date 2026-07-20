@@ -1,5 +1,22 @@
 import type { ResourceResult } from "@fleetshift/common";
 
+export interface ClusterCondition {
+  status: string;
+  reason?: string;
+  message?: string;
+  lastTransitionTime?: string;
+}
+
+export interface NodepoolSpec {
+  id: string;
+  replicas: number;
+  instanceType: string;
+  rootVolumeSize?: number;
+  rootVolumeType?: string;
+  autoRepair?: boolean;
+  upgradeType?: string;
+}
+
 export interface ClusterResource {
   name: string;
   uid: string;
@@ -7,9 +24,14 @@ export interface ClusterResource {
   reconciling?: boolean;
   createTime?: string;
   updateTime?: string;
+  pauseReason?: string;
+  conditions?: Record<string, ClusterCondition>;
+  observation?: Record<string, unknown>;
   spec?: {
     releaseVersion?: string;
-    nodepools?: unknown[];
+    nodepools?: NodepoolSpec[];
+    endpointAccess?: string;
+    channelGroup?: string;
   };
 }
 
@@ -87,4 +109,14 @@ export function buildAddonBasePath(service: string): string {
     throw new Error(`Unsupported cluster service: ${service}`);
   }
   return `/apis/${service}/v1`;
+}
+
+export function deriveClusterState(
+  resource: ClusterResource,
+): string | undefined {
+  if (resource.state) return resource.state;
+  const ready = resource.conditions?.Ready;
+  if (ready?.status === "True") return "RUNNING";
+  if (ready?.status === "False") return "ERROR";
+  return undefined;
 }

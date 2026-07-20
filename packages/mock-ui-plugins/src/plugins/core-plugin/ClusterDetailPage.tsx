@@ -1,7 +1,12 @@
 import "./ClusterDetailPage.scss";
 
-import type { ClusterDetailTabProps } from "@fleetshift/common";
-import { PluginLink, usePluginNavigate } from "@fleetshift/common";
+import type { ClusterDetailTabProps, ResourceResult } from "@fleetshift/common";
+import {
+  createApiClient,
+  createResourceApi,
+  PluginLink,
+  usePluginNavigate,
+} from "@fleetshift/common";
 import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
 import { PageHeader } from "@patternfly/react-component-groups/dist/dynamic/PageHeader";
 import {
@@ -36,23 +41,31 @@ import {
   Title,
 } from "@patternfly/react-core";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import {
-  deleteGcpHcpCluster,
-  type GcpHcpCluster,
-  getGcpHcpCluster,
-  resumeGcpHcpCluster,
-} from "../gcphcp-plugin/api";
-import GcpHcpDeliveryEventsTab from "../gcphcp-plugin/GcpHcpDeliveryEventsTab";
-import { formatTime, stateLabel } from "../gcphcp-plugin/gcpHcpUtils";
+  buildAddonBasePath,
+  type ClusterResource,
+  deriveClusterState,
+  extractClusterId,
+  extractService,
+  formatTime,
+  isTransientState,
+  stateLabel,
+} from "./clusterTypes";
+
+const clusterApi = createResourceApi<ClusterResource>("-");
+
+const CLUSTER_TYPE_FILTER =
+  'resourceType == "gcphcp.fleetshift.io/Cluster" || resourceType == "kind.fleetshift.io/Cluster"';
 
 interface ResolvedTab {
   id: string;
   title: string;
   eventKey: string;
   priority: number;
+  service?: string;
   Component: ComponentType<ClusterDetailTabProps>;
 }
 
@@ -62,9 +75,19 @@ function isClusterDetailTabExtension(e: { type: string }): boolean {
   return e.type === CLUSTER_DETAIL_TAB_TYPE;
 }
 
-function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
-  const sl = stateLabel(cluster.state);
+function OverviewTab({
+  result,
+  service,
+}: {
+  result: ResourceResult<ClusterResource>;
+  service: string;
+}) {
+  const cluster = result.resource;
+  const state = deriveClusterState(cluster);
+  const sl = stateLabel(state);
   const { spec } = cluster;
+  const isGcpHcp = service === "gcphcp.fleetshift.io";
+  const isKind = service === "kind.fleetshift.io";
 
   return (
     <div className="ome-core-overview-layout">
@@ -85,9 +108,15 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
         <GridItem span={3}>
           <Card isCompact isFullHeight>
             <CardBody>
-              <Content component="p">Node Pools</Content>
+              <Content component="p">
+                {isGcpHcp ? "Node Pools" : "Provider"}
+              </Content>
               <Title headingLevel="h2" size="2xl">
-                {spec.nodepools?.length ?? 0}
+                {isGcpHcp
+                  ? (spec?.nodepools?.length ?? 0)
+                  : isKind
+                    ? "Kind"
+                    : "—"}
               </Title>
             </CardBody>
           </Card>
@@ -97,7 +126,7 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
             <CardBody>
               <Content component="p">Version</Content>
               <Title headingLevel="h2" size="2xl">
-                {spec.releaseVersion || "—"}
+                {spec?.releaseVersion || "—"}
               </Title>
             </CardBody>
           </Card>
@@ -105,11 +134,32 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
         <GridItem span={3}>
           <Card isCompact isFullHeight>
             <CardBody>
-              <Content component="p">Endpoint Access</Content>
+              <Content component="p">
+                {isGcpHcp ? "Endpoint Access" : "API Server"}
+              </Content>
               <div className="pf-v6-u-mt-sm">
-                <Label color="blue" isCompact>
-                  {spec.endpointAccess || "—"}
-                </Label>
+                {isGcpHcp ? (
+                  <Label color="blue" isCompact>
+                    {spec?.endpointAccess || "—"}
+                  </Label>
+                ) : isKind ? (
+                  <Label
+                    color={
+                      cluster.conditions?.APIServerAvailable?.status === "True"
+                        ? "green"
+                        : "grey"
+                    }
+                    isCompact
+                  >
+                    {cluster.conditions?.APIServerAvailable?.status === "True"
+                      ? "Available"
+                      : "Unavailable"}
+                  </Label>
+                ) : (
+                  <Label color="grey" isCompact>
+                    —
+                  </Label>
+                )}
               </div>
             </CardBody>
           </Card>
@@ -127,7 +177,7 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
                 <DescriptionListGroup>
                   <DescriptionListTerm>Cluster ID</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {cluster.name.replace(/^gCPHCPClusters\//, "")}
+                    {extractClusterId(cluster.name)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -142,12 +192,14 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
                     {formatTime(cluster.createTime)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Channel Group</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {spec.channelGroup || "—"}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
+                {isGcpHcp && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Channel Group</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {spec?.channelGroup || "—"}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
               </DescriptionList>
             </GridItem>
             <GridItem span={6}>
@@ -155,7 +207,7 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
                 <DescriptionListGroup>
                   <DescriptionListTerm>Version</DescriptionListTerm>
                   <DescriptionListDescription>
-                    {spec.releaseVersion || "—"}
+                    {spec?.releaseVersion || "—"}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
                 <DescriptionListGroup>
@@ -164,13 +216,15 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
                     {formatTime(cluster.updateTime)}
                   </DescriptionListDescription>
                 </DescriptionListGroup>
-                <DescriptionListGroup>
-                  <DescriptionListTerm>Endpoint Access</DescriptionListTerm>
-                  <DescriptionListDescription>
-                    {spec.endpointAccess || "—"}
-                  </DescriptionListDescription>
-                </DescriptionListGroup>
-                {spec.nodepools?.length > 0 && (
+                {isGcpHcp && spec?.endpointAccess && (
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Endpoint Access</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      {spec.endpointAccess}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                )}
+                {isGcpHcp && spec?.nodepools && spec.nodepools.length > 0 && (
                   <DescriptionListGroup>
                     <DescriptionListTerm>Node Pools</DescriptionListTerm>
                     <DescriptionListDescription>
@@ -188,6 +242,45 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
           </Grid>
         </CardBody>
       </Card>
+
+      {isKind && cluster.conditions && (
+        <Card>
+          <CardBody>
+            <Title headingLevel="h2" size="lg" className="pf-v6-u-mb-md">
+              Conditions
+            </Title>
+            <DescriptionList isHorizontal>
+              {Object.entries(cluster.conditions).map(([type, cond]) => (
+                <DescriptionListGroup key={type}>
+                  <DescriptionListTerm>{type}</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    <Label
+                      isCompact
+                      color={cond.status === "True" ? "green" : "grey"}
+                    >
+                      {cond.status}
+                    </Label>
+                    {cond.reason && (
+                      <span className="pf-v6-u-ml-sm">{cond.reason}</span>
+                    )}
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              ))}
+            </DescriptionList>
+          </CardBody>
+        </Card>
+      )}
+
+      {cluster.pauseReason && (
+        <Card>
+          <CardBody>
+            <Title headingLevel="h2" size="lg" className="pf-v6-u-mb-md">
+              Pause Reason
+            </Title>
+            <Content component="p">{cluster.pauseReason}</Content>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }
@@ -195,7 +288,9 @@ function OverviewTab({ cluster }: { cluster: GcpHcpCluster }) {
 export default function ClusterDetailPage() {
   const { clusterId } = useParams<{ clusterId: string }>();
   const clusters = usePluginNavigate("core-plugin", "ClustersModule");
-  const [cluster, setCluster] = useState<GcpHcpCluster | null>(null);
+  const [result, setResult] = useState<ResourceResult<ClusterResource> | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string | number>("overview");
@@ -203,6 +298,7 @@ export default function ClusterDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const requestIdRef = useRef(0);
 
   const [tabExtensions] = useResolvedExtensions(isClusterDetailTabExtension);
   const resolvedTabs = useMemo<ResolvedTab[]>(() => {
@@ -213,6 +309,7 @@ export default function ClusterDetailPage() {
         title: string;
         eventKey: string;
         priority?: number;
+        service?: string;
         component: ComponentType<ClusterDetailTabProps>;
       };
       tabs.push({
@@ -220,26 +317,42 @@ export default function ClusterDetailPage() {
         title: p.title,
         eventKey: p.eventKey,
         priority: p.priority ?? 100,
+        service: p.service,
         Component: p.component,
       });
     }
     return tabs.sort((a, b) => a.priority - b.priority);
   }, [tabExtensions]);
 
+  const service = result ? extractService(result.name) : "";
+
   const fetchCluster = useCallback(
     async (silent = false) => {
       if (!clusterId) return;
+      const id = ++requestIdRef.current;
       if (!silent) setError(null);
       try {
-        const data = await getGcpHcpCluster(clusterId);
-        setCluster(data);
+        const escaped = clusterId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const response = await clusterApi.search({
+          filter: `(${CLUSTER_TYPE_FILTER}) && resource.name == "clusters/${escaped}"`,
+          pageSize: 1,
+        });
+        if (id !== requestIdRef.current) return;
+        if (response.resources.length > 0) {
+          setResult(response.resources[0]);
+        } else {
+          if (silent) setResult(null);
+          else setError("Cluster not found");
+        }
       } catch (e) {
-        const message =
-          e instanceof Error ? e.message : "Failed to load cluster";
-        setError(message);
-        if (silent) setCluster(null);
+        if (id !== requestIdRef.current) return;
+        if (!silent) {
+          const message =
+            e instanceof Error ? e.message : "Failed to load cluster";
+          setError(message);
+        }
       } finally {
-        if (!silent) setLoading(false);
+        if (id === requestIdRef.current && !silent) setLoading(false);
       }
     },
     [clusterId],
@@ -249,10 +362,11 @@ export default function ClusterDetailPage() {
     fetchCluster();
   }, [fetchCluster]);
 
+  const cluster = result?.resource;
+  const state = cluster ? deriveClusterState(cluster) : undefined;
   const isTransient =
-    cluster?.state === "CREATING" ||
-    cluster?.state === "DELETING" ||
-    cluster?.reconciling;
+    isTransientState(state) || (cluster?.reconciling ?? false);
+
   useEffect(() => {
     if (!isTransient) return;
     const id = setInterval(() => fetchCluster(true), 5000);
@@ -261,16 +375,17 @@ export default function ClusterDetailPage() {
 
   const clusterName = useMemo(() => clusterId ?? "", [clusterId]);
 
-  const canResume =
-    cluster?.state === "PAUSED_AUTH" || cluster?.state === "FAILED";
-  const canDelete = cluster?.state !== "DELETING";
+  const isGcpHcp = service === "gcphcp.fleetshift.io";
+  const canResume = isGcpHcp && (state === "PAUSED_AUTH" || state === "FAILED");
+  const canDelete = state !== "DELETING";
 
   const handleDelete = async () => {
-    if (!clusterId) return;
+    if (!clusterId || !service) return;
     setIsDeleting(true);
     setShowDeleteModal(false);
     try {
-      await deleteGcpHcpCluster(clusterId);
+      const client = createApiClient(buildAddonBasePath(service));
+      await client.delete(`/clusters/${clusterId}`);
       clusters.navigate();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -279,11 +394,12 @@ export default function ClusterDetailPage() {
   };
 
   const handleResume = async () => {
-    if (!clusterId) return;
+    if (!clusterId || !service) return;
     setIsResuming(true);
     setActionsOpen(false);
     try {
-      await resumeGcpHcpCluster(clusterId);
+      const client = createApiClient(buildAddonBasePath(service));
+      await client.post(`/clusters/${clusterId}:resume`);
       await fetchCluster();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Resume failed");
@@ -296,7 +412,7 @@ export default function ClusterDetailPage() {
     return <Spinner aria-label="Loading cluster details" />;
   }
 
-  if (error || !cluster) {
+  if (error || !result) {
     return (
       <EmptyState titleText={error ?? "Cluster not found"} headingLevel="h1">
         <EmptyStateBody>
@@ -311,17 +427,17 @@ export default function ClusterDetailPage() {
     );
   }
 
-  const sl = stateLabel(cluster.state);
+  const sl = stateLabel(state);
 
   return (
     <div className="ome-core-detail-layout">
       <PageHeader
         title={clusterName}
-        subtitle={`Created ${formatTime(cluster.createTime)}`}
+        subtitle={`Created ${formatTime(result.resource.createTime)}`}
         label={
           <Label color={sl.color} isCompact className="pf-v6-u-mr-sm">
             {sl.text}
-            {cluster.reconciling ? " (reconciling)" : ""}
+            {result.resource.reconciling ? " (reconciling)" : ""}
           </Label>
         }
         breadcrumbs={
@@ -387,27 +503,24 @@ export default function ClusterDetailPage() {
       <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
         <Tab eventKey="overview" title={<TabTitleText>Overview</TabTitleText>}>
           <div className="pf-v6-u-pt-md">
-            <OverviewTab cluster={cluster} />
+            <OverviewTab result={result} service={service} />
           </div>
         </Tab>
-        <Tab eventKey="events" title={<TabTitleText>Events</TabTitleText>}>
-          <div className="pf-v6-u-pt-md">
-            <GcpHcpDeliveryEventsTab />
-          </div>
-        </Tab>
-        {resolvedTabs.map((tab) => (
-          <Tab
-            key={tab.eventKey}
-            eventKey={tab.eventKey}
-            title={<TabTitleText>{tab.title}</TabTitleText>}
-            mountOnEnter
-            unmountOnExit
-          >
-            <div className="pf-v6-u-pt-md">
-              <tab.Component clusterId={clusterId} />
-            </div>
-          </Tab>
-        ))}
+        {resolvedTabs
+          .filter((tab) => !tab.service || tab.service === service)
+          .map((tab) => (
+            <Tab
+              key={tab.eventKey}
+              eventKey={tab.eventKey}
+              title={<TabTitleText>{tab.title}</TabTitleText>}
+              mountOnEnter
+              unmountOnExit
+            >
+              <div className="pf-v6-u-pt-md">
+                <tab.Component clusterId={clusterId} />
+              </div>
+            </Tab>
+          ))}
       </Tabs>
 
       <Modal

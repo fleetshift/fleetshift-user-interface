@@ -52,6 +52,7 @@ import {
   buildAddonBasePath,
   type ClusterResource,
   type ClusterRow,
+  deriveClusterState,
   extractClusterId,
   extractService,
   formatTime,
@@ -163,7 +164,7 @@ export default function ClustersPage() {
 
   const hasTransient = rows.some(
     (r) =>
-      isTransientState(r.result.resource.state) ||
+      isTransientState(deriveClusterState(r.result.resource)) ||
       r.result.resource.reconciling,
   );
   useEffect(() => {
@@ -206,7 +207,7 @@ export default function ClustersPage() {
       filtered
         .slice((page - 1) * perPage, (page - 1) * perPage + perPage)
         .map((r) => {
-          const sl = stateLabel(r.result.resource.state);
+          const sl = stateLabel(deriveClusterState(r.result.resource));
           const isDeleting = deleting === r.id;
           return [
             {
@@ -240,7 +241,7 @@ export default function ClustersPage() {
             formatTime(r.result.resource.createTime),
             {
               cell:
-                r.result.resource.state !== "DELETING" ? (
+                deriveClusterState(r.result.resource) !== "DELETING" ? (
                   <ActionsColumn
                     items={[
                       {
