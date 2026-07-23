@@ -131,12 +131,13 @@ export default function AdvancedSearchBar({
 
   const handleSelect = useCallback(
     (suggestion: Suggestion) => {
-      const newPos = acceptSuggestion(suggestion);
-      pendingCursorRef.current = newPos;
+      const { pos, expr } = acceptSuggestion(suggestion);
+      pendingCursorRef.current = pos;
       setMenuVisible(true);
       setSelectedIndex(0);
+      onExpressionChange?.(expr);
     },
-    [acceptSuggestion],
+    [acceptSuggestion, onExpressionChange],
   );
 
   const handleHistorySelect = useCallback(

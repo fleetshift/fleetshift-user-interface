@@ -301,12 +301,19 @@ export function useAdvancedSearch() {
   }, [expression]);
 
   const acceptSuggestion = useCallback(
-    (suggestion: Suggestion): number => {
+    (suggestion: Suggestion): { pos: number; expr: string } => {
       if (suggestion.type === "semantic" && context.kind === "field") {
-        setExpression(suggestion.value);
-        const newPos = suggestion.value.length;
+        const [start] = context.replaceRange;
+        const before = expression.slice(0, start);
+        const after = expression.slice(context.replaceRange[1]);
+        const newExpr = before + suggestion.value + after;
+        const newPos = before.length + suggestion.value.length;
+        setExpression(newExpr);
         setCursorPos(newPos);
-        return newPos + (suggestion.cursorOffset ?? 0);
+        return {
+          pos: newPos + (suggestion.cursorOffset ?? 0),
+          expr: newExpr,
+        };
       }
 
       const [start, end] = context.replaceRange;
@@ -319,7 +326,7 @@ export function useAdvancedSearch() {
       const newPos = before.length + suggestion.value.length;
       setExpression(newExpr);
       setCursorPos(newPos);
-      return newPos + (suggestion.cursorOffset ?? 0);
+      return { pos: newPos + (suggestion.cursorOffset ?? 0), expr: newExpr };
     },
     [expression, context],
   );

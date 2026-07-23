@@ -298,7 +298,17 @@ export default function ClusterDetailPage() {
   const setActiveTab = useCallback(
     (key: string | number) => {
       const tab = String(key);
-      setSearchParams(tab === "overview" ? {} : { tab }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          if (tab === "overview") {
+            prev.delete("tab");
+          } else {
+            prev.set("tab", tab);
+          }
+          return prev;
+        },
+        { replace: true },
+      );
     },
     [setSearchParams],
   );

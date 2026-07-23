@@ -202,6 +202,7 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   const requestIdRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const advancedDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const advancedRequestIdRef = useRef(0);
 
   const total = totalCount(results);
   const isMac = navigator.platform.startsWith("Mac");
@@ -541,6 +542,7 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
     setAdvancedResults([]);
     setIsAdvancedLoading(false);
     clearTimeout(advancedDebounceRef.current);
+    ++advancedRequestIdRef.current;
     if (isOpen) closeMenu();
   }, [isOpen, closeMenu]);
 
@@ -562,9 +564,11 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
   const handleAdvancedExecute = useCallback(
     async (expr: string) => {
       clearTimeout(advancedDebounceRef.current);
+      const id = ++advancedRequestIdRef.current;
       setIsAdvancedLoading(true);
       setLastFilter(expr);
       const items = await filterSearch(expr);
+      if (id !== advancedRequestIdRef.current) return;
       setAdvancedResults(items);
       setIsAdvancedLoading(false);
     },
@@ -575,6 +579,7 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
     (expr: string) => {
       clearTimeout(advancedDebounceRef.current);
       if (!expr.trim()) {
+        ++advancedRequestIdRef.current;
         setAdvancedResults([]);
         setIsAdvancedLoading(false);
         setLastFilter("");
@@ -582,7 +587,9 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
       }
       setIsAdvancedLoading(true);
       advancedDebounceRef.current = setTimeout(async () => {
+        const id = ++advancedRequestIdRef.current;
         const items = await filterSearch(expr.trim());
+        if (id !== advancedRequestIdRef.current) return;
         setAdvancedResults(items);
         setLastFilter(expr.trim());
         setIsAdvancedLoading(false);

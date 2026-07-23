@@ -80,7 +80,12 @@ export function useDeliveryEvents(
         if (isDuplicate) {
           return;
         }
-        setEvents((prev) => [...prev, event]);
+        setEvents((prev) => {
+          const next = [...prev, event];
+          return next.length > MAX_PERSISTED
+            ? next.slice(-MAX_PERSISTED)
+            : next;
+        });
       } catch (e) {
         console.error("Unable to parsel cluster event: ", e);
         // ignore malformed messages
