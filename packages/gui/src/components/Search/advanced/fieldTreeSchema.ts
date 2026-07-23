@@ -10,6 +10,7 @@ const fieldNodeSchema: z.ZodType<unknown> = z.lazy(() =>
       type: z.enum(["string", "number", "boolean"]).optional(),
       enumValues: z.array(z.string()).optional(),
       children: z.array(fieldNodeSchema).optional(),
+      container: z.boolean().optional(),
     })
     .refine((node) => !!node.type || !!node.children, {
       message: "Node must have either type (leaf) or children (branch)",

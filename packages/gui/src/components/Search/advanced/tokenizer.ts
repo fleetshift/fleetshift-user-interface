@@ -3,6 +3,7 @@ import type { Token } from "./types";
 const COMPARISON_OPS = ["==", "!=", ">=", "<=", ">", "<"];
 const COMBINATORS = ["&&", "||"];
 const DOT_METHODS = ["startsWith"];
+const MACROS = ["has"];
 
 export function tokenize(expression: string): Token[] {
   const tokens: Token[] = [];
@@ -131,6 +132,11 @@ export function tokenize(expression: string): Token[] {
         tokens.push({ type: "operator", value: word, start, end: i });
       } else if (word === "true" || word === "false") {
         tokens.push({ type: "value", value: word, start, end: i });
+      } else if (
+        MACROS.includes(word) &&
+        expression.slice(i).trimStart().startsWith("(")
+      ) {
+        tokens.push({ type: "macro", value: word, start, end: i });
       } else {
         tokens.push({ type: "field", value: word, start, end: i });
       }

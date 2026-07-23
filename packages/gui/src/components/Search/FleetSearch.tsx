@@ -89,6 +89,32 @@ function HighlightedText({ html }: { html: string }) {
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+function shortPath(path: string): string {
+  const segments = path.split(".");
+  return segments.length > 2 ? segments.slice(-2).join(".") : path;
+}
+
+function truncateValue(val: string, max = 40): string {
+  return val.length > max ? val.slice(0, max) + "…" : val;
+}
+
+function MatchFields({
+  fields,
+}: {
+  fields: Array<{ path: string; value: string }>;
+}) {
+  if (fields.length === 0) return null;
+  return (
+    <div className="ome-search__match-fields">
+      {fields.map((f) => (
+        <span key={f.path} className="ome-search__match-field">
+          {shortPath(f.path)}: <mark>{truncateValue(f.value)}</mark>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 const linkComponentCache = new Map<
   string,
   React.ForwardRefExoticComponent<React.RefAttributes<HTMLAnchorElement>>
@@ -326,16 +352,21 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
             <ResultIcon name={item.icon} IconComponent={item.IconComponent} />
           }
           description={
-            isNavigable ? (
-              (item.descriptionNode ?? item.description)
-            ) : (
-              <span className="pf-v6-u-text-color-subtle">
-                {item.descriptionNode ?? item.description}
-                <Label isCompact color="grey" className="pf-v6-u-ml-sm">
-                  Cluster
-                </Label>
-              </span>
-            )
+            <>
+              {isNavigable ? (
+                (item.descriptionNode ?? item.description)
+              ) : (
+                <span className="pf-v6-u-text-color-subtle">
+                  {item.descriptionNode ?? item.description}
+                  <Label isCompact color="grey" className="pf-v6-u-ml-sm">
+                    Cluster
+                  </Label>
+                </span>
+              )}
+              {item.matchFields && item.matchFields.length > 0 && (
+                <MatchFields fields={item.matchFields} />
+              )}
+            </>
           }
           component={getPluginLinkComponent(item.pluginLink)}
           onClick={clearSearch}
@@ -357,7 +388,16 @@ const FleetSearch = ({ onStateChange }: FleetSearchProps) => {
         <MenuItem
           key={item.id}
           icon={<ResultIcon name={item.icon} />}
-          description={item.description}
+          description={
+            item.matchFields && item.matchFields.length > 0 ? (
+              <>
+                {item.description}
+                <MatchFields fields={item.matchFields} />
+              </>
+            ) : (
+              item.description
+            )
+          }
           isDisabled
         >
           <HighlightedText html={item.title} />

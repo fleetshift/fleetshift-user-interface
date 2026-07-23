@@ -38,12 +38,10 @@
   right: 0;
   z-index: var(--pf-t--global--z-index--lg);
   box-shadow: var(--pf-t--global--box-shadow--lg);
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 
-  // base pf-c-menu hides overflow
-  overflow: auto !important;
-  
   .pf-v6-c-menu__content {
     overflow-y: auto;
     flex: 1;
@@ -158,4 +156,35 @@
 
 .ome-search__cel-token--paren {
   color: var(--pf-t--global--color--nonstatus--gray--default);
+}
+
+.ome-search__cel-token--macro {
+  color: var(--pf-t--global--color--nonstatus--purple--default);
+}
+
+// Keyboard shortcuts hint bar pinned at bottom of autocomplete menu
+.ome-search__keyboard-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--md);
+  padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--md);
+  border-top: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  font-size: var(--pf-t--global--font--size--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  flex-shrink: 0;
+
+  kbd {
+    display: inline-block;
+    min-width: 1.4em;
+    padding: 0 var(--pf-t--global--spacer--xs);
+    border: var(--pf-t--global--border--width--regular) solid
+      var(--pf-t--global--border--color--default);
+    border-radius: var(--pf-t--global--border--radius--small);
+    font-family: var(--pf-t--global--font--family--mono);
+    font-size: var(--pf-t--global--font--size--xs);
+    text-align: center;
+    line-height: 1.6;
+    margin-right: 2px;
+  }
 }

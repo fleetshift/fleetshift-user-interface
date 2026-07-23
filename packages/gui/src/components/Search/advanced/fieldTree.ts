@@ -168,6 +168,7 @@ export const FIELD_TREE: FieldNode[] = [
         label: "Conditions",
         description: "Health and status conditions",
         children: CONDITION_NAMES.map(conditionNode),
+        container: true,
       },
       {
         segment: "observation",
@@ -332,6 +333,7 @@ export const FIELD_TREE: FieldNode[] = [
         label: "Labels",
         description: "Resource labels (dynamic keys)",
         type: "string",
+        container: true,
       },
       {
         segment: "uid",

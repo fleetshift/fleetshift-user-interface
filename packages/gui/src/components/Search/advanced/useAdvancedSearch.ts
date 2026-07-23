@@ -4,12 +4,29 @@ import { validateCel } from "./celValidator";
 import { getCursorContext } from "./cursorParser";
 import { getStaticFields, resolveField } from "./fieldRegistry";
 import { getChildrenAt, getNodeAt, getTopLevelNodes } from "./fieldTree";
-import { getOperatorsForField } from "./operatorMap";
+import { getAllOperators, getOperatorsForField } from "./operatorMap";
 import { querySemantic } from "./semanticIndex";
 import type { FieldNode, Suggestion, ValidationResult } from "./types";
 import { useSearchHistory } from "./useSearchHistory";
 
 const fields = getStaticFields();
+
+const STRING_METHOD_SUGGESTIONS: Suggestion[] = [
+  {
+    type: "operator",
+    value: '.startsWith("")',
+    label: ".startsWith()",
+    description: "starts with",
+    cursorOffset: -2,
+  },
+];
+
+const HAS_SUGGESTION: Suggestion = {
+  type: "path",
+  value: "has(",
+  label: "has()",
+  description: "Check if field exists",
+};
 
 const COMBINATOR_SUGGESTIONS: Suggestion[] = [
   {
@@ -34,8 +51,12 @@ function nodeToSuggestion(node: FieldNode, asShortcut: boolean): Suggestion {
       ? node.path + (isLeaf ? " " : ".")
       : node.segment + (isLeaf ? " " : "."),
     label: node.label,
-    description: node.description ?? (isLeaf ? node.type : "…"),
-    celPreview: asShortcut ? node.path : undefined,
+    description:
+      node.description ??
+      (isLeaf
+        ? node.type
+        : `${node.children!.length} field${node.children!.length === 1 ? "" : "s"}`),
+    celPreview: node.path,
   };
 }
 
@@ -54,12 +75,22 @@ function filterNodes(
     .map((n) => nodeToSuggestion(n, asShortcut));
 }
 
-async function computeFieldSuggestions(partial: string): Promise<Suggestion[]> {
+export async function computeFieldSuggestions(
+  partial: string,
+): Promise<Suggestion[]> {
   if (!partial || !partial.includes(".")) {
     const topLevel = getTopLevelNodes();
 
     if (!partial) {
-      return topLevel.map((n) => nodeToSuggestion(n, false));
+      return [
+        ...topLevel.map((n) => nodeToSuggestion(n, false)),
+        HAS_SUGGESTION,
+      ];
+    }
+
+    if ("has".startsWith(partial.toLowerCase())) {
+      const filtered = filterNodes(topLevel, partial, false);
+      return [...filtered, HAS_SUGGESTION];
     }
 
     const filtered = filterNodes(topLevel, partial, false);
@@ -80,6 +111,11 @@ async function computeFieldSuggestions(partial: string): Promise<Suggestion[]> {
     const children = getChildrenAt(partial);
     if (children.length > 0) {
       return children.map((n) => nodeToSuggestion(n, false));
+    }
+    const parentPath = partial.slice(0, -1);
+    const node = getNodeAt(parentPath);
+    if (node && !node.children && (node.type === "string" || !node.type)) {
+      return STRING_METHOD_SUGGESTIONS;
     }
     return [];
   }
@@ -165,6 +201,25 @@ async function computeValueSuggestions(
   return [];
 }
 
+export function applyInsideMacro(suggestions: Suggestion[]): Suggestion[] {
+  return suggestions.map((s) => {
+    if (s.type === "path" && !s.value.endsWith(".")) {
+      return { ...s, value: s.value.trimEnd() + ") " };
+    }
+    return s;
+  });
+}
+
+export function applyReversedInFilter(suggestions: Suggestion[]): Suggestion[] {
+  return suggestions.filter((s) => {
+    if (s.type !== "path") return true;
+    if (s.value.endsWith(".")) return true;
+    const path = (s.celPreview ?? s.value).trimEnd();
+    const node = getNodeAt(path);
+    return node?.container === true;
+  });
+}
+
 export function useAdvancedSearch() {
   const [expression, setExpression] = useState("");
   const [cursorPos, setCursorPos] = useState(0);
@@ -189,13 +244,15 @@ export function useAdvancedSearch() {
       switch (context.kind) {
         case "field":
           result = await computeFieldSuggestions(context.partial);
+          if (context.insideMacro) result = applyInsideMacro(result);
+          if (context.reversedIn) result = applyReversedInFilter(result);
           break;
 
         case "operator": {
           const field = context.fieldName
             ? resolveField(context.fieldName)
             : undefined;
-          const ops = field ? getOperatorsForField(field) : [];
+          const ops = field ? getOperatorsForField(field) : getAllOperators();
           result = ops.map((op) => ({
             type: "operator" as const,
             value: op.celSyntax.includes(".")
@@ -253,7 +310,10 @@ export function useAdvancedSearch() {
       }
 
       const [start, end] = context.replaceRange;
-      const before = expression.slice(0, start);
+      let before = expression.slice(0, start);
+      if (suggestion.value.startsWith(".")) {
+        before = before.trimEnd();
+      }
       const after = expression.slice(end);
       const newExpr = before + suggestion.value + after;
       const newPos = before.length + suggestion.value.length;

@@ -32,9 +32,17 @@ export function getCursorContext(
         beforeField.type === "combinator" ||
         beforeField.type === "paren"
       ) {
-        return { kind: "field", partial, replaceRange };
+        const insideMacro =
+          beforeField?.type === "paren" && beforeField.value === "("
+            ? findPrevMeaningful(meaningful, beforeField.start)?.type ===
+                "macro" || undefined
+            : undefined;
+        return { kind: "field", partial, replaceRange, insideMacro };
       }
       if (beforeField.type === "operator") {
+        if (isReversedIn(meaningful, beforeField)) {
+          return { kind: "field", partial, replaceRange, reversedIn: true };
+        }
         return {
           kind: "value",
           fieldName: findFieldBefore(meaningful, beforeField),
@@ -45,6 +53,17 @@ export function getCursorContext(
     }
 
     if (currentToken.type === "operator") {
+      if (
+        cursorPos === currentToken.end &&
+        isReversedIn(meaningful, currentToken)
+      ) {
+        return {
+          kind: "field",
+          partial: "",
+          replaceRange: [cursorPos, cursorPos],
+          reversedIn: true,
+        };
+      }
       return {
         kind: "operator",
         fieldName: findFieldBefore(meaningful, currentToken),
@@ -54,6 +73,17 @@ export function getCursorContext(
     }
 
     if (currentToken.type === "value" || currentToken.type === "dot-call") {
+      if (
+        cursorPos === currentToken.end &&
+        isCompleteValue(currentToken) &&
+        isValueInFieldPosition(meaningful, currentToken)
+      ) {
+        return {
+          kind: "operator",
+          partial: "",
+          replaceRange: [cursorPos, cursorPos],
+        };
+      }
       return {
         kind: "value",
         fieldName: findFieldBeforeValue(meaningful, currentToken),
@@ -88,9 +118,18 @@ export function getCursorContext(
         replaceRange,
       };
     }
+    if (
+      beforeField.type === "operator" &&
+      isReversedIn(meaningful, beforeField)
+    ) {
+      return { kind: "combinator", partial: "", replaceRange };
+    }
   }
 
   if (prevMeaningful.type === "operator") {
+    if (isReversedIn(meaningful, prevMeaningful)) {
+      return { kind: "field", partial: "", replaceRange, reversedIn: true };
+    }
     return {
       kind: "value",
       fieldName: findFieldBefore(meaningful, prevMeaningful),
@@ -100,11 +139,23 @@ export function getCursorContext(
   }
 
   if (prevMeaningful.type === "value" || prevMeaningful.type === "dot-call") {
+    if (isValueInFieldPosition(meaningful, prevMeaningful)) {
+      return { kind: "operator", partial: "", replaceRange };
+    }
     return { kind: "combinator", partial: "", replaceRange };
   }
 
-  if (prevMeaningful.type === "combinator" || prevMeaningful.type === "paren") {
+  if (prevMeaningful.type === "combinator") {
     return { kind: "field", partial: "", replaceRange };
+  }
+
+  if (prevMeaningful.type === "paren") {
+    if (prevMeaningful.value === ")") {
+      return { kind: "combinator", partial: "", replaceRange };
+    }
+    const beforeParen = findPrevMeaningful(meaningful, prevMeaningful.start);
+    const insideMacro = beforeParen?.type === "macro" ? true : undefined;
+    return { kind: "field", partial: "", replaceRange, insideMacro };
   }
 
   return { kind: "field", partial: "", replaceRange };
@@ -149,4 +200,30 @@ function findFieldBeforeValue(
       break;
   }
   return undefined;
+}
+
+function isCompleteValue(token: Token): boolean {
+  const v = token.value;
+  if (v.length < 2) return false;
+  const q = v[0];
+  return (q === '"' || q === "'") && v[v.length - 1] === q;
+}
+
+function isReversedIn(meaningful: Token[], operatorToken: Token): boolean {
+  if (operatorToken.value !== "in") return false;
+  const idx = meaningful.indexOf(operatorToken);
+  if (idx <= 0) return false;
+  return meaningful[idx - 1].type === "value";
+}
+
+function isValueInFieldPosition(
+  meaningful: Token[],
+  valueToken: Token,
+): boolean {
+  const idx = meaningful.indexOf(valueToken);
+  if (idx === 0) return true;
+  const prev = meaningful[idx - 1];
+  return (
+    prev.type === "combinator" || (prev.type === "paren" && prev.value === "(")
+  );
 }

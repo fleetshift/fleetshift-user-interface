@@ -30,6 +30,8 @@ export interface CursorContext {
   fieldName?: string;
   partial: string;
   replaceRange: [number, number];
+  insideMacro?: boolean;
+  reversedIn?: boolean;
 }
 
 export interface HistoryEntry {
@@ -55,6 +57,7 @@ export interface FieldNode {
   children?: FieldNode[];
   type?: "string" | "number" | "boolean";
   enumValues?: string[];
+  container?: boolean;
 }
 
 export type TokenType =
@@ -64,6 +67,7 @@ export type TokenType =
   | "combinator"
   | "paren"
   | "dot-call"
+  | "macro"
   | "whitespace"
   | "unknown";
 

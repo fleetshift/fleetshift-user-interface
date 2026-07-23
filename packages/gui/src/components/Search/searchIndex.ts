@@ -27,6 +27,7 @@ export interface SearchResultItem {
   };
   descriptionNode?: React.ReactNode;
   navigable?: boolean;
+  matchFields?: Array<{ path: string; value: string }>;
 }
 
 export type GroupedResults = Record<string, SearchResultItem[]>;

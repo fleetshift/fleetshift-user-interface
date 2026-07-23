@@ -11,6 +11,9 @@ import {
   TextInput,
 } from "@patternfly/react-core";
 import {
+  Children,
+  cloneElement,
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -33,6 +36,7 @@ const TOKEN_CLASSES: Record<string, string> = {
   value: "ome-search__cel-token--value",
   combinator: "ome-search__cel-token--combinator",
   "dot-call": "ome-search__cel-token--operator",
+  macro: "ome-search__cel-token--macro",
   paren: "ome-search__cel-token--paren",
 };
 
@@ -49,6 +53,9 @@ const PLACEHOLDER_HINTS = [
   "workload deployments",
   'resource.conditions.Available.status == "True"',
   "available services",
+  "has(resource.localLabels)",
+  '"Ready" in resource.conditions',
+  'name.startsWith("projects/fleet")',
 ];
 
 interface AdvancedSearchBarProps {
@@ -152,13 +159,25 @@ export default function AdvancedSearchBar({
     return [...favorites, ...recent];
   }, [history, showHistory]);
 
-  const navigableCount = suggestions.length + flatHistory.length;
+  const resultItems = useMemo(() => Children.toArray(results), [results]);
+  const resultStartIndex = suggestions.length + flatHistory.length;
+  const navigableCount = resultStartIndex + resultItems.length;
+  const hasOperatorChips = suggestions.some((s) => s.type === "operator");
 
   const handleKeyDown = useCallback(
     (ev: React.KeyboardEvent) => {
       if (ev.key === "Enter") {
         ev.preventDefault();
         if (
+          menuVisible &&
+          selectedIndex >= resultStartIndex &&
+          resultItems.length > 0
+        ) {
+          const el = menuRef.current?.querySelector<HTMLElement>(
+            "li.pf-m-focus a, li.pf-m-focus button",
+          );
+          if (el) el.click();
+        } else if (
           menuVisible &&
           selectedIndex >= suggestions.length &&
           flatHistory.length > 0
@@ -177,7 +196,12 @@ export default function AdvancedSearchBar({
 
       if (ev.key === "Tab" && menuVisible && navigableCount > 0) {
         ev.preventDefault();
-        if (selectedIndex < suggestions.length) {
+        if (selectedIndex >= resultStartIndex && resultItems.length > 0) {
+          const el = menuRef.current?.querySelector<HTMLElement>(
+            "li.pf-m-focus a, li.pf-m-focus button",
+          );
+          if (el) el.click();
+        } else if (selectedIndex < suggestions.length) {
           handleSelect(suggestions[selectedIndex]);
         } else {
           const historyIdx = selectedIndex - suggestions.length;
@@ -197,6 +221,28 @@ export default function AdvancedSearchBar({
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : navigableCount - 1));
         return;
       }
+
+      if (
+        hasOperatorChips &&
+        ev.key === "ArrowRight" &&
+        menuVisible &&
+        navigableCount > 0
+      ) {
+        ev.preventDefault();
+        setSelectedIndex((prev) => (prev < navigableCount - 1 ? prev + 1 : 0));
+        return;
+      }
+
+      if (
+        hasOperatorChips &&
+        ev.key === "ArrowLeft" &&
+        menuVisible &&
+        navigableCount > 0
+      ) {
+        ev.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : navigableCount - 1));
+        return;
+      }
     },
     [
       menuVisible,
@@ -206,10 +252,13 @@ export default function AdvancedSearchBar({
       handleHistorySelect,
       flatHistory,
       navigableCount,
+      hasOperatorChips,
       execute,
       onExecute,
       loadExpression,
       onExpressionChange,
+      resultStartIndex,
+      resultItems,
     ],
   );
 
@@ -260,6 +309,14 @@ export default function AdvancedSearchBar({
       });
     }
   }, [expression]);
+
+  useEffect(() => {
+    const container = menuRef.current?.querySelector(".pf-v6-c-menu__content");
+    const focused = container?.querySelector(".pf-m-focus");
+    if (focused) {
+      focused.scrollIntoView({ block: "nearest" });
+    }
+  }, [selectedIndex]);
 
   useEffect(() => {
     const recalc = () => {
@@ -362,7 +419,19 @@ export default function AdvancedSearchBar({
               )}
               {hasResults && (
                 <MenuGroup label="Results" onClick={handleResultClick}>
-                  {results}
+                  {resultItems.map((child, i) => {
+                    const focused = selectedIndex === resultStartIndex + i;
+                    if (
+                      isValidElement(child) &&
+                      typeof child.type !== "string"
+                    ) {
+                      return cloneElement(
+                        child as React.ReactElement<Record<string, unknown>>,
+                        { isFocused: focused },
+                      );
+                    }
+                    return child;
+                  })}
                 </MenuGroup>
               )}
               {hasEmptyResults && (
@@ -375,6 +444,29 @@ export default function AdvancedSearchBar({
               )}
             </MenuList>
           </MenuContent>
+          {(showSuggestions || showHistory) && (
+            <div className="ome-search__keyboard-hints">
+              <span>
+                <kbd>&uarr;</kbd>
+                <kbd>&darr;</kbd> navigate
+              </span>
+              {hasOperatorChips && (
+                <span>
+                  <kbd>&larr;</kbd>
+                  <kbd>&rarr;</kbd> operators
+                </span>
+              )}
+              <span>
+                <kbd>Tab</kbd> accept
+              </span>
+              <span>
+                <kbd>Enter</kbd> search
+              </span>
+              <span>
+                <kbd>Esc</kbd> close
+              </span>
+            </div>
+          )}
         </Menu>
       )}
     </div>

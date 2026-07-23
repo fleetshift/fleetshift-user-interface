@@ -1,3 +1,4 @@
+import { MenuItem } from "@patternfly/react-core";
 import { expect, type Page, test } from "@playwright/experimental-ct-react";
 
 import AdvancedSearchBar from "../AdvancedSearchBar";
@@ -60,7 +61,10 @@ test.describe("Advanced CEL search", () => {
       menu.getByRole("menuitem", { name: /^Resource Type/ }),
     ).toBeVisible();
     await expect(
-      menu.getByRole("menuitem", { name: /^Resource Resource data/ }),
+      menu.getByRole("menuitem", { name: /^Resource resource$/ }),
+    ).toBeVisible();
+    await expect(
+      menu.getByRole("menuitem", { name: /^has\(\)/ }),
     ).toBeVisible();
   });
 
@@ -148,9 +152,11 @@ test.describe("Advanced CEL search", () => {
     const input = component.getByLabel("Advanced CEL search");
     await input.fill("resource.conditions.Ready.");
     const menu = component.locator(".ome-search__autocomplete");
-    await expect(menu.getByText("Status")).toBeVisible();
-    await expect(menu.getByText("Reason")).toBeVisible();
-    await expect(menu.getByText("Message")).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: /^Status/ })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: /^Reason/ })).toBeVisible();
+    await expect(
+      menu.getByRole("menuitem", { name: /^Message/ }),
+    ).toBeVisible();
   });
 
   test("placeholder text rotates", async ({ mount }) => {
@@ -160,10 +166,9 @@ test.describe("Advanced CEL search", () => {
     const input = component.getByLabel("Advanced CEL search");
     const first = await input.getAttribute("placeholder");
     expect(first).toContain("Try:");
-    await component.page().waitForTimeout(4500);
-    const second = await input.getAttribute("placeholder");
-    expect(second).toContain("Try:");
-    expect(second).not.toBe(first);
+    await expect
+      .poll(async () => input.getAttribute("placeholder"), { timeout: 8000 })
+      .not.toBe(first);
   });
 
   test("Escape closes menu, second Escape deactivates", async ({
@@ -362,8 +367,9 @@ test.describe("Advanced CEL search", () => {
       const menu = component.locator(".ome-search__autocomplete");
       // Wait for history to load from IDB
       await expect(menu.getByText("Favorites")).toBeVisible();
-      // 3 field suggestions, then favorites (1), then recent (1) = 5 total
-      // Press ArrowDown 3 times to pass field suggestions
+      // 4 field suggestions (Name, Type, Resource, has()), then favorites (1), then recent (1)
+      // Press ArrowDown 4 times to pass field suggestions
+      await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
@@ -411,7 +417,8 @@ test.describe("Advanced CEL search", () => {
       const menu = component.locator(".ome-search__autocomplete");
       // Wait for history to load from IDB
       await expect(menu.getByText("Favorites")).toBeVisible();
-      // Navigate to first history item (index 3 = past 3 suggestions)
+      // Navigate to first history item (index 4 = past 4 suggestions)
+      await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
@@ -438,7 +445,8 @@ test.describe("Advanced CEL search", () => {
       const menu = component.locator(".ome-search__autocomplete");
       // Wait for history to load from IDB
       await expect(menu.getByText("Favorites")).toBeVisible();
-      // Navigate to first history item (index 3 = past 3 suggestions)
+      // Navigate to first history item (index 4 = past 4 suggestions)
+      await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
@@ -461,6 +469,211 @@ test.describe("Advanced CEL search", () => {
         .click();
       const value = await input.inputValue();
       expect(value).toBe("resource.conditions.Ready.status");
+    });
+  });
+
+  test.describe("keyboard navigation", () => {
+    test("ArrowDown moves pf-m-focus to next suggestion", async ({
+      mount,
+      page,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      const focused = menu.locator("li.pf-m-focus");
+      // selectedIndex starts at 0 → Conditions
+      await expect(focused).toContainText("Conditions");
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("Observation");
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("Labels");
+    });
+
+    test("ArrowUp moves focus backward and wraps", async ({ mount, page }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      const focused = menu.locator("li.pf-m-focus");
+      // ArrowUp from index 0 wraps to last (Updated)
+      await page.keyboard.press("ArrowUp");
+      await expect(focused).toContainText("Updated");
+      // ArrowUp again → Created
+      await page.keyboard.press("ArrowUp");
+      await expect(focused).toContainText("Created");
+    });
+
+    test("ArrowDown wraps from last to first", async ({ mount, page }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      // resource. has 6 children: Conditions, Observation, Labels, UID, Created, Updated
+      for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowDown");
+      // Should wrap back to Conditions
+      const focused = menu.locator("li.pf-m-focus");
+      await expect(focused).toContainText("Conditions");
+    });
+
+    test("ArrowDown + Tab accepts the navigated-to suggestion", async ({
+      mount,
+      page,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      // ArrowDown twice → index 2 (Labels)
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Tab");
+      const value = await input.inputValue();
+      expect(value).toBe("resource.localLabels ");
+    });
+
+    test("ArrowLeft/Right do not intercept in non-operator context", async ({
+      mount,
+      page,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("test");
+      // Move cursor to start
+      await page.keyboard.press("Home");
+      // ArrowRight should move cursor (not navigate menu)
+      await page.keyboard.press("ArrowRight");
+      const cursorPos = await input.evaluate(
+        (el: HTMLInputElement) => el.selectionStart,
+      );
+      expect(cursorPos).toBe(1);
+    });
+
+    test("ArrowLeft/Right navigate when operator chips present", async ({
+      mount,
+      page,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.observation.kind ");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu.getByRole("button", { name: "==" })).toBeVisible();
+      // selectedIndex starts at 0 (==), ArrowRight → index 1 (!=)
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Tab");
+      const value = await input.inputValue();
+      expect(value).toContain("!=");
+    });
+
+    test("ArrowDown navigates across MenuGroup boundaries into results", async ({
+      mount,
+      page,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar
+          onDeactivate={noop}
+          onExecute={noop}
+          results={<MenuItem key="r1">Result Item</MenuItem>}
+          lastFilter='resource.observation.kind == "Pod"'
+        />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      await input.fill("resource.conditions.Ready.status == ");
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      await expect(menu.getByRole("menuitem", { name: "True" })).toBeVisible();
+      const focused = menu.locator("li.pf-m-focus");
+      await expect(focused).toContainText("True");
+      // ArrowDown through value suggestions (True, False, Unknown) into results
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("False");
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("Unknown");
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("Result Item");
+      // ArrowDown wraps back to first value suggestion
+      await page.keyboard.press("ArrowDown");
+      await expect(focused).toContainText("True");
+    });
+  });
+
+  test.describe("keyboard hints bar", () => {
+    test("visible when suggestions are shown", async ({ mount }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const hints = component.locator(".ome-search__keyboard-hints");
+      await expect(hints).toBeVisible();
+      await expect(hints).toContainText("navigate");
+      await expect(hints).toContainText("accept");
+      await expect(hints).toContainText("search");
+      await expect(hints).toContainText("close");
+    });
+
+    test("hidden when menu has only preview/results (no suggestions or history)", async ({
+      mount,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar
+          onDeactivate={noop}
+          onExecute={noop}
+          results={<button>Result</button>}
+          lastFilter="test"
+        />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      // Type a complete expression that won't produce suggestions or history
+      await input.fill(
+        'name == "test" && resourceType == "kind.fleetshift.io/Cluster"',
+      );
+      // Wait for suggestions to settle to combinator only
+      const menu = component.locator(".ome-search__autocomplete");
+      await expect(menu).toBeVisible();
+      // The hints bar should appear since combinators ARE suggestions
+      const hints = component.locator(".ome-search__keyboard-hints");
+      await expect(hints).toBeVisible();
+    });
+
+    test("shows left/right hint only with operator chips", async ({
+      mount,
+    }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const input = component.getByLabel("Advanced CEL search");
+      const hints = component.locator(".ome-search__keyboard-hints");
+      // Field context — no operator chips
+      await expect(hints).toBeVisible();
+      await expect(hints).not.toContainText("operators");
+      // Switch to operator context
+      await input.fill("resource.observation.kind ");
+      await expect(hints).toContainText("operators");
+    });
+
+    test("hints disappear when menu is closed", async ({ mount, page }) => {
+      const component = await mount(
+        <AdvancedSearchBar onDeactivate={noop} onExecute={noop} />,
+      );
+      const hints = component.locator(".ome-search__keyboard-hints");
+      await expect(hints).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(hints).toBeHidden();
     });
   });
 });
