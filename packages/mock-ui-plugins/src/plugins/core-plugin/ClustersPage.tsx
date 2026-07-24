@@ -209,7 +209,7 @@ export default function ClustersPage() {
       try {
         const client = createApiClient(buildAddonBasePath(row.service));
         await client.post(`/clusters/${row.id}:resume`);
-        await fetchClusters(true);
+        await fetchClusters();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Resume failed");
       } finally {
@@ -228,6 +228,9 @@ export default function ClustersPage() {
           const sl = stateLabel(state);
           const isDeleting = deleting === r.id;
           const isPaused = state === "PAUSED_AUTH";
+          const canResume =
+            r.service === "gcphcp.fleetshift.io" &&
+            (isPaused || state === "FAILED");
           const isResuming = resuming === r.id;
           return [
             {
@@ -268,7 +271,7 @@ export default function ClustersPage() {
                 state !== "DELETING" ? (
                   <ActionsColumn
                     items={[
-                      ...(isPaused
+                      ...(canResume
                         ? [
                             {
                               title: isResuming ? "Resuming..." : "Resume",
