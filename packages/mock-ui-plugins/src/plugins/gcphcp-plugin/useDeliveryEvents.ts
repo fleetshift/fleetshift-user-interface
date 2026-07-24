@@ -76,22 +76,18 @@ export function useDeliveryEvents(
       try {
         const event: DeliveryEvent = JSON.parse(e.data as string);
         if (!event.deliveryId?.includes("gcphcp")) return;
-        const cid = clusterIdRef.current;
-        if (cid && !event.deliveryId.includes(cid)) return;
-
+        const isDuplicate = events.some((e) => e.message === event.message);
+        if (isDuplicate) {
+          return;
+        }
         setEvents((prev) => {
-          const isDuplicate = prev.some(
-            (e) =>
-              e.deliveryId === event.deliveryId &&
-              e.timestamp === event.timestamp,
-          );
-          if (isDuplicate) return prev;
           const next = [...prev, event];
           return next.length > MAX_PERSISTED
             ? next.slice(-MAX_PERSISTED)
             : next;
         });
-      } catch {
+      } catch (e) {
+        console.error("Unable to parsel cluster event: ", e);
         // ignore malformed messages
       }
     };

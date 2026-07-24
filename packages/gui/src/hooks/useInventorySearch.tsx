@@ -1,4 +1,4 @@
-import type { SearchResultResolve } from "@fleetshift/common";
+import type { ResourceResult, SearchResultResolve } from "@fleetshift/common";
 import { createResourceApi } from "@fleetshift/common";
 import { useResolvedExtensions } from "@openshift/dynamic-plugin-sdk";
 import { Label } from "@patternfly/react-core";
@@ -9,6 +9,10 @@ import {
   useMemo,
 } from "react";
 
+import {
+  extractFieldPaths,
+  resolveFieldValue,
+} from "../components/Search/advanced/extractMatchFields";
 import { highlightText } from "../components/Search/highlightUtils";
 import type { SearchResultItem } from "../components/Search/searchIndex";
 import type { SearchResultRendererExtension } from "../extensions/isSearchResultRendererExtension";
@@ -35,6 +39,7 @@ const client = createResourceApi("-");
 
 export function useInventorySearch(): {
   search: (term: string) => Promise<SearchResultItem[]>;
+  filterSearch: (celFilter: string) => Promise<SearchResultItem[]>;
   loaded: boolean;
 } {
   const [extensions, loaded] =
@@ -54,8 +59,70 @@ export function useInventorySearch(): {
     return map;
   }, [extensions]);
 
+  const mapResult = useCallback(
+    (result: ResourceResult, highlight?: string): SearchResultItem => {
+      const renderer = rendererMap.get(result.resourceType);
+      const id =
+        ((result.resource as Record<string, unknown>).uuid as string) ??
+        ((result.resource as Record<string, unknown>).uid as string) ??
+        result.resource.name;
+      const rawName =
+        result.resource.name.split("/").pop() ?? result.resource.name;
+
+      if (!renderer) {
+        return {
+          id,
+          title: highlight ? highlightText(highlight, rawName) : rawName,
+          description: result.resourceType,
+          category: "resources",
+          pathname: "",
+          icon: "",
+        };
+      }
+
+      let rendered;
+      try {
+        rendered = renderer.resolve(result);
+      } catch (err) {
+        console.error(err);
+        return {
+          id,
+          title: highlight ? highlightText(highlight, rawName) : rawName,
+          description: result.resourceType,
+          category: "resources",
+          pathname: "",
+          icon: "",
+        };
+      }
+
+      const title = rendered.title ?? rawName;
+      return {
+        id,
+        title: highlight ? highlightText(highlight, title) : title,
+        description: "",
+        descriptionNode: badgedDescription(
+          renderer.label,
+          rendered.description,
+        ),
+        category: "resources",
+        pathname: "",
+        icon: "",
+        IconComponent: renderer.icon,
+        pluginLink: {
+          scope: rendered.scope,
+          module: rendered.module,
+          to: rendered.to,
+          search: rendered.search,
+        },
+        navigable: rendered.navigable,
+      };
+    },
+    [rendererMap],
+  );
+
   const search = useCallback(
     async (term: string): Promise<SearchResultItem[]> => {
+      if (!loaded) return [];
       try {
         const escaped = term.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
         const clusterFilter = [
@@ -75,78 +142,51 @@ export function useInventorySearch(): {
           ...clusterResponse.resources,
           ...k8sResponse.resources,
         ];
-
-        return allResults.map((result) => {
-          const renderer = rendererMap.get(result.resourceType);
-
-          const id =
-            ((result.resource as Record<string, unknown>).uuid as string) ??
-            ((result.resource as Record<string, unknown>).uid as string) ??
-            result.resource.name;
-          if (!renderer) {
-            return {
-              id,
-              title: highlightText(
-                term,
-                result.resource.name.split("/").pop() ?? result.resource.name,
-              ),
-              description: result.resourceType,
-              category: "resources",
-              pathname: "",
-              icon: "",
-            };
-          }
-
-          let rendered;
-          try {
-            rendered = renderer.resolve(result);
-          } catch (err) {
-            console.error(err);
-            return {
-              id,
-              title: highlightText(
-                term,
-                result.resource.name.split("/").pop() ?? result.resource.name,
-              ),
-              description: result.resourceType,
-              category: "resources",
-              pathname: "",
-              icon: "",
-            };
-          }
-
-          return {
-            id,
-            title: highlightText(
-              term,
-              rendered.title ??
-                result.resource.name.split("/").pop() ??
-                result.resource.name,
-            ),
-            description: "",
-            descriptionNode: badgedDescription(
-              renderer.label,
-              rendered.description,
-            ),
-            category: "resources",
-            pathname: "",
-            icon: "",
-            IconComponent: renderer.icon,
-            pluginLink: {
-              scope: rendered.scope,
-              module: rendered.module,
-              to: rendered.to,
-              search: rendered.search,
-            },
-          };
-        });
+        return allResults.map((r) => mapResult(r, term));
       } catch (error) {
         console.error(error);
         return [];
       }
     },
-    [rendererMap],
+    [mapResult, loaded],
   );
 
-  return { search, loaded };
+  const filterSearch = useCallback(
+    async (celFilter: string): Promise<SearchResultItem[]> => {
+      if (!loaded) return [];
+      console.info("[filterSearch] CEL filter:", celFilter);
+      try {
+        const response = await client.search({
+          filter: celFilter,
+          pageSize: 20,
+        });
+        console.info("[filterSearch] results:", response.resources.length);
+        const fieldPaths = extractFieldPaths(celFilter);
+        return response.resources.map((r) => {
+          const item = mapResult(r);
+          if (fieldPaths.length > 0) {
+            const res = r as unknown as Record<string, unknown>;
+            item.matchFields = fieldPaths
+              .map((p) => {
+                const val = resolveFieldValue(res, p);
+                if (val === undefined) return null;
+                return {
+                  path: p,
+                  value:
+                    typeof val === "object" ? JSON.stringify(val) : String(val),
+                };
+              })
+              .filter((f): f is { path: string; value: string } => f !== null);
+          }
+          return item;
+        });
+      } catch (error) {
+        console.error("[filterSearch] error:", error);
+        return [];
+      }
+    },
+    [mapResult, loaded],
+  );
+
+  return { search, filterSearch, loaded };
 }
